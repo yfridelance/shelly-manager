@@ -1,0 +1,68 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.45);
+  z-index: 10;
+}
+
+.dialog {
+  position: fixed;
+  z-index: 11;
+  top: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: 84vh;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.3);
+
+  h2 {
+    font-size: 1.15rem;
+    margin: 0 0 0.75rem;
+  }
+
+  form {
+    display: grid;
+    gap: 0.9rem;
+  }
+}
+
+.warning {
+  border-left: 4px solid var(--error);
+  background: var(--error-bg);
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+
+  p {
+    margin: 0.4rem 0;
+  }
+}
+
+.credentials {
+  display: flex;
+  gap: 1rem;
+}
+
+.override {
+  display: flex;
+  gap: 0.5rem;
+  align-items: start;
+  color: var(--text);
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+code {
+  font-size: 0.9em;
+  background: var(--surface-2);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}

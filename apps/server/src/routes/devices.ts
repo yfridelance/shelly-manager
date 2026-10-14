@@ -45,7 +45,7 @@ const DeviceDetailsSchema = Type.Object({
   snapshots: Type.Array(SnapshotMetaSchema),
 });
 
-const ErrorBody = Type.Object({ error: Type.String(), message: Type.String() });
+const ErrorBody = Type.Object({ error: Type.String(), message: Type.String(), cause: Type.Optional(Type.String()) });
 const MacParams = Type.Object({ mac: Type.String({ maxLength: 32 }) });
 const LocalText = (maxLength: number) => Type.Optional(Nullable(Type.String({ maxLength })));
 
@@ -54,15 +54,23 @@ const PatchBody = Type.Object(
   { additionalProperties: false },
 );
 
-const CredentialsBody = Type.Object(
+// In memory for one request only; never stored or logged.
+const CredentialsSchema = Type.Optional(
+  Type.Object(
+    { username: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })), password: Type.String({ minLength: 1, maxLength: 256 }) },
+    { additionalProperties: false },
+  ),
+);
+
+const CredentialsBody = Type.Object({ credentials: CredentialsSchema }, { additionalProperties: false });
+
+const FactoryResetBody = Type.Object(
   {
-    // In memory for this one request only; never stored or logged.
-    credentials: Type.Optional(
-      Type.Object(
-        { username: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })), password: Type.String({ minLength: 1, maxLength: 256 }) },
-        { additionalProperties: false },
-      ),
-    ),
+    /** Must equal :mac. A single string: there is deliberately no way to reset several devices at once. */
+    confirmMac: Type.String({ minLength: 1, maxLength: 32 }),
+    credentials: CredentialsSchema,
+    /** Explicit override when the automatic pre-reset snapshot fails. */
+    allowWithoutSnapshot: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
@@ -92,11 +100,14 @@ function toSnapshotDto(row: SnapshotRow) {
   return { id: row.id, takenAt: row.taken_at, info: parse(row.info_json), config: parse(row.config_json), status: parse(row.status_json) };
 }
 
-/** Maps device action failures to HTTP: unknown device 404, stale data 409, anything from the device 502. */
+const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed']);
+
+/** Maps device action failures to HTTP: 404 unknown, 400 wrong confirmation, 409 refused by a safety check, 502 device error. */
 export function sendDeviceError(reply: FastifyReply, err: unknown): FastifyReply {
   if (!(err instanceof DeviceActionError)) throw err;
-  const status = err.code === 'not_found' ? 404 : err.code === 'no_ip' || err.code === 'mac_mismatch' ? 409 : 502;
-  return reply.code(status).send({ error: err.code, message: err.message });
+  const status =
+    err.code === 'not_found' ? 404 : err.code === 'confirm_mismatch' ? 400 : CONFLICT_CODES.has(err.code) ? 409 : 502;
+  return reply.code(status).send({ error: err.code, message: err.message, ...(err.causeCode ? { cause: err.causeCode } : {}) });
 }
 
 export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceService }> = async (app, { db, devices }) => {
@@ -177,10 +188,55 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
       const mac = macOf(request.params.mac, reply);
       if (!mac) return reply;
       try {
-        const id = await devices.takeSnapshot(mac, request.body.credentials);
+        const id = await devices.takeSnapshot(mac, request.body.credentials, { requestedBy: request.ip });
         const snapshot = getSnapshot(db, mac, id);
         if (!snapshot) throw new Error(`Snapshot ${id} vanished right after insert`);
         return reply.code(201).send(toSnapshotDto(snapshot));
+      } catch (err) {
+        return sendDeviceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    '/devices/:mac/reboot',
+    {
+      schema: { params: MacParams, body: CredentialsBody, response: { 202: Type.Object({ ok: Type.Literal(true) }), 400: ErrorBody, 404: ErrorBody, 409: ErrorBody, 502: ErrorBody } },
+      preValidation: async (request) => {
+        request.body ??= {};
+      },
+    },
+    async (request, reply) => {
+      const mac = macOf(request.params.mac, reply);
+      if (!mac) return reply;
+      try {
+        await devices.reboot(mac, request.body.credentials, { requestedBy: request.ip });
+        return reply.code(202).send({ ok: true as const });
+      } catch (err) {
+        return sendDeviceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    '/devices/:mac/factory-reset',
+    {
+      schema: {
+        params: MacParams,
+        body: FactoryResetBody,
+        response: { 202: Type.Object({ snapshotId: Nullable(Type.Integer()) }), 400: ErrorBody, 404: ErrorBody, 409: ErrorBody, 502: ErrorBody },
+      },
+    },
+    async (request, reply) => {
+      const mac = macOf(request.params.mac, reply);
+      if (!mac) return reply;
+      try {
+        const result = await devices.factoryReset(
+          mac,
+          { confirmMac: request.body.confirmMac, credentials: request.body.credentials, allowWithoutSnapshot: request.body.allowWithoutSnapshot },
+          { requestedBy: request.ip },
+        );
+        return reply.code(202).send(result);
       } catch (err) {
         return sendDeviceError(reply, err);
       }

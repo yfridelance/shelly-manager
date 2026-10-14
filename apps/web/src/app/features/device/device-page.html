@@ -73,6 +73,85 @@
   </div>
 
   <section class="card">
+    <h2>Aktionen</h2>
+    @if (d.state === 'reset') {
+      <p class="message warn">
+        Dieses Gerät wurde auf Werkseinstellungen zurückgesetzt und ist nicht mehr im Netz. Wird es wieder eingerichtet,
+        erscheint es beim nächsten Scan erneut als aktiv.
+      </p>
+    } @else {
+      <form class="actions" (submit)="$event.preventDefault(); takeSnapshot()">
+        @if (d.authRequired) {
+          @if (d.gen === 1) {
+            <label class="field">
+              <span>Benutzer</span>
+              <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
+            </label>
+          }
+          <label class="field">
+            <span>Gerätepasswort</span>
+            <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
+          </label>
+        }
+        <button type="submit" [disabled]="running() !== null || !d.ip || (d.authRequired && !password())">
+          {{ running() === 'snapshot' ? 'Liest …' : 'Config neu einlesen' }}
+        </button>
+        @if (confirmReboot()) {
+          <span class="confirm">
+            Wirklich neu starten?
+            <button type="button" (click)="reboot()">Ja, neu starten</button>
+            <button type="button" class="secondary" (click)="confirmReboot.set(false)">Abbrechen</button>
+          </span>
+        } @else {
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+            (click)="confirmReboot.set(true)"
+          >
+            {{ running() === 'reboot' ? 'Startet neu …' : 'Neu starten' }}
+          </button>
+        }
+        <span class="spacer"></span>
+        <button type="button" class="danger" [disabled]="running() !== null || !d.ip" (click)="resetOpen.set(true)">
+          Werkseinstellungen …
+        </button>
+      </form>
+      @if (d.authRequired) {
+        <p class="hint">Passwortgeschützt: Das Passwort wird nur für die nächste Aktion verwendet und nicht gespeichert.</p>
+      }
+    }
+
+    @if (recentActions.value().length > 0) {
+      <h3>Letzte Aktionen</h3>
+      <table class="data-table compact">
+        <tbody>
+          @for (a of recentActions.value(); track a.id) {
+            <tr>
+              <td>{{ a.requestedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
+              <td>{{ actionText[a.action] ?? a.action }}</td>
+              <td>
+                @if (a.result === 'ok') {
+                  <span class="state active">OK</span>
+                } @else if (a.result === 'error') {
+                  <span class="error-text" [title]="a.error ?? ''">{{ errorText(a.errorCode) }}</span>
+                } @else {
+                  <span class="muted">läuft</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p><a routerLink="/protokoll">Ganzes Protokoll</a></p>
+    }
+  </section>
+
+  @if (resetOpen()) {
+    <app-reset-dialog [device]="d" (closed)="onResetClosed()" (resetDone)="onResetDone($event)" />
+  }
+
+  <section class="card">
     <div class="section-head">
       <h2>Konfiguration</h2>
       @if (details.value()?.snapshots; as snaps) {
@@ -92,23 +171,6 @@
       }
     </div>
 
-    <form class="snapshot-action" (submit)="$event.preventDefault(); takeSnapshot()">
-      @if (d.authRequired) {
-        @if (d.gen === 1) {
-          <label class="field">
-            <span>Benutzer</span>
-            <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
-          </label>
-        }
-        <label class="field">
-          <span>Gerätepasswort</span>
-          <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
-        </label>
-      }
-      <button type="submit" [disabled]="snapshotting() || !d.ip || (d.authRequired && !password())">
-        {{ snapshotting() ? 'Liest …' : 'Config neu einlesen' }}
-      </button>
-    </form>
 
     @if (snapshot(); as s) {
       <div class="tabs" role="tablist">
@@ -131,7 +193,7 @@
       <p class="muted">
         Noch kein Snapshot vorhanden.
         @if (d.authRequired) {
-          Das Gerät ist passwortgeschützt: Passwort eingeben und Config einlesen.
+          Das Gerät ist passwortgeschützt: Passwort unter «Aktionen» eingeben und Config einlesen.
         }
       </p>
     }

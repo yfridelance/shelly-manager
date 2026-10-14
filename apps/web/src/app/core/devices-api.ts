@@ -14,9 +14,17 @@ export class DeviceApiError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    /** For snapshot_failed: why the snapshot failed. */
+    readonly causeCode?: string,
   ) {
     super(message);
   }
+}
+
+export interface FactoryResetRequest {
+  confirmMac: string;
+  credentials?: Credentials;
+  allowWithoutSnapshot?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -31,6 +39,15 @@ export class DevicesApi {
     return this.call(this.http.post<Snapshot>(`/api/devices/${mac}/snapshot`, credentials ? { credentials } : {}));
   }
 
+  reboot(mac: string, credentials?: Credentials): Promise<{ ok: true }> {
+    return this.call(this.http.post<{ ok: true }>(`/api/devices/${mac}/reboot`, credentials ? { credentials } : {}));
+  }
+
+  /** Exactly one device. The server checks confirmMac again. */
+  factoryReset(mac: string, request: FactoryResetRequest): Promise<{ snapshotId: number | null }> {
+    return this.call(this.http.post<{ snapshotId: number | null }>(`/api/devices/${mac}/factory-reset`, request));
+  }
+
   private async call<T>(request: import('rxjs').Observable<T>): Promise<T> {
     try {
       return await firstValueFrom(request);
@@ -42,8 +59,8 @@ export class DevicesApi {
 
 export function toDeviceApiError(err: unknown): DeviceApiError {
   if (err instanceof HttpErrorResponse) {
-    const body = err.error as Partial<ApiError> | null;
-    if (body?.error) return new DeviceApiError(body.error, errorText(body.error));
+    const body = err.error as (Partial<ApiError> & { cause?: string }) | null;
+    if (body?.error) return new DeviceApiError(body.error, errorText(body.error), body.cause);
     if (err.status === 0) return new DeviceApiError('offline', 'Server nicht erreichbar.');
     return new DeviceApiError('http', `Anfrage fehlgeschlagen (HTTP ${err.status}).`);
   }

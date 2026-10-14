@@ -18,6 +18,15 @@ export const ACTION_ERROR_TEXT: Record<string, string> = {
   not_found: 'Gerät nicht im Inventar',
   no_ip: 'Keine IP-Adresse bekannt',
   mac_mismatch: 'Unter dieser IP antwortet ein anderes Gerät. Bitte neu scannen.',
+  busy: 'Auf diesem Gerät läuft bereits eine Aktion',
+  confirm_mismatch: 'Bestätigung stimmt nicht mit der MAC überein',
+  snapshot_failed: 'Snapshot vor dem Reset fehlgeschlagen',
+};
+
+export const ACTION_TEXT: Record<string, string> = {
+  snapshot: 'Snapshot',
+  reboot: 'Neustart',
+  factory_reset: 'Werksreset',
 };
 
 export function errorText(code: string | null | undefined): string {

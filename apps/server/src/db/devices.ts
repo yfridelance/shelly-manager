@@ -129,3 +129,8 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
     });
   return res.changes > 0;
 }
+
+/** After a successful factory reset. The record stays for documentation. */
+export function markReset(db: Db, mac: string): void {
+  db.prepare("UPDATE devices SET state = 'reset' WHERE mac = ?").run(mac);
+}

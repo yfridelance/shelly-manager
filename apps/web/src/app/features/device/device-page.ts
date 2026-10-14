@@ -2,17 +2,18 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import type { Device, DeviceDetails, LocalDeviceFields, Snapshot } from '../../core/api.types';
-import { DeviceApiError, DevicesApi } from '../../core/devices-api';
-import { DEVICE_STATE_TEXT, formatMac, shortFirmware } from '../../core/texts';
+import type { ActionEntry, Device, DeviceDetails, LocalDeviceFields, Snapshot } from '../../core/api.types';
+import { DeviceApiError, DevicesApi, type Credentials } from '../../core/devices-api';
+import { ACTION_TEXT, DEVICE_STATE_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { JsonTree } from '../../shared/json-tree';
+import { ResetDialog } from './reset-dialog';
 
 type SnapshotTab = 'config' | 'status' | 'info';
 
 @Component({
   selector: 'app-device-page',
-  imports: [DatePipe, RouterLink, EditableField, JsonTree],
+  imports: [DatePipe, RouterLink, EditableField, JsonTree, ResetDialog],
   templateUrl: './device-page.html',
   styleUrl: './device-page.scss',
 })
@@ -23,6 +24,8 @@ export class DevicePage {
   readonly mac = input.required<string>();
 
   protected readonly stateText = DEVICE_STATE_TEXT;
+  protected readonly actionText = ACTION_TEXT;
+  protected readonly errorText = errorText;
   protected readonly formatMac = formatMac;
   protected readonly shortFirmware = shortFirmware;
 
@@ -56,10 +59,16 @@ export class DevicePage {
   protected readonly saving = signal(false);
   protected readonly message = signal<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
-  // Manual snapshot; the password lives only until the request is sent.
-  protected readonly snapshotting = signal(false);
+  // Device actions. The password lives only until the next request is sent.
+  protected readonly running = signal<'snapshot' | 'reboot' | null>(null);
   protected readonly username = signal('admin');
   protected readonly password = signal('');
+  protected readonly confirmReboot = signal(false);
+  protected readonly resetOpen = signal(false);
+  protected readonly recentActions = httpResource<ActionEntry[]>(
+    () => `/api/actions?mac=${encodeURIComponent(this.mac())}&limit=10`,
+    { defaultValue: [] },
+  );
 
   protected async saveField(field: keyof LocalDeviceFields, value: string): Promise<void> {
     const device = this.device();
@@ -77,27 +86,68 @@ export class DevicePage {
     }
   }
 
+  /** Credentials for a protected device, taken from the form and cleared right away. */
+  private takeCredentials(device: Device): Credentials | undefined {
+    const password = this.password();
+    this.password.set('');
+    if (!device.authRequired || !password) return undefined;
+    const username = this.username().trim();
+    return { password, ...(device.gen === 1 && username ? { username } : {}) };
+  }
+
   protected async takeSnapshot(): Promise<void> {
     const device = this.device();
     if (!device) return;
-    const password = this.password();
-    this.password.set('');
-    const username = this.username().trim();
-    this.snapshotting.set(true);
+    const credentials = this.takeCredentials(device);
+    this.running.set('snapshot');
     this.message.set(null);
     try {
-      await this.api.snapshot(
-        device.mac,
-        device.authRequired && password ? { password, ...(device.gen === 1 && username ? { username } : {}) } : undefined,
-      );
+      await this.api.snapshot(device.mac, credentials);
       this.selectedId.set(null);
       this.details.reload();
       this.message.set({ kind: 'ok', text: 'Config wurde neu eingelesen.' });
     } catch (err) {
       this.message.set({ kind: 'error', text: `Snapshot fehlgeschlagen: ${(err as DeviceApiError).message}` });
     } finally {
-      this.snapshotting.set(false);
+      this.running.set(null);
+      this.recentActions.reload();
     }
+  }
+
+  protected async reboot(): Promise<void> {
+    const device = this.device();
+    if (!device) return;
+    this.confirmReboot.set(false);
+    const credentials = this.takeCredentials(device);
+    this.running.set('reboot');
+    this.message.set(null);
+    try {
+      await this.api.reboot(device.mac, credentials);
+      this.message.set({ kind: 'ok', text: 'Neustart ausgelöst. Das Gerät ist in einigen Sekunden wieder erreichbar.' });
+    } catch (err) {
+      this.message.set({ kind: 'error', text: `Neustart fehlgeschlagen: ${(err as DeviceApiError).message}` });
+    } finally {
+      this.running.set(null);
+      this.recentActions.reload();
+    }
+  }
+
+  protected onResetDone(result: { snapshotId: number | null }): void {
+    this.resetOpen.set(false);
+    this.selectedId.set(null);
+    this.details.reload();
+    this.recentActions.reload();
+    this.message.set({
+      kind: 'ok',
+      text:
+        'Gerät wurde auf Werkseinstellungen zurückgesetzt und startet jetzt im AP-Modus. ' +
+        (result.snapshotId !== null ? 'Die Config wurde vorher gesichert.' : 'Es wurde kein Snapshot gesichert (Override).'),
+    });
+  }
+
+  protected onResetClosed(): void {
+    this.resetOpen.set(false);
+    this.recentActions.reload();
   }
 
   protected async copyShown(): Promise<void> {

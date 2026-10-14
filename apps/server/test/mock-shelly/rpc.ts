@@ -73,6 +73,11 @@ export class RpcDevice implements DeviceHandler {
       }
     }
 
+    if (this.spec.failing?.includes(method)) {
+      sendJson(res, 500, { id, src: this.id, error: { code: -103, message: `${method} failed: internal error` } });
+      return;
+    }
+
     const reply = (result: unknown): void => sendJson(res, 200, { id, src: this.id, result });
     switch (method) {
       case 'Shelly.GetDeviceInfo':

@@ -16,8 +16,7 @@ export const routes: Routes = [
   {
     path: 'protokoll',
     title: 'Protokoll · Shelly Manager',
-    data: { title: 'Protokoll' },
-    loadComponent: () => import('./features/placeholder/placeholder-page').then((m) => m.PlaceholderPage),
+    loadComponent: () => import('./features/log/log-page').then((m) => m.LogPage),
   },
   { path: '**', redirectTo: 'inventar' },
 ];

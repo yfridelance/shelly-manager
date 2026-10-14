@@ -15,6 +15,8 @@ interface BaseSpec {
   delayMs?: number;
   /** Real devices drop off the network into AP mode after a factory reset. Default true. */
   offlineAfterReset?: boolean;
+  /** Gen1 paths (e.g. "/status") or RPC methods (e.g. "Shelly.GetStatus") that answer with an error. */
+  failing?: string[];
 }
 
 export interface Gen1Spec extends BaseSpec {

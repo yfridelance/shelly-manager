@@ -46,6 +46,11 @@ export class Gen1Device implements DeviceHandler {
       return;
     }
 
+    if (this.spec.failing?.includes(url.pathname)) {
+      sendText(res, 500, 'Internal error');
+      return;
+    }
+
     switch (url.pathname) {
       case '/settings':
         if (url.searchParams.has('reset')) {

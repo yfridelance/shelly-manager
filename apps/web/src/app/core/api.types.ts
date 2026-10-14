@@ -83,3 +83,19 @@ export interface DeviceDetails {
 }
 
 export type LocalDeviceFields = Partial<Pick<Device, 'name' | 'location' | 'notes'>>;
+
+export type ActionType = 'snapshot' | 'reboot' | 'factory_reset';
+
+export interface ActionEntry {
+  id: number;
+  mac: string;
+  deviceName: string | null;
+  action: ActionType | string;
+  requestedAt: string;
+  requestedBy: string | null;
+  finishedAt: string | null;
+  result: 'ok' | 'error' | null;
+  errorCode: string | null;
+  error: string | null;
+  details: { snapshotId?: number; snapshotSkipped?: boolean; snapshotError?: string } | null;
+}

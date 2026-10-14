@@ -5,6 +5,7 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { AppConfig } from './config.js';
 import type { Db } from './db/database.js';
 import { healthRoutes } from './routes/health.js';
+import { actionRoutes } from './routes/actions.js';
 import { deviceRoutes } from './routes/devices.js';
 import { scanRoutes } from './routes/scans.js';
 import { DeviceService } from './devices/device-service.js';
@@ -51,6 +52,7 @@ export async function buildApp({ config, db, scan, logStream }: BuildAppOptions)
       await api.register(healthRoutes);
       await api.register(scanRoutes, { scans });
       await api.register(deviceRoutes, { db, devices });
+      await api.register(actionRoutes, { db });
     },
     { prefix: '/api' },
   );
