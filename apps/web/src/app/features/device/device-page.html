@@ -1,0 +1,141 @@
+<p class="back"><a routerLink="/inventar">← Inventar</a></p>
+
+@if (details.error()) {
+  <p class="message error" role="alert">Gerät {{ mac() }} wurde nicht gefunden.</p>
+} @else if (device(); as d) {
+  <header class="title">
+    <h1>{{ d.name ?? '(ohne Namen)' }}</h1>
+    <span [class]="'state ' + d.state">{{ stateText[d.state] }}</span>
+  </header>
+
+  @if (message(); as m) {
+    <p [class]="'message ' + (m.kind === 'error' ? 'error' : 'ok')" role="status">{{ m.text }}</p>
+  }
+
+  <div class="columns">
+    <section class="card">
+      <h2>Gerät</h2>
+      <dl class="facts">
+        <dt>MAC</dt>
+        <dd class="mono">{{ formatMac(d.mac) }}</dd>
+        <dt>IP</dt>
+        <dd class="mono">
+          @if (d.ip) {
+            <a [href]="'http://' + d.ip" target="_blank" rel="noopener">{{ d.ip }}</a>
+          } @else {
+            –
+          }
+        </dd>
+        <dt>Modell</dt>
+        <dd>{{ d.model ?? '–' }} @if (d.app) { <span class="muted">({{ d.app }})</span> }</dd>
+        <dt>Generation</dt>
+        <dd>Gen{{ d.gen }}</dd>
+        <dt>Firmware</dt>
+        <dd [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</dd>
+        <dt>Schutz</dt>
+        <dd>{{ d.authRequired ? 'Passwortgeschützt' : 'Offen' }}</dd>
+        <dt>Name auf Gerät</dt>
+        <dd>{{ d.deviceName ?? '–' }}</dd>
+        <dt>Erstmals gesehen</dt>
+        <dd>{{ d.firstSeen | date: 'dd.MM.yyyy HH:mm' }}</dd>
+        <dt>Zuletzt gesehen</dt>
+        <dd>{{ d.lastSeen | date: 'dd.MM.yyyy HH:mm' }}</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Dokumentation</h2>
+      <p class="hint">Wird nur hier gespeichert, nicht auf dem Gerät.</p>
+      <datalist id="location-suggestions">
+        @for (l of locationSuggestions(); track l) {
+          <option [value]="l"></option>
+        }
+      </datalist>
+      <div class="doc-field">
+        <h3>Name</h3>
+        <app-editable-field label="Name" [value]="d.name" [saving]="saving()" (saved)="saveField('name', $event)" />
+      </div>
+      <div class="doc-field">
+        <h3>Standort</h3>
+        <app-editable-field
+          label="Standort"
+          listId="location-suggestions"
+          [value]="d.location"
+          [saving]="saving()"
+          (saved)="saveField('location', $event)"
+        />
+      </div>
+      <div class="doc-field">
+        <h3>Notizen</h3>
+        <app-editable-field label="Notizen" [multiline]="true" [value]="d.notes" [saving]="saving()" (saved)="saveField('notes', $event)" />
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="section-head">
+      <h2>Konfiguration</h2>
+      @if (details.value()?.snapshots; as snaps) {
+        @if (snaps.length > 0) {
+          <label class="field inline">
+            <span>Snapshot</span>
+            <select (change)="selectSnapshot(value($event))">
+              @for (s of snaps; track s.id; let first = $first) {
+                <option [value]="first ? '' : s.id" [selected]="first ? selectedId() === null : selectedId() === s.id">
+                  {{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}{{ first ? ' (neuster)' : '' }}{{ s.hasConfig ? '' : ' – ohne Config' }}
+                </option>
+              }
+            </select>
+          </label>
+          <span class="muted">{{ snaps.length }} {{ snaps.length === 1 ? 'Snapshot' : 'Snapshots' }}</span>
+        }
+      }
+    </div>
+
+    <form class="snapshot-action" (submit)="$event.preventDefault(); takeSnapshot()">
+      @if (d.authRequired) {
+        @if (d.gen === 1) {
+          <label class="field">
+            <span>Benutzer</span>
+            <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
+          </label>
+        }
+        <label class="field">
+          <span>Gerätepasswort</span>
+          <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
+        </label>
+      }
+      <button type="submit" [disabled]="snapshotting() || !d.ip || (d.authRequired && !password())">
+        {{ snapshotting() ? 'Liest …' : 'Config neu einlesen' }}
+      </button>
+    </form>
+
+    @if (snapshot(); as s) {
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'config'" (click)="tab.set('config')">Config</button>
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'status'" (click)="tab.set('status')">Status</button>
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'info'" (click)="tab.set('info')">Geräteinfo</button>
+        <span class="spacer"></span>
+        <button type="button" class="link" (click)="openDepth.set(99)">Alles aufklappen</button>
+        <button type="button" class="link" (click)="openDepth.set(1)">Zuklappen</button>
+        <button type="button" class="link" (click)="copyShown()">JSON kopieren</button>
+      </div>
+      <div class="json" role="tabpanel">
+        @if (shown() === null) {
+          <p class="muted">Für diesen Snapshot wurde keine {{ tab() === 'config' ? 'Config' : 'Status' }} gelesen.</p>
+        } @else {
+          <app-json-tree [value]="shown()" [openDepth]="openDepth()" />
+        }
+      </div>
+    } @else {
+      <p class="muted">
+        Noch kein Snapshot vorhanden.
+        @if (d.authRequired) {
+          Das Gerät ist passwortgeschützt: Passwort eingeben und Config einlesen.
+        }
+      </p>
+    }
+  </section>
+} @else {
+  <p class="muted">Lädt …</p>
+}

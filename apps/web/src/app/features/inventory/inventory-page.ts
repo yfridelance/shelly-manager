@@ -1,0 +1,116 @@
+import { Component, computed, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { httpResource } from '@angular/common/http';
+import { Router, RouterLink } from '@angular/router';
+import type { Device, DeviceState } from '../../core/api.types';
+import { DEVICE_STATE_TEXT, formatMac, ipSortKey, shortFirmware } from '../../core/texts';
+import { InventoryFilters, type SortKey } from './inventory-filters';
+
+const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
+
+@Component({
+  selector: 'app-inventory-page',
+  imports: [DatePipe, RouterLink],
+  templateUrl: './inventory-page.html',
+  styleUrl: './inventory-page.scss',
+})
+export class InventoryPage {
+  private readonly router = inject(Router);
+  protected readonly f = inject(InventoryFilters);
+  protected readonly stateText = DEVICE_STATE_TEXT;
+  protected readonly states = Object.keys(DEVICE_STATE_TEXT) as DeviceState[];
+  protected readonly formatMac = formatMac;
+  protected readonly shortFirmware = shortFirmware;
+
+  protected readonly columns: { key: SortKey; label: string }[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'model', label: 'Modell' },
+    { key: 'gen', label: 'Gen' },
+    { key: 'ip', label: 'IP' },
+    { key: 'mac', label: 'MAC' },
+    { key: 'firmware', label: 'Firmware' },
+    { key: 'location', label: 'Standort' },
+    { key: 'state', label: 'Status' },
+    { key: 'lastSeen', label: 'Zuletzt gesehen' },
+  ];
+
+  protected readonly devices = httpResource<Device[]>(() => '/api/devices', { defaultValue: [] });
+
+  protected readonly locations = computed(() =>
+    [...new Set(this.devices.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(collator.compare),
+  );
+  protected readonly gens = computed(() => [...new Set(this.devices.value().map((d) => d.gen))].sort());
+
+  protected readonly filtered = computed(() => {
+    const search = this.f.search().trim().toLowerCase();
+    const gen = this.f.gen();
+    const location = this.f.location();
+    const state = this.f.state();
+    const rows = this.devices.value().filter(
+      (d) =>
+        (gen === null || d.gen === gen) &&
+        (state === null || d.state === state) &&
+        (location === null || (d.location ?? '') === location) &&
+        (!search || haystack(d).includes(search)),
+    );
+    const key = this.f.sortKey();
+    const dir = this.f.sortAsc() ? 1 : -1;
+    return rows.sort((a, b) => dir * compare(a, b, key));
+  });
+
+  protected readonly hasFilter = computed(
+    () => !!this.f.search() || this.f.gen() !== null || this.f.location() !== null || this.f.state() !== null,
+  );
+
+  protected open(device: Device): void {
+    void this.router.navigate(['/inventar', device.mac]);
+  }
+
+  protected ariaSort(key: SortKey): 'ascending' | 'descending' | null {
+    return this.f.sortKey() === key ? (this.f.sortAsc() ? 'ascending' : 'descending') : null;
+  }
+
+  protected value(event: Event): string {
+    return (event.target as HTMLInputElement | HTMLSelectElement).value;
+  }
+
+  protected setGen(value: string): void {
+    this.f.gen.set(value ? Number(value) : null);
+  }
+
+  protected setLocation(value: string): void {
+    this.f.location.set(value === '*' ? null : value);
+  }
+
+  protected setState(value: string): void {
+    this.f.state.set((value || null) as DeviceState | null);
+  }
+}
+
+function haystack(d: Device): string {
+  return [d.name, d.deviceName, d.mac, formatMac(d.mac), d.ip, d.model, d.app, d.location, d.notes, d.firmware]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+function compare(a: Device, b: Device, key: SortKey): number {
+  switch (key) {
+    case 'gen':
+      return a.gen - b.gen;
+    case 'ip':
+      return ipSortKey(a.ip) - ipSortKey(b.ip);
+    case 'lastSeen':
+      return a.lastSeen.localeCompare(b.lastSeen);
+    case 'name':
+      // Unnamed devices last, ordered by MAC.
+      return collator.compare(a.name ?? `￿${a.mac}`, b.name ?? `￿${b.mac}`);
+    case 'firmware':
+      return collator.compare(shortFirmware(a.firmware), shortFirmware(b.firmware));
+    case 'state':
+      return collator.compare(DEVICE_STATE_TEXT[a.state], DEVICE_STATE_TEXT[b.state]);
+    default:
+      // Empty values last.
+      return collator.compare(a[key] ?? '￿', b[key] ?? '￿');
+  }
+}

@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import type { ScanDeviceResult } from '../../core/api.types';
-import { DEVICE_ERROR_TEXT, SCAN_STATUS_TEXT, formatMac } from '../../core/texts';
+import { DEVICE_ERROR_TEXT, SCAN_STATUS_TEXT, formatMac, ipSortKey } from '../../core/texts';
 import { ScanService } from './scan.service';
 
 @Component({
@@ -50,8 +50,4 @@ export class ScanPage implements OnInit {
   protected value(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
-}
-
-function ipSortKey(ip: string): number {
-  return ip.split('.').reduce((acc, o) => acc * 256 + Number(o), 0);
 }

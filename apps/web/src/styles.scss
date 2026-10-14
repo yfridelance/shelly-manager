@@ -173,3 +173,52 @@ button {
     background: var(--surface-2);
   }
 }
+
+:root {
+  --json-string: #1a7f37;
+  --json-number: #0550ae;
+  --json-literal: #8250df;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --json-string: #7ee2a8;
+    --json-number: #79c0ff;
+    --json-literal: #d2a8ff;
+  }
+}
+
+a {
+  color: var(--accent);
+}
+
+button.link {
+  all: unset;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.data-table tr.clickable {
+  cursor: pointer;
+}
+
+.state {
+  &.active {
+    color: var(--ok);
+  }
+
+  &.missing {
+    color: var(--warn);
+  }
+
+  &.reset {
+    color: var(--text-muted);
+  }
+}
+
+.message.ok {
+  color: var(--ok);
+  background: var(--surface-2);
+}

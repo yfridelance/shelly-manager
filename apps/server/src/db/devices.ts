@@ -81,10 +81,51 @@ export function markMissing(db: Db, scannedIps: ReadonlySet<string>, foundMacs: 
   })();
 }
 
-export function getDevice(db: Db, mac: string): DeviceRow | undefined {
-  return db.prepare('SELECT * FROM devices WHERE mac = ?').get(mac) as DeviceRow | undefined;
+export interface DeviceListRow extends DeviceRow {
+  last_snapshot_at: string | null;
 }
 
-export function listDevices(db: Db): DeviceRow[] {
-  return db.prepare('SELECT * FROM devices ORDER BY COALESCE(name, device_name, mac)').all() as DeviceRow[];
+const SELECT_WITH_SNAPSHOT = `
+  SELECT d.*, (SELECT MAX(taken_at) FROM config_snapshots s WHERE s.mac = d.mac) AS last_snapshot_at
+  FROM devices d`;
+
+export function getDevice(db: Db, mac: string): DeviceListRow | undefined {
+  return db.prepare(`${SELECT_WITH_SNAPSHOT} WHERE d.mac = ?`).get(mac) as DeviceListRow | undefined;
+}
+
+export function listDevices(db: Db): DeviceListRow[] {
+  return db.prepare(`${SELECT_WITH_SNAPSHOT} ORDER BY COALESCE(d.name, d.device_name, d.mac)`).all() as DeviceListRow[];
+}
+
+export interface LocalDeviceFields {
+  /** null/empty: show the name the device reports again (and follow it on later scans). */
+  name?: string | null;
+  location?: string | null;
+  notes?: string | null;
+}
+
+/** Updates local-only fields; nothing is written to the device. Returns false for unknown MACs. */
+export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields): boolean {
+  const clean = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null);
+  const name = clean(fields.name);
+  const location = clean(fields.location);
+  const notes = clean(fields.notes);
+  const res = db
+    .prepare(
+      `UPDATE devices SET
+         name = CASE WHEN @setName THEN COALESCE(@name, device_name) ELSE name END,
+         location = CASE WHEN @setLocation THEN @location ELSE location END,
+         notes = CASE WHEN @setNotes THEN @notes ELSE notes END
+       WHERE mac = @mac`,
+    )
+    .run({
+      mac,
+      setName: name !== undefined ? 1 : 0,
+      name: name ?? null,
+      setLocation: location !== undefined ? 1 : 0,
+      location: location ?? null,
+      setNotes: notes !== undefined ? 1 : 0,
+      notes: notes ?? null,
+    });
+  return res.changes > 0;
 }

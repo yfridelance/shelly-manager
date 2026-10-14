@@ -1,0 +1,97 @@
+<div class="head">
+  <h1>Inventar</h1>
+  <span class="muted">
+    @if (hasFilter()) {
+      {{ filtered().length }} von {{ devices.value().length }} Geräten
+    } @else {
+      {{ devices.value().length }} Geräte
+    }
+  </span>
+</div>
+
+<div class="filters" role="search">
+  <label class="field search">
+    <span>Suche</span>
+    <input type="search" placeholder="Name, MAC, IP, Modell, Notizen …" [value]="f.search()" (input)="f.search.set(value($event))" />
+  </label>
+  <label class="field">
+    <span>Generation</span>
+    <select (change)="setGen(value($event))">
+      <option value="" [selected]="f.gen() === null">Alle</option>
+      @for (g of gens(); track g) {
+        <option [value]="g" [selected]="f.gen() === g">Gen{{ g }}</option>
+      }
+    </select>
+  </label>
+  <label class="field">
+    <span>Standort</span>
+    <select (change)="setLocation(value($event))">
+      <option value="*" [selected]="f.location() === null">Alle</option>
+      <option value="" [selected]="f.location() === ''">(ohne Standort)</option>
+      @for (l of locations(); track l) {
+        <option [value]="l" [selected]="f.location() === l">{{ l }}</option>
+      }
+    </select>
+  </label>
+  <label class="field">
+    <span>Status</span>
+    <select (change)="setState(value($event))">
+      <option value="" [selected]="f.state() === null">Alle</option>
+      @for (s of states; track s) {
+        <option [value]="s" [selected]="f.state() === s">{{ stateText[s] }}</option>
+      }
+    </select>
+  </label>
+  @if (hasFilter()) {
+    <button type="button" class="secondary" (click)="f.reset()">Filter zurücksetzen</button>
+  }
+</div>
+
+@if (devices.error()) {
+  <p class="message error" role="alert">Inventar konnte nicht geladen werden.</p>
+} @else if (!devices.isLoading() && devices.value().length === 0) {
+  <p class="muted">Noch keine Geräte erfasst. <a routerLink="/scan">Netzwerk scannen</a></p>
+} @else {
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          @for (col of columns; track col.key) {
+            <th [attr.aria-sort]="ariaSort(col.key)">
+              <button type="button" class="sort" (click)="f.sortBy(col.key)">
+                {{ col.label }}
+                @if (f.sortKey() === col.key) {
+                  <span aria-hidden="true">{{ f.sortAsc() ? '▲' : '▼' }}</span>
+                }
+              </button>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of filtered(); track d.mac) {
+          <tr class="clickable" [class.inactive]="d.state !== 'active'" (click)="open(d)">
+            <td>
+              <a [routerLink]="['/inventar', d.mac]" (click)="$event.stopPropagation()">{{ d.name ?? '(ohne Namen)' }}</a>
+              @if (d.authRequired) {
+                <span class="lock" title="Passwortgeschützt" aria-label="Passwortgeschützt">🔒</span>
+              }
+            </td>
+            <td>{{ d.model ?? '–' }}</td>
+            <td>{{ d.gen }}</td>
+            <td class="mono">{{ d.ip ?? '–' }}</td>
+            <td class="mono">{{ formatMac(d.mac) }}</td>
+            <td [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</td>
+            <td>{{ d.location ?? '' }}</td>
+            <td><span [class]="'state ' + d.state">{{ stateText[d.state] }}</span></td>
+            <td>{{ d.lastSeen | date: 'dd.MM.yyyy HH:mm' }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9" class="muted">Keine Geräte passen zum Filter.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

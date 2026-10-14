@@ -5,7 +5,9 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { AppConfig } from './config.js';
 import type { Db } from './db/database.js';
 import { healthRoutes } from './routes/health.js';
+import { deviceRoutes } from './routes/devices.js';
 import { scanRoutes } from './routes/scans.js';
+import { DeviceService } from './devices/device-service.js';
 import { ScanManager, type ScanOptions } from './scan/scan-manager.js';
 import { parseHostMap } from './shelly/host-map.js';
 
@@ -20,6 +22,8 @@ export interface BuildAppOptions {
 
 export async function buildApp({ config, db, scan, logStream }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
+    // Reject unknown properties (additionalProperties: false) instead of silently dropping them.
+    ajv: { customOptions: { removeAdditional: false } },
     logger: {
       level: config.logLevel,
       ...(logStream ? { stream: logStream } : {}),
@@ -28,7 +32,13 @@ export async function buildApp({ config, db, scan, logStream }: BuildAppOptions)
     },
   }).withTypeProvider<TypeBoxTypeProvider>();
 
-  const scans = new ScanManager(db, app.log, { hostFor: parseHostMap(config.shellyHostMap), ...scan });
+  const hostFor = parseHostMap(config.shellyHostMap);
+  const scans = new ScanManager(db, app.log, { hostFor, ...scan });
+  const devices = new DeviceService(db, {
+    hostFor: scan?.hostFor ?? hostFor,
+    ...(scan?.adapterTimeoutMs !== undefined ? { adapterTimeoutMs: scan.adapterTimeoutMs } : {}),
+    ...(scan?.now ? { now: scan.now } : {}),
+  });
   app.decorate('db', db);
   app.decorate('scans', scans);
   app.addHook('onClose', async () => {
@@ -40,6 +50,7 @@ export async function buildApp({ config, db, scan, logStream }: BuildAppOptions)
     async (api) => {
       await api.register(healthRoutes);
       await api.register(scanRoutes, { scans });
+      await api.register(deviceRoutes, { db, devices });
     },
     { prefix: '/api' },
   );

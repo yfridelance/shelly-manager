@@ -1,13 +1,17 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'scan' },
+  { path: '', pathMatch: 'full', redirectTo: 'inventar' },
   { path: 'scan', title: 'Scan · Shelly Manager', loadComponent: () => import('./features/scan/scan-page').then((m) => m.ScanPage) },
   {
     path: 'inventar',
     title: 'Inventar · Shelly Manager',
-    data: { title: 'Inventar' },
-    loadComponent: () => import('./features/placeholder/placeholder-page').then((m) => m.PlaceholderPage),
+    loadComponent: () => import('./features/inventory/inventory-page').then((m) => m.InventoryPage),
+  },
+  {
+    path: 'inventar/:mac',
+    title: 'Gerät · Shelly Manager',
+    loadComponent: () => import('./features/device/device-page').then((m) => m.DevicePage),
   },
   {
     path: 'protokoll',
@@ -15,5 +19,5 @@ export const routes: Routes = [
     data: { title: 'Protokoll' },
     loadComponent: () => import('./features/placeholder/placeholder-page').then((m) => m.PlaceholderPage),
   },
-  { path: '**', redirectTo: 'scan' },
+  { path: '**', redirectTo: 'inventar' },
 ];

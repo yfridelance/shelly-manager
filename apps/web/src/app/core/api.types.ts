@@ -40,3 +40,46 @@ export interface ApiError {
   error: string;
   message: string;
 }
+
+export type DeviceState = 'active' | 'reset' | 'missing';
+
+export interface Device {
+  mac: string;
+  ip: string | null;
+  gen: number;
+  model: string | null;
+  app: string | null;
+  firmware: string | null;
+  /** Local display name, falls back to the device's own name. */
+  name: string | null;
+  deviceName: string | null;
+  authRequired: boolean;
+  location: string | null;
+  notes: string | null;
+  state: DeviceState;
+  firstSeen: string;
+  lastSeen: string;
+  lastSnapshotAt: string | null;
+}
+
+export interface Snapshot {
+  id: number;
+  takenAt: string;
+  info: unknown;
+  config: unknown;
+  status: unknown;
+}
+
+export interface SnapshotMeta {
+  id: number;
+  takenAt: string;
+  hasConfig: boolean;
+}
+
+export interface DeviceDetails {
+  device: Device;
+  latestSnapshot: Snapshot | null;
+  snapshots: SnapshotMeta[];
+}
+
+export type LocalDeviceFields = Partial<Pick<Device, 'name' | 'location' | 'notes'>>;
