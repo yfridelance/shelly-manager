@@ -50,8 +50,12 @@ export function parseShellyInfo(raw: unknown): DeviceInfo | undefined {
 }
 
 /** `GET /shelly` needs no auth on any generation. Throws NotAShellyError for other HTTP servers. */
-export async function probeShelly(host: string, timeoutMs = DEFAULT_PROBE_TIMEOUT_MS): Promise<DeviceInfo> {
-  const res = await deviceFetch(host, { path: '/shelly', timeoutMs });
+export async function probeShelly(
+  host: string,
+  timeoutMs = DEFAULT_PROBE_TIMEOUT_MS,
+  signal?: AbortSignal,
+): Promise<DeviceInfo> {
+  const res = await deviceFetch(host, { path: '/shelly', timeoutMs, signal });
   if (!res.ok) {
     await res.body?.cancel();
     throw new NotAShellyError(host, `${host} answered /shelly with HTTP ${res.status}`);

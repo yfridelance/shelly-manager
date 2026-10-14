@@ -11,6 +11,8 @@ export interface AppConfig {
   /** Directory of the built Angular bundle; only set in production. */
   staticDir: string | undefined;
   logLevel: LogLevel;
+  /** Development/tests only: map scanned IPs to mock devices, see shelly/host-map.ts. */
+  shellyHostMap: string | undefined;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -34,5 +36,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dataDir: path.resolve(env['DATA_DIR']?.trim() || 'data'),
     staticDir: staticDir ? path.resolve(staticDir) : undefined,
     logLevel,
+    shellyHostMap: env['SHELLY_HOST_MAP']?.trim() || undefined,
   };
 }

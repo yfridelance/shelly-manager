@@ -23,7 +23,7 @@ export interface MockFleet {
 }
 
 /** Starts one HTTP server per device on 127.0.0.1 with an ephemeral port. */
-export async function startMockDevice(spec: MockDeviceSpec): Promise<MockDevice> {
+export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<MockDevice> {
   const state: MockDeviceState = { online: true, rebootCount: 0, factoryResetCount: 0, authFailures: 0, requests: [] };
   const handler: DeviceHandler | undefined =
     spec.kind === 'gen1' ? new Gen1Device(spec, state) : spec.kind === 'rpc' ? new RpcDevice(spec, state) : undefined;
@@ -61,13 +61,13 @@ export async function startMockDevice(spec: MockDeviceSpec): Promise<MockDevice>
     });
   });
 
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const port = (server.address() as AddressInfo).port;
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve));
+  const boundPort = (server.address() as AddressInfo).port;
 
   return {
     spec,
-    host: `127.0.0.1:${port}`,
-    port,
+    host: `127.0.0.1:${boundPort}`,
+    port: boundPort,
     state,
     expireNonces: () => {
       if (handler instanceof RpcDevice) handler.expireNonces();
@@ -77,7 +77,7 @@ export async function startMockDevice(spec: MockDeviceSpec): Promise<MockDevice>
 }
 
 export async function startMockFleet(specs: MockDeviceSpec[]): Promise<MockFleet> {
-  const devices = await Promise.all(specs.map(startMockDevice));
+  const devices = await Promise.all(specs.map((spec) => startMockDevice(spec)));
   return {
     devices,
     close: async () => {

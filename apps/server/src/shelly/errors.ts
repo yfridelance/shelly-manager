@@ -42,3 +42,17 @@ export class ShellyRpcError extends ShellyError {
     super(host, `${method} failed on ${host}: ${message} (code ${code})`);
   }
 }
+
+export type DeviceErrorCode = 'auth_required' | 'auth_invalid' | 'timeout' | 'network' | 'not_shelly' | 'http' | 'rpc' | 'internal';
+
+/** Stable code for the UI (which maps it to German text) plus a technical message. Never contains credentials. */
+export function describeError(err: unknown): { code: DeviceErrorCode; message: string } {
+  const message = err instanceof Error ? err.message : String(err);
+  if (err instanceof ShellyAuthError) return { code: err.reason === 'required' ? 'auth_required' : 'auth_invalid', message };
+  if (err instanceof ShellyTimeoutError) return { code: 'timeout', message };
+  if (err instanceof ShellyNetworkError) return { code: 'network', message };
+  if (err instanceof NotAShellyError) return { code: 'not_shelly', message };
+  if (err instanceof ShellyHttpError) return { code: 'http', message };
+  if (err instanceof ShellyRpcError) return { code: 'rpc', message };
+  return { code: 'internal', message };
+}

@@ -31,3 +31,145 @@
 body {
   margin: 0;
 }
+
+:root {
+  --accent: #1f5fbf;
+  --accent-text: #ffffff;
+  --warn: #8a5a00;
+  --warn-bg: #fff4d6;
+  --error-bg: #fdecea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #5b9bff;
+    --accent-text: #0b1220;
+    --warn: #f0c060;
+    --warn-bg: #3a2f12;
+    --error-bg: #3d1d1a;
+  }
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 1rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+
+  span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.45rem 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+
+  &.secondary {
+    background: transparent;
+    color: var(--accent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.message {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+
+  &.error {
+    color: var(--error);
+    background: var(--error-bg);
+  }
+
+  &.warn {
+    color: var(--warn);
+    background: var(--warn-bg);
+  }
+}
+
+.error-text {
+  color: var(--error);
+}
+
+.status {
+  font-size: 0.85rem;
+
+  &.done {
+    color: var(--ok);
+  }
+
+  &.failed {
+    color: var(--error);
+  }
+
+  &.cancelled {
+    color: var(--warn);
+  }
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    position: sticky;
+    top: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--surface-2);
+  }
+}

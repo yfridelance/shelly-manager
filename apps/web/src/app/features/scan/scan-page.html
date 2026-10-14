@@ -1,0 +1,101 @@
+<h1>Netzwerk-Scan</h1>
+
+<form class="scan-form" (submit)="start($event)">
+  <label class="field range">
+    <span>IP-Bereich</span>
+    <input
+      name="range"
+      required
+      placeholder="192.168.1.0/24 oder 192.168.1.10-192.168.1.80"
+      autocomplete="off"
+      [value]="range()"
+      (input)="range.set(value($event))"
+      [disabled]="running()"
+    />
+  </label>
+  <fieldset class="credentials" [disabled]="running()">
+    <legend>Zugangsdaten (optional, nur für geschützte Geräte)</legend>
+    <label class="field">
+      <span>Benutzer</span>
+      <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
+    </label>
+    <label class="field">
+      <span>Passwort</span>
+      <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
+    </label>
+    <p class="hint">Gen2+ verwendet immer den Benutzer «admin». Die Zugangsdaten werden nicht gespeichert.</p>
+  </fieldset>
+  <div class="buttons">
+    @if (running()) {
+      <button type="button" class="secondary" (click)="scans.cancel()">Abbrechen</button>
+    } @else {
+      <button type="submit" [disabled]="!range().trim() || scans.busy()">Scan starten</button>
+    }
+  </div>
+</form>
+
+@if (scans.error(); as error) {
+  <p class="message error" role="alert">{{ error }}</p>
+}
+
+@if (scan(); as s) {
+  <section class="progress" aria-live="polite">
+    <div class="progress-head">
+      <strong>{{ s.range }}</strong>
+      <span class="status" [class]="'status ' + s.status">{{ statusText[s.status] }}</span>
+      <span class="muted">gestartet {{ s.startedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</span>
+    </div>
+    <progress [max]="s.total" [value]="s.scanned"></progress>
+    <p>
+      {{ s.scanned }} von {{ s.total }} Adressen geprüft · <strong>{{ s.found }}</strong>
+      {{ s.found === 1 ? 'Shelly' : 'Shellys' }} gefunden
+      @if (s.errors > 0) {
+        · <span class="error-text">{{ s.errors }} mit Fehlern</span>
+      }
+    </p>
+    @if (s.status === 'failed' && s.error) {
+      <p class="message error">Scan fehlgeschlagen: {{ s.error }}</p>
+    }
+    @if (s.missing.length > 0) {
+      <p class="message warn">
+        {{ s.missing.length }} bekannte {{ s.missing.length === 1 ? 'Gerät wurde' : 'Geräte wurden' }} im Bereich
+        nicht mehr gefunden und als vermisst markiert.
+      </p>
+    }
+  </section>
+
+  @if (devices().length > 0) {
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>IP</th>
+          <th>Name</th>
+          <th>Modell</th>
+          <th>Gen</th>
+          <th>MAC</th>
+          <th>Schutz</th>
+          <th>Config</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of devices(); track d.mac) {
+          <tr>
+            <td class="mono">{{ d.ip }}</td>
+            <td>{{ d.name ?? '–' }}</td>
+            <td>{{ d.model ?? '–' }}</td>
+            <td>{{ d.gen }}</td>
+            <td class="mono">{{ formatMac(d.mac) }}</td>
+            <td>{{ d.authRequired ? 'Passwort' : 'offen' }}</td>
+            <td [class.error-text]="d.snapshot === 'error'" [title]="d.error ?? ''">{{ snapshotText(d) }}</td>
+            <td>
+              @if (d.created) {
+                <span class="badge">neu</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

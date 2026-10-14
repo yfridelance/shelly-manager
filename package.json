@@ -12,7 +12,8 @@
   "scripts": {
     "build": "npm run build -w apps/server && npm run build -w apps/web",
     "test": "npm run test -w apps/server && npm run test -w apps/web",
-    "dev": "npm run dev -w apps/server & npm run start -w apps/web; wait"
+    "dev": "npm run dev -w apps/server & npm run start -w apps/web; wait",
+    "dev:mock": "npm run mock -w apps/server & SHELLY_HOST_MAP=10.99.0.0/24=127.0.0.1:18000 DATA_DIR=data/mock npm run dev; wait"
   },
   "allowScripts": {
     "better-sqlite3@13.0.3": true,

@@ -6,6 +6,8 @@ export interface HttpRequest {
   headers?: Record<string, string>;
   body?: string;
   timeoutMs: number;
+  /** External cancellation (e.g. a cancelled scan). Its abort reason is rethrown unchanged. */
+  signal?: AbortSignal | undefined;
 }
 
 /** fetch() against a device with a hard timeout, mapping transport failures to Shelly errors. */
@@ -16,9 +18,10 @@ export async function deviceFetch(host: string, req: HttpRequest): Promise<Respo
       headers: req.headers,
       body: req.body,
       redirect: 'manual',
-      signal: AbortSignal.timeout(req.timeoutMs),
+      signal: req.signal ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs)]) : AbortSignal.timeout(req.timeoutMs),
     });
   } catch (err) {
+    if (req.signal?.aborted) throw req.signal.reason;
     if (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
       throw new ShellyTimeoutError(host, req.timeoutMs);
     }

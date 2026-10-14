@@ -31,9 +31,9 @@ describe('migrations', () => {
       const db = new Database(':memory:');
       runMigrations(db, dir);
 
-      fs.writeFileSync(path.join(dir, '010_later.sql'), 'CREATE TABLE later (id INTEGER);');
-      fs.writeFileSync(path.join(dir, '002_next.sql'), 'CREATE TABLE next_one (id INTEGER);');
-      expect(runMigrations(db, dir)).toEqual(['002_next.sql', '010_later.sql']);
+      fs.writeFileSync(path.join(dir, '910_later.sql'), 'CREATE TABLE later (id INTEGER);');
+      fs.writeFileSync(path.join(dir, '900_next.sql'), 'CREATE TABLE next_one (id INTEGER);');
+      expect(runMigrations(db, dir)).toEqual(['900_next.sql', '910_later.sql']);
       db.close();
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

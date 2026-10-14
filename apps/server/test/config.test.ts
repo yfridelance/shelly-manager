@@ -11,7 +11,7 @@ describe('loadConfig', () => {
 
   it('reads the container env', () => {
     const c = loadConfig({ PORT: '8080', HOST: '0.0.0.0', DATA_DIR: '/data', STATIC_DIR: '/app/web', LOG_LEVEL: 'warn' });
-    expect(c).toEqual({ port: 8080, host: '0.0.0.0', dataDir: '/data', staticDir: '/app/web', logLevel: 'warn' });
+    expect(c).toEqual({ port: 8080, host: '0.0.0.0', dataDir: '/data', staticDir: '/app/web', logLevel: 'warn', shellyHostMap: undefined });
   });
 
   it('rejects invalid values', () => {

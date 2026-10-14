@@ -10,7 +10,8 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "mock": "tsx test/mock-shelly/cli.ts"
   },
   "dependencies": {
     "@fastify/static": "^10.1.6",
