@@ -78,7 +78,7 @@ MAC normalisieren (Grossbuchstaben, ohne Trennzeichen). **Die MAC ist der Primä
 - `GET /settings` – Config
 - `GET /status` – Status
 - `GET /reboot` – Neustart
-- `GET /reset` – Factory Reset (**vor Verwendung gegen die offizielle Gen1-Doku verifizieren**)
+- `GET /settings?reset=true` – Factory Reset (laut offizieller Gen1-Doku: Parameter `reset` auf `/settings`, „Will perform a factory reset of the device". Einen Endpoint `/reset` gibt es nicht.)
 
 ### Gen2+ (JSON-RPC 2.0)
 - Endpoint `POST /rpc` mit `{ "id": 1, "method": "...", "params": {...} }`
