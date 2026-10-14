@@ -6,6 +6,7 @@ Details zu Ziel, Scope und Architektur: [CLAUDE.md](CLAUDE.md).
 ## Voraussetzungen
 
 - Node.js 24 LTS, mindestens 24.15 (Angular CLI 22). Mit nvm: `nvm use` (liest `.nvmrc`).
+- Alternativ: `.devcontainer/` für VS Code Dev Containers (Ports 4200 und 3000 werden weitergeleitet).
 
 ## Entwicklung
 
@@ -23,6 +24,30 @@ npm run dev:mock       # wie dev, plus Mock-Shelly-Fleet; im UI 10.99.0.0/24 sca
 ein fremder HTTP-Server) auf den Ports 18001–18008 und leitet den Bereich `10.99.0.0/24` per `SHELLY_HOST_MAP`
 dorthin um. Die Datenbank liegt dann separat in `apps/server/data/mock`. Die Testpasswörter gibt das Mock-Skript
 beim Start aus.
+
+## Betrieb mit Docker
+
+```bash
+docker compose up -d --build   # App unter http://localhost:8080
+docker compose down            # stoppt; Daten bleiben im Volume shelly-data
+```
+
+- Die SQLite-Datenbank liegt im benannten Volume `shelly-data` (`/data` im Container) und übersteht
+  Neustarts und Rebuilds. `docker compose down -v` löscht sie.
+- Der Port ist nur auf `127.0.0.1` gebunden, weil die App kein Login hat und Geräte zurücksetzen kann.
+  Für Zugriff von anderen Rechnern einen Reverse Proxy mit Authentifizierung davorsetzen.
+- Gescannt wird über das Docker-Bridge-Netz (ausgehende HTTP-Anfragen ins LAN). Den IP-Bereich gibt man
+  im UI an; das Container-interne Netz wird nicht automatisch erkannt.
+
+## Export
+
+Im Inventar oder direkt per API:
+
+- `GET /api/export.csv`: Übersicht für Excel (Semikolon, UTF-8 mit BOM, Zeiten in UTC)
+- `GET /api/export.json`: alle Geräte inkl. neuster Config, Status und Geräteinfo (rohe Geräteantworten)
+- `GET /api/export.json?snapshots=all`: zusätzlich alle älteren Snapshots
+
+Gerätepasswörter werden nie gespeichert und sind daher auch nicht im Export.
 
 ## Umgebungsvariablen (Server)
 

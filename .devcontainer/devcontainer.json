@@ -1,0 +1,15 @@
+{
+  "name": "Shelly Manager",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-24-bookworm",
+  "forwardPorts": [4200, 3000],
+  "portsAttributes": {
+    "4200": { "label": "Angular (UI)", "onAutoForward": "openBrowser" },
+    "3000": { "label": "Fastify (API)" }
+  },
+  "postCreateCommand": "npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": ["angular.ng-template", "vitest.explorer", "esbenp.prettier-vscode"]
+    }
+  }
+}

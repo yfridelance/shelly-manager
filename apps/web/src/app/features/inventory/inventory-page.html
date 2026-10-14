@@ -7,6 +7,14 @@
       {{ devices.value().length }} Geräte
     }
   </span>
+  <span class="spacer"></span>
+  @if (devices.value().length > 0) {
+    <nav class="export" aria-label="Export">
+      <a class="button secondary" href="/api/export.csv" download>Export CSV</a>
+      <a class="button secondary" href="/api/export.json" download title="Inkl. neuster Config pro Gerät">Export JSON</a>
+      <a href="/api/export.json?snapshots=all" download>JSON mit allen Snapshots</a>
+    </nav>
+  }
 </div>
 
 <div class="filters" role="search">

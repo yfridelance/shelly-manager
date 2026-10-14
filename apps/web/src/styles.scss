@@ -85,8 +85,11 @@ textarea {
   padding: 0.4rem 0.55rem;
 }
 
-button {
+button,
+a.button {
   font: inherit;
+  display: inline-block;
+  text-decoration: none;
   cursor: pointer;
   border: 1px solid var(--accent);
   border-radius: 4px;

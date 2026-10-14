@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/.angular
+**/coverage
+apps/server/data
+data
+.git
+.claude
+.devcontainer
+.vscode
+*.log
