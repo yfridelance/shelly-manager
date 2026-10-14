@@ -9,7 +9,7 @@ import { actionRoutes } from './routes/actions.js';
 import { deviceRoutes } from './routes/devices.js';
 import { exportRoutes } from './routes/export.js';
 import { scanRoutes } from './routes/scans.js';
-import { DeviceService } from './devices/device-service.js';
+import { DeviceService, type DeviceServiceOptions } from './devices/device-service.js';
 import { ScanManager, type ScanOptions } from './scan/scan-manager.js';
 import { parseHostMap } from './shelly/host-map.js';
 
@@ -18,11 +18,13 @@ export interface BuildAppOptions {
   db: Db;
   /** Overrides for tests (timeouts, host resolution, clock). */
   scan?: Partial<ScanOptions>;
+  /** Overrides for tests (e.g. the wait before re-probing after a broken reset). */
+  devices?: Partial<Pick<DeviceServiceOptions, 'resetRecheckDelayMs'>>;
   /** Tests only: capture log output. */
   logStream?: { write(msg: string): void };
 }
 
-export async function buildApp({ config, db, scan, logStream }: BuildAppOptions): Promise<FastifyInstance> {
+export async function buildApp({ config, db, scan, devices: deviceOptions, logStream }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     // Reject unknown properties (additionalProperties: false) instead of silently dropping them.
     ajv: { customOptions: { removeAdditional: false } },
@@ -40,6 +42,7 @@ export async function buildApp({ config, db, scan, logStream }: BuildAppOptions)
     hostFor: scan?.hostFor ?? hostFor,
     ...(scan?.adapterTimeoutMs !== undefined ? { adapterTimeoutMs: scan.adapterTimeoutMs } : {}),
     ...(scan?.now ? { now: scan.now } : {}),
+    ...deviceOptions,
   });
   app.decorate('db', db);
   app.decorate('scans', scans);

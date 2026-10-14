@@ -144,10 +144,23 @@ describe('DevicePage', () => {
 
       const req = http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/factory-reset' });
       expect(req.request.body).toEqual({ confirmMac: 'A8032AB67890' });
-      req.flush({ snapshotId: 42 });
+      req.flush({ snapshotId: 42, confirmed: true });
       await settle(fixture, OPEN);
       expect(el.querySelector('[role="dialog"]')).toBeNull();
       expect(el.textContent).toContain('startet jetzt im AP-Modus');
+      expect(el.textContent).not.toContain('vermutlich');
+    });
+
+    it('reports an unconfirmed reset when the device dropped the connection', async () => {
+      const { fixture, el, dialog } = await openDialog();
+      type(dialog.querySelector('input[name="confirm"]'), 'A8032AB67890');
+      await fixture.whenStable();
+      button(dialog, 'Endgültig zurücksetzen')?.click();
+      http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/factory-reset' }).flush({ snapshotId: 42, confirmed: false });
+      await settle(fixture, OPEN);
+      expect(el.querySelector('[role="dialog"]')).toBeNull();
+      expect(el.textContent).toContain('Reset vermutlich erfolgreich – Gerät nicht mehr erreichbar');
+      expect(el.textContent).toContain('Die Config wurde vorher gesichert.');
     });
 
     it('offers the override only after the snapshot failed', async () => {

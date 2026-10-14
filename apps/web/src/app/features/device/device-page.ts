@@ -3,8 +3,8 @@ import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, LocalDeviceFields, Snapshot } from '../../core/api.types';
-import { DeviceApiError, DevicesApi, type Credentials } from '../../core/devices-api';
-import { ACTION_TEXT, DEVICE_STATE_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
+import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
+import { ACTION_TEXT, DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { JsonTree } from '../../shared/json-tree';
 import { ResetDialog } from './reset-dialog';
@@ -132,7 +132,7 @@ export class DevicePage {
     }
   }
 
-  protected onResetDone(result: { snapshotId: number | null }): void {
+  protected onResetDone(result: FactoryResetResult): void {
     this.resetOpen.set(false);
     this.selectedId.set(null);
     this.details.reload();
@@ -140,7 +140,9 @@ export class DevicePage {
     this.message.set({
       kind: 'ok',
       text:
-        'Gerät wurde auf Werkseinstellungen zurückgesetzt und startet jetzt im AP-Modus. ' +
+        (result.confirmed === false
+          ? `${UNCONFIRMED_RESET_TEXT}. Das Gerät hat die Verbindung ohne Bestätigung getrennt und startet vermutlich im AP-Modus. `
+          : 'Gerät wurde auf Werkseinstellungen zurückgesetzt und startet jetzt im AP-Modus. ') +
         (result.snapshotId !== null ? 'Die Config wurde vorher gesichert.' : 'Es wurde kein Snapshot gesichert (Override).'),
     });
   }

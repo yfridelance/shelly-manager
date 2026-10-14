@@ -97,5 +97,12 @@ export interface ActionEntry {
   result: 'ok' | 'error' | null;
   errorCode: string | null;
   error: string | null;
-  details: { snapshotId?: number; snapshotSkipped?: boolean; snapshotError?: string } | null;
+  details: {
+    snapshotId?: number;
+    snapshotSkipped?: boolean;
+    snapshotError?: string;
+    /** Factory reset: false when the device dropped the connection and was only re-checked afterwards. */
+    confirmed?: boolean;
+    recheck?: 'unreachable' | 'auth_disabled';
+  } | null;
 }

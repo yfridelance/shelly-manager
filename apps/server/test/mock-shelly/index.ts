@@ -52,8 +52,8 @@ export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<M
         }
         handler?.handle(req, res, Buffer.concat(chunks).toString('utf8'));
         if (handler?.resetPending && offlineAfterReset) {
-          // Like a real device: answer, then reboot into AP mode and vanish from the network.
-          res.on('finish', () => void stop());
+          // Like a real device: answer (or drop the connection), then reboot into AP mode and vanish from the network.
+          res.on('close', () => void stop());
         }
       };
       if (delayMs > 0) setTimeout(respond, delayMs);

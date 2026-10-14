@@ -55,6 +55,10 @@ export class Gen1Device implements DeviceHandler {
       case '/settings':
         if (url.searchParams.has('reset')) {
           this.factoryReset();
+          if (this.spec.dropConnectionOnReset) {
+            res.destroy();
+            return;
+          }
         } else if (url.searchParams.has('name')) {
           this.name = url.searchParams.get('name') || null;
         }

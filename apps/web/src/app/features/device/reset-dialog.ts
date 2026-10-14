@@ -1,6 +1,6 @@
 import { Component, ElementRef, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import type { Device } from '../../core/api.types';
-import { DeviceApiError, DevicesApi } from '../../core/devices-api';
+import { DeviceApiError, DevicesApi, type FactoryResetResult } from '../../core/devices-api';
 import { errorText, formatMac } from '../../core/texts';
 
 /**
@@ -17,7 +17,7 @@ export class ResetDialog {
   private readonly api = inject(DevicesApi);
   readonly device = input.required<Device>();
   readonly closed = output<void>();
-  readonly resetDone = output<{ snapshotId: number | null }>();
+  readonly resetDone = output<FactoryResetResult>();
 
   protected readonly formatMac = formatMac;
   protected readonly confirmation = signal('');

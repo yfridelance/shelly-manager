@@ -3,7 +3,7 @@ import { finishAction, startAction, type ActionType } from '../db/actions.js';
 import { getDevice, markReset, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
 import { insertSnapshot } from '../db/snapshots.js';
 import { probeShelly } from '../shelly/detect.js';
-import { ShellyAuthError, describeError, type DeviceErrorCode } from '../shelly/errors.js';
+import { ShellyAuthError, ShellyNetworkError, ShellyTimeoutError, describeError, type DeviceErrorCode } from '../shelly/errors.js';
 import { directHost, type HostResolver } from '../shelly/host-map.js';
 import { createAdapter } from '../shelly/index.js';
 import { normalizeMac } from '../shelly/mac.js';
@@ -12,8 +12,12 @@ import { DEFAULT_ADAPTER_TIMEOUT_MS, type Credentials, type DeviceInfo, type She
 export interface DeviceServiceOptions {
   hostFor: HostResolver;
   adapterTimeoutMs: number;
+  /** Wait before re-probing a device whose connection broke off during the reset command. */
+  resetRecheckDelayMs: number;
   now: () => string;
 }
+
+export const DEFAULT_RESET_RECHECK_DELAY_MS = 2500;
 
 export type DeviceActionErrorCode =
   | 'not_found'
@@ -51,6 +55,11 @@ export interface FactoryResetRequest {
 
 export interface FactoryResetResult {
   snapshotId: number | null;
+  /**
+   * false: the device dropped the connection before acknowledging the reset and was gone
+   * (or unprotected) when probed again, so the reset very likely happened but was not confirmed.
+   */
+  confirmed: boolean;
 }
 
 type ActionDetails = Record<string, unknown>;
@@ -67,6 +76,7 @@ export class DeviceService {
     this.options = {
       hostFor: directHost,
       adapterTimeoutMs: DEFAULT_ADAPTER_TIMEOUT_MS,
+      resetRecheckDelayMs: DEFAULT_RESET_RECHECK_DELAY_MS,
       now: () => new Date().toISOString(),
       ...options,
     };
@@ -112,12 +122,43 @@ export class DeviceService {
           details.snapshotSkipped = true;
         }
 
-        const { adapter } = await this.connect(device, request.credentials);
-        await adapter.factoryReset();
+        const { info, host, adapter } = await this.connect(device, request.credentials);
+        let confirmed = true;
+        try {
+          await adapter.factoryReset();
+        } catch (err) {
+          if (!(err instanceof ShellyTimeoutError || err instanceof ShellyNetworkError)) throw err;
+          const recheck = await this.recheckAfterBrokenReset(host, info);
+          if (recheck === 'unchanged') throw err;
+          details.confirmed = false;
+          details.resetError = describeError(err).code;
+          details.recheck = recheck;
+          confirmed = false;
+        }
         markReset(this.db, mac);
-        return { snapshotId };
+        return { snapshotId, confirmed };
       }),
     );
+  }
+
+  /**
+   * Real devices may reboot into AP mode before the reset answer leaves the socket, so the
+   * command ends in a timeout or a dropped connection. Probe the same IP once more:
+   * - `unreachable`: no answer at all, as expected after a reset.
+   * - `auth_disabled`: the same device answers, but its password protection is gone.
+   * - `unchanged`: something still answers as before (same device unchanged, or another device), so report the error.
+   */
+  private async recheckAfterBrokenReset(host: string, before: DeviceInfo): Promise<'unreachable' | 'auth_disabled' | 'unchanged'> {
+    await new Promise((resolve) => setTimeout(resolve, this.options.resetRecheckDelayMs));
+    let after: DeviceInfo;
+    try {
+      after = await probeShelly(host, this.options.adapterTimeoutMs);
+    } catch (err) {
+      if (err instanceof ShellyTimeoutError || err instanceof ShellyNetworkError) return 'unreachable';
+      return 'unchanged';
+    }
+    if (after.mac === before.mac && before.authRequired && !after.authRequired) return 'auth_disabled';
+    return 'unchanged';
   }
 
   private snapshotUnlocked(mac: string, credentials: Credentials | undefined, ctx: ActionContext): Promise<number> {
@@ -138,7 +179,7 @@ export class DeviceService {
    * Connects to the device at its last known IP and makes sure the same MAC answers there:
    * IPs move (DHCP), and an action must never hit a different device.
    */
-  private async connect(device: DeviceRow, credentials?: Credentials): Promise<{ info: DeviceInfo; adapter: ShellyAdapter }> {
+  private async connect(device: DeviceRow, credentials?: Credentials): Promise<{ info: DeviceInfo; host: string; adapter: ShellyAdapter }> {
     if (!device.ip) throw new DeviceActionError('no_ip', `No known IP address for ${device.mac}`);
     const host = this.options.hostFor(device.ip);
     const info = await probeShelly(host, this.options.adapterTimeoutMs);
@@ -151,7 +192,7 @@ export class DeviceService {
       credentials: info.authRequired ? credentials : undefined,
       timeoutMs: this.options.adapterTimeoutMs,
     });
-    return { info, adapter };
+    return { info, host, adapter };
   }
 
   /** Rejects a second action on the same device while one is running (double clicks, two tabs). */

@@ -15,6 +15,11 @@ interface BaseSpec {
   delayMs?: number;
   /** Real devices drop off the network into AP mode after a factory reset. Default true. */
   offlineAfterReset?: boolean;
+  /**
+   * Some real devices reboot before the reset answer leaves the socket: the reset is executed,
+   * but the connection is closed without any HTTP response. Combine with `offlineAfterReset`.
+   */
+  dropConnectionOnReset?: boolean;
   /** Gen1 paths (e.g. "/status") or RPC methods (e.g. "Shelly.GetStatus") that answer with an error. */
   failing?: string[];
 }
@@ -58,7 +63,7 @@ export type MockDeviceSpec = Gen1Spec | RpcSpec | HangSpec | ForeignSpec;
 
 export interface DeviceHandler {
   handle(req: IncomingMessage, res: ServerResponse, body: string): void;
-  /** Called after a factory reset answer was sent. */
+  /** Set once a factory reset was executed (the answer may still be in flight). */
   readonly resetPending: boolean;
 }
 

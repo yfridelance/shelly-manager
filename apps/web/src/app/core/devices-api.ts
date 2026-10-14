@@ -27,6 +27,12 @@ export interface FactoryResetRequest {
   allowWithoutSnapshot?: boolean;
 }
 
+export interface FactoryResetResult {
+  snapshotId: number | null;
+  /** false: the device dropped the connection instead of answering, but was gone afterwards. */
+  confirmed: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DevicesApi {
   private readonly http = inject(HttpClient);
@@ -44,8 +50,8 @@ export class DevicesApi {
   }
 
   /** Exactly one device. The server checks confirmMac again. */
-  factoryReset(mac: string, request: FactoryResetRequest): Promise<{ snapshotId: number | null }> {
-    return this.call(this.http.post<{ snapshotId: number | null }>(`/api/devices/${mac}/factory-reset`, request));
+  factoryReset(mac: string, request: FactoryResetRequest): Promise<FactoryResetResult> {
+    return this.call(this.http.post<FactoryResetResult>(`/api/devices/${mac}/factory-reset`, request));
   }
 
   private async call<T>(request: import('rxjs').Observable<T>): Promise<T> {

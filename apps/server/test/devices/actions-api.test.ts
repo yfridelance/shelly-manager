@@ -35,6 +35,7 @@ async function setup(...specs: MockDeviceSpec[]): Promise<{ app: FastifyInstance
     db,
     logStream: { write: (msg) => logLines.push(msg) },
     scan: { hostFor: (ip) => hostMap.get(ip) ?? '127.0.0.1:1', adapterTimeoutMs: 1000 },
+    devices: { resetRecheckDelayMs: 10 },
   });
   mocks = await Promise.all(specs.map((s) => startMockDevice(s)));
   const macs: string[] = [];
@@ -103,8 +104,9 @@ describe('factory reset safety rules (AGENTS.md section 9)', () => {
     // Separators and lowercase are fine.
     const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, { confirmMac: 'a8:03:2a:b1:23:45' });
     expect(res.statusCode).toBe(202);
-    const { snapshotId } = res.json<{ snapshotId: number }>();
+    const { snapshotId, confirmed } = res.json<{ snapshotId: number; confirmed: boolean }>();
     expect(snapshotId).toBeGreaterThan(0);
+    expect(confirmed).toBe(true);
 
     expect(devices[0]?.state.factoryResetCount).toBe(1);
     expect(devices[1]?.state.factoryResetCount).toBe(0);
@@ -142,7 +144,7 @@ describe('factory reset safety rules (AGENTS.md section 9)', () => {
     const { app: a, devices, macs } = await setup({ ...GEN1_OPEN, failing: ['/status'] });
     const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, { confirmMac: macs[0], allowWithoutSnapshot: true });
     expect(res.statusCode).toBe(202);
-    expect(res.json()).toEqual({ snapshotId: null });
+    expect(res.json()).toEqual({ snapshotId: null, confirmed: true });
     expect(devices[0]?.state.factoryResetCount).toBe(1);
     expect(devices[0]?.state.requests).toContain('GET /settings?reset=true');
     const reset = listActions(db).find((l) => l.action === 'factory_reset');
@@ -186,6 +188,73 @@ describe('factory reset safety rules (AGENTS.md section 9)', () => {
     expect([first.statusCode, second.statusCode].sort()).toEqual([202, 409]);
     expect([first.json(), second.json()]).toContainEqual(expect.objectContaining({ error: 'busy' }));
     expect(devices[0]?.state.factoryResetCount).toBe(1);
+  });
+});
+
+describe('factory reset when the device drops the connection', () => {
+  const resetLog = () => {
+    const entry = listActions(db).find((l) => l.action === 'factory_reset');
+    return { ...entry, details: JSON.parse(entry?.details ?? '{}') as Record<string, unknown> };
+  };
+
+  it('counts it as an unconfirmed success when the device is gone afterwards', async () => {
+    const { app: a, devices, macs } = await setup({ ...GEN2_OPEN, dropConnectionOnReset: true });
+    const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, { confirmMac: macs[0] });
+    expect(res.statusCode).toBe(202);
+    const { snapshotId, confirmed } = res.json<{ snapshotId: number; confirmed: boolean }>();
+    expect(snapshotId).toBeGreaterThan(0);
+    expect(confirmed).toBe(false);
+    expect(devices[0]?.state).toMatchObject({ factoryResetCount: 1, online: false });
+    expect(getDevice(db, macs[0] ?? '')?.state).toBe('reset');
+    expect(resetLog()).toMatchObject({
+      result: 'ok',
+      error_code: null,
+      details: { snapshotId, confirmed: false, resetError: 'network', recheck: 'unreachable' },
+    });
+  });
+
+  it('works the same for Gen1', async () => {
+    const { app: a, macs } = await setup({ ...GEN1_OPEN, dropConnectionOnReset: true });
+    const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, { confirmMac: macs[0] });
+    expect(res.statusCode).toBe(202);
+    expect(res.json()).toMatchObject({ confirmed: false });
+    expect(getDevice(db, macs[0] ?? '')?.state).toBe('reset');
+  });
+
+  it('stays an error when the same device still answers unchanged', async () => {
+    const { app: a, devices, macs } = await setup({ ...GEN2_OPEN, dropConnectionOnReset: true, offlineAfterReset: false });
+    const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, { confirmMac: macs[0] });
+    expect(res.statusCode).toBe(502);
+    expect(res.json()).toMatchObject({ error: 'network' });
+    expect(devices[0]?.state.online).toBe(true);
+    expect(getDevice(db, macs[0] ?? '')?.state).toBe('active');
+    expect(resetLog()).toMatchObject({ result: 'error', error_code: 'network' });
+    // The device was probed again after the broken reset command.
+    expect(devices[0]?.state.requests.slice(-2)).toEqual(['RPC Shelly.FactoryReset', 'GET /shelly']);
+  });
+
+  it('counts it as an unconfirmed success when the device answers but lost its password protection', async () => {
+    const { app: a, macs } = await setup({ ...GEN4_PROTECTED, dropConnectionOnReset: true, offlineAfterReset: false });
+    const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, { confirmMac: macs[0], credentials: { password: 'gen4-secret' } });
+    expect(res.statusCode).toBe(202);
+    expect(res.json()).toMatchObject({ confirmed: false });
+    expect(getDevice(db, macs[0] ?? '')?.state).toBe('reset');
+    expect(resetLog()).toMatchObject({ result: 'ok', details: { confirmed: false, recheck: 'auth_disabled' } });
+  });
+
+  it('does not re-check on auth errors', async () => {
+    const { app: a, devices, macs } = await setup({ ...GEN1_PROTECTED, dropConnectionOnReset: true });
+    const res = await post(a, `/api/devices/${macs[0]}/factory-reset`, {
+      confirmMac: macs[0],
+      credentials: { username: 'admin', password: 'falsch-123' },
+      allowWithoutSnapshot: true,
+    });
+    expect(res.statusCode).toBe(502);
+    expect(res.json()).toMatchObject({ error: 'auth_invalid' });
+    expect(devices[0]?.state.factoryResetCount).toBe(0);
+    expect(devices[0]?.state.requests.at(-1)).toBe('GET /settings?reset=true');
+    expect(getDevice(db, macs[0] ?? '')?.state).toBe('active');
+    expect(resetLog()).toMatchObject({ result: 'error', error_code: 'auth_invalid' });
   });
 });
 

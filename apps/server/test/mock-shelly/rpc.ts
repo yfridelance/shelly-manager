@@ -99,6 +99,10 @@ export class RpcDevice implements DeviceHandler {
         this.wifiConfigured = false;
         this.nonces.clear();
         this.resetPending = true;
+        if (this.spec.dropConnectionOnReset) {
+          res.destroy();
+          return;
+        }
         return reply(null);
       default:
         sendJson(res, 404, { id, src: this.id, error: { code: 404, message: `No handler for ${method}` } });

@@ -23,6 +23,9 @@ export const ACTION_ERROR_TEXT: Record<string, string> = {
   snapshot_failed: 'Snapshot vor dem Reset fehlgeschlagen',
 };
 
+/** Factory reset whose command broke off, but the device was gone when probed again. */
+export const UNCONFIRMED_RESET_TEXT = 'Reset vermutlich erfolgreich – Gerät nicht mehr erreichbar';
+
 export const ACTION_TEXT: Record<string, string> = {
   snapshot: 'Snapshot',
   reboot: 'Neustart',

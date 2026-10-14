@@ -224,7 +224,7 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
       schema: {
         params: MacParams,
         body: FactoryResetBody,
-        response: { 202: Type.Object({ snapshotId: Nullable(Type.Integer()) }), 400: ErrorBody, 404: ErrorBody, 409: ErrorBody, 502: ErrorBody },
+        response: { 202: Type.Object({ snapshotId: Nullable(Type.Integer()), confirmed: Type.Boolean() }), 400: ErrorBody, 404: ErrorBody, 409: ErrorBody, 502: ErrorBody },
       },
     },
     async (request, reply) => {
