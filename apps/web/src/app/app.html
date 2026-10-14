@@ -1,0 +1,18 @@
+<header class="topbar">
+  <span class="brand">Shelly Manager</span>
+  <nav>
+    <a routerLink="/scan" routerLinkActive="active">Scan</a>
+    <a routerLink="/inventar" routerLinkActive="active">Inventar</a>
+    <a routerLink="/protokoll" routerLinkActive="active">Protokoll</a>
+  </nav>
+  <span class="health" [class]="'health ' + health.state()" data-testid="health">
+    @switch (health.state()) {
+      @case ('ok') { Server verbunden }
+      @case ('down') { Server nicht erreichbar }
+      @default { Verbinde … }
+    }
+  </span>
+</header>
+<main>
+  <router-outlet />
+</main>
