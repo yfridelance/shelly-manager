@@ -25,6 +25,9 @@ describe('itemText', () => {
     expect(itemText({ key: 'mqtt.server', status: 'change', current: null, target: 'mqtt.home:1883' })).toBe('MQTT: Server: – → mqtt.home:1883');
     expect(itemText({ key: 'cloud.enable', status: 'same', current: false, target: false })).toBe('Shelly Cloud: Cloud-Verbindung: bereits Aus');
     expect(itemText({ key: 'coiot.enable', status: 'unsupported', target: false, reason: 'generation' })).toBe('CoIoT: CoIoT an: für diese Generation nicht verfügbar');
+    expect(itemText({ key: 'wifiAp.enable', status: 'unsupported', current: false, target: true, reason: 'password' })).toBe(
+      'WLAN-Access-Point des Geräts: Access-Point an: AP-Passwort nötig, wird nicht eingeschaltet',
+    );
     expect(itemText({ key: 'script', status: 'change', current: null, target: { name: 'heizung', enable: true, start: true } })).toBe(
       'Script: anlegen «heizung», Autostart an, starten',
     );

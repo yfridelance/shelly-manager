@@ -80,7 +80,7 @@ export const TEMPLATE_GROUPS: TemplateGroup[] = [
     id: 'wifiAp',
     title: 'WLAN-Access-Point des Geräts',
     gens: 'Gen2+',
-    hint: 'Nicht für Gen1: Dort schliessen sich AP und WLAN-Client aus. Ein AP-Passwort kann beim Anwenden gesetzt werden.',
+    hint: 'Nicht für Gen1: Dort schliessen sich AP und WLAN-Client aus. Zum Einschalten verlangt die Firmware (ab 2.0) ein AP-Passwort; es wird beim Anwenden eingegeben.',
     fields: [{ key: 'wifiAp.enable', label: 'Access-Point an', type: 'bool' }],
   },
   {
@@ -169,7 +169,13 @@ export function formatValue(v: unknown): string {
 export function itemText(item: PlanItem): string {
   const label = fieldLabel(item.key);
   if (item.status === 'unsupported') {
-    return `${label}: ${item.reason === 'generation' ? 'für diese Generation nicht verfügbar' : 'von Modell/Firmware nicht unterstützt'}`;
+    const why =
+      item.reason === 'generation'
+        ? 'für diese Generation nicht verfügbar'
+        : item.reason === 'password'
+          ? 'AP-Passwort nötig, wird nicht eingeschaltet'
+          : 'von Modell/Firmware nicht unterstützt';
+    return `${label}: ${why}`;
   }
   if (item.status === 'same') return `${label}: bereits ${formatValue(item.target)}`;
   if (item.key === 'script') return `${label}: ${item.current ? 'aktualisieren' : 'anlegen'} ${formatValue(item.target)}`;

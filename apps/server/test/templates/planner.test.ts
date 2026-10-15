@@ -84,10 +84,26 @@ describe('planTemplate for Gen2+', () => {
     });
     expect(plan.steps).toEqual([
       { kind: 'rpc', method: 'MQTT.SetConfig', params: { config: { user: 'shelly', pass: 'mqtt-geheim' } } },
-      { kind: 'rpc', method: 'WiFi.SetConfig', params: { config: { ap: { pass: 'ap-geheim-123', is_open: false } } } },
+      { kind: 'rpc', method: 'WiFi.SetConfig', params: { config: { ap: { pass: 'ap-geheim-123' } } } },
     ]);
     expect(JSON.stringify(plan.items)).not.toMatch(/geheim/);
     expect(plan.items.find((i) => i.key === 'mqtt.password')).toEqual({ key: 'mqtt.password', status: 'change', current: SECRET_MASK, target: SECRET_MASK });
+  });
+
+  it('enables the AP only together with a password (firmware >= 2.0 requires it)', () => {
+    const apOff = { ...GEN2_CONFIG, wifi: { ...GEN2_CONFIG.wifi, ap: { enable: false, is_open: true } } };
+    const without = planTemplate(2, apOff, { wifiAp: { enable: true }, apRoaming: { threshold: -70 } }, ctx2);
+    expect(without.items[0]).toEqual({ key: 'wifiAp.enable', status: 'unsupported', current: false, target: true, reason: 'password' });
+    // The rest of the template still applies.
+    expect(without.steps).toEqual([{ kind: 'rpc', method: 'WiFi.SetConfig', params: { config: { roam: { rssi_thr: -70 } } } }]);
+
+    const withPw = planTemplate(2, apOff, { wifiAp: { enable: true } }, ctx2, { apPassword: 'ap-geheim-123' });
+    expect(withPw.steps).toEqual([{ kind: 'rpc', method: 'WiFi.SetConfig', params: { config: { ap: { enable: true, pass: 'ap-geheim-123' } } } }]);
+
+    // Disabling needs no password.
+    expect(planTemplate(2, GEN2_CONFIG, { wifiAp: { enable: false } }, ctx2).steps).toEqual([
+      { kind: 'rpc', method: 'WiFi.SetConfig', params: { config: { ap: { enable: false } } } },
+    ]);
   });
 
   it('plans a script deployment by name', () => {

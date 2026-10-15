@@ -19,8 +19,11 @@ export interface PlanItem {
   status: PlanStatus;
   current?: unknown;
   target?: unknown;
-  /** For `unsupported`: not available on this generation, or missing in this firmware/model. */
-  reason?: 'generation' | 'firmware';
+  /**
+   * For `unsupported`: not available on this generation, missing in this firmware/model, or a
+   * password is needed that was not given (enabling the AP).
+   */
+  reason?: 'generation' | 'firmware' | 'password';
 }
 
 export interface ScriptPlan {
@@ -279,6 +282,13 @@ export function planTemplate(
       items.push({ key: field.key, status: 'same', current, target });
       continue;
     }
+    // Since firmware 2.0 the device rejects enabling the AP without a password in the same call
+    // (changelog 2.0.0: "AP password is only required when enabling the Access Point";
+    // real device: "Invalid argument 'pass': should not be empty!"). The pass is added below.
+    if (field.key === 'wifiAp.enable' && target === true && !secrets.apPassword) {
+      items.push({ key: field.key, status: 'unsupported', current, target, reason: 'password' });
+      continue;
+    }
     items.push({ key: field.key, status: 'change', current, target });
     if (gen === 1) addGen1((mapping as Gen1Mapping).write(target, cfg));
     else addRpc((mapping as RpcMapping).write(target, cfg));
@@ -303,7 +313,8 @@ export function planTemplate(
       items.push({ key: 'wifiAp.password', status: 'unsupported', target: SECRET_MASK, reason: gen === 1 ? 'generation' : 'firmware' });
     } else {
       items.push({ key: 'wifiAp.password', status: 'change', current: SECRET_MASK, target: SECRET_MASK });
-      addRpc({ method: 'WiFi.SetConfig', config: { ap: { pass: secrets.apPassword, is_open: false } } });
+      // Only `pass`: whether `is_open` is writable is not documented; a set pass secures the AP.
+      addRpc({ method: 'WiFi.SetConfig', config: { ap: { pass: secrets.apPassword } } });
     }
   }
 

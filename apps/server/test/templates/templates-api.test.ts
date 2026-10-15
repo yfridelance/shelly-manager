@@ -201,6 +201,25 @@ describe('apply template', () => {
     expect(mocks[0]?.state.requests).toContain('RPC Script.Stop');
   });
 
+  it('enables the AP only with a password and still applies the rest (real device, firmware 2.1)', async () => {
+    const { a, macs } = await setup(GEN2);
+    const id = await createTemplate(a, { wifiAp: { enable: true }, apRoaming: { threshold: -70 } });
+
+    const without = await json(a, 'POST', `/api/devices/${macs[0]}/apply-template`, { templateId: id });
+    expect(without.statusCode).toBe(200);
+    expect(without.json()).toMatchObject({ changed: 1 });
+    expect(without.json<{ items: unknown[] }>().items).toContainEqual(
+      expect.objectContaining({ key: 'wifiAp.enable', status: 'unsupported', reason: 'password' }),
+    );
+
+    const withPw = await json(a, 'POST', `/api/devices/${macs[0]}/apply-template`, { templateId: id, secrets: { apPassword: 'ap-geheim-123' } });
+    expect(withPw.json()).toMatchObject({ changed: 2 });
+    expect(mocks[0]?.state.secretsReceived).toEqual({ 'wifi.ap.pass': 'ap-geheim-123' });
+    const config = (await new RpcAdapter(mocks[0]?.host ?? '').getConfig()) as { wifi: { ap: { enable: boolean } } };
+    expect(config.wifi.ap.enable).toBe(true);
+    expect(JSON.stringify(listActions(db))).not.toContain('ap-geheim-123');
+  });
+
   it('changes nothing on a protected device without credentials', async () => {
     const { a, macs } = await setup(GEN4_PROTECTED);
     const id = await createTemplate(a, { cloud: { enable: false } });

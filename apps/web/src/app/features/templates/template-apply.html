@@ -138,7 +138,10 @@
       </label>
     </div>
     @if (needsApPassword() && !apPassword()) {
-      <p class="message warn">Ohne AP-Passwort ist der Access-Point offen, sofern das Gerät noch keines hat.</p>
+      <p class="message warn">
+        Ohne AP-Passwort wird der Access-Point auf Geräten, bei denen er aus ist, nicht eingeschaltet: Die Firmware
+        verlangt dafür ein Passwort. Die übrigen Einstellungen werden trotzdem angewendet.
+      </p>
     }
     <p class="muted small">
       Vor jeder Änderung wird pro Gerät automatisch ein Snapshot gespeichert. Schlägt er fehl, bleibt das Gerät

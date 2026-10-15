@@ -300,7 +300,7 @@ Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), 
 | `eco.ecoMode` | – (nicht dokumentiert) | `sys.device.eco_mode` |
 | `eco.ledStatusDisable` | `led_status_disable` (nur manche Modelle) | – |
 | `bluetooth.enable/rpc/observer` | – | `BLE.SetConfig` (`enable`/`observer` nur bei älterer FW) |
-| `wifiAp.enable` (+ AP-Passwort beim Anwenden) | – (AP schliesst WLAN-Client aus) | `WiFi.SetConfig ap.enable` (`pass`, `is_open=false`) |
+| `wifiAp.enable` (+ AP-Passwort beim Anwenden) | – (AP schliesst WLAN-Client aus) | `WiFi.SetConfig ap.enable`; **Einschalten nur mit `pass` im selben Aufruf** (FW ≥ 2.0, Changelog 2.0.0; die API-Doku nennt `pass` noch «optional», ein echtes Gerät mit 2.1.0 lehnt ab: «Invalid argument 'pass': should not be empty!»). Ohne Passwort: `unsupported`/`password`, Rest des Templates wird angewendet. `is_open` wird nicht gesendet. |
 | `apRoaming.enable/threshold` | `ap_roaming_enabled`, `ap_roaming_threshold` | `wifi.roam.interval` (0 = aus, sonst bisheriger Wert bzw. 60), `rssi_thr` |
 | `coiot.enable/updatePeriod/peer` | `coiot_enable`, `coiot_update_period`, `coiot_peer` | – |
 | `script` | – | `Script.List/Create/Stop/PutCode (1024 B)/SetConfig/Start`, per Name, Code-Vergleich via `GetCode` |

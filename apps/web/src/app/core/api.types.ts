@@ -152,7 +152,7 @@ export interface PlanItem {
   status: 'change' | 'same' | 'unsupported';
   current?: unknown;
   target?: unknown;
-  reason?: 'generation' | 'firmware';
+  reason?: 'generation' | 'firmware' | 'password';
 }
 
 export interface TemplatePreview {

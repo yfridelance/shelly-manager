@@ -132,6 +132,13 @@ export class RpcDevice implements DeviceHandler {
         sendJson(res, 400, { id, src: this.id, error: { code: -103, message: `Invalid argument '${component}.${bad}'` } });
         return;
       }
+      // Like firmware >= 2.0: enabling the AP needs a password in the same call.
+      const apPatch = component === 'wifi' ? (patch['ap'] as Record<string, unknown> | undefined) : undefined;
+      const apNow = (this.config()['wifi'] as { ap?: { enable?: boolean } } | undefined)?.ap;
+      if (apPatch?.['enable'] === true && apNow?.enable !== true && typeof apPatch['pass'] !== 'string') {
+        sendJson(res, 400, { id, src: this.id, error: { code: -103, message: "Invalid argument 'pass': should not be empty!" } });
+        return;
+      }
       const clean = structuredClone(patch);
       if (component === 'mqtt' && typeof clean['pass'] === 'string') {
         this.state.secretsReceived['mqtt.pass'] = clean['pass'];

@@ -32,7 +32,7 @@ export const PlanItemSchema = Type.Object({
   status: Type.Union([Type.Literal('change'), Type.Literal('same'), Type.Literal('unsupported')]),
   current: Type.Optional(Type.Unknown()),
   target: Type.Optional(Type.Unknown()),
-  reason: Type.Optional(Type.Union([Type.Literal('generation'), Type.Literal('firmware')])),
+  reason: Type.Optional(Type.Union([Type.Literal('generation'), Type.Literal('firmware'), Type.Literal('password')])),
 });
 
 const TemplateBody = Type.Object(
