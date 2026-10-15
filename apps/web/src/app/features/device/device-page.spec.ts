@@ -8,7 +8,7 @@ import { DevicePage } from './device-page';
 const DETAILS: DeviceDetails = {
   device: {
     mac: 'A8032AB67890', ip: '10.0.0.4', gen: 2, model: 'SNSW-102P16EU', app: 'Plus2PM', firmware: '20241011-114455/1.4.4-g6d2a586',
-    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', authRequired: true, location: null, notes: null, state: 'active',
+    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', authRequired: true, location: null, notes: null, state: 'active',
     firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
     updateStable: null, updateBeta: null, updateCheckedAt: null,
   },

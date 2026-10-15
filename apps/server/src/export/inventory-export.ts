@@ -43,6 +43,7 @@ function deviceJson(d: DeviceListRow, resetAt: string | undefined) {
     firmware: d.firmware,
     name: d.name ?? d.device_name,
     deviceName: d.device_name,
+    deviceId: d.device_id,
     authRequired: d.auth_required === 1,
     location: d.location,
     notes: d.notes,
@@ -100,6 +101,7 @@ export function buildCsvExport(db: Db): string {
     [
       'Name',
       'Name auf Gerät',
+      'Geräte-ID',
       'Modell',
       'App',
       'Generation',
@@ -119,6 +121,7 @@ export function buildCsvExport(db: Db): string {
     listDevices(db).map((d) => [
       d.name ?? d.device_name,
       d.device_name,
+      d.device_id,
       d.model,
       d.app,
       d.gen,

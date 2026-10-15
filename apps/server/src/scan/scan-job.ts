@@ -10,6 +10,7 @@ export interface ScanDeviceResult {
   gen: ShellyGen;
   model: string | null;
   name: string | null;
+  deviceId: string | null;
   authRequired: boolean;
   /** First time this MAC was seen. */
   created: boolean;

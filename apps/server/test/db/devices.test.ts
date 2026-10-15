@@ -10,6 +10,7 @@ const info = (over: Partial<DeviceInfo> = {}): DeviceInfo => ({
   app: 'Plus1PM',
   firmware: '20241011-114455/1.4.4-g6d2a586',
   name: 'Boiler',
+  deviceId: 'shellyplus1pm-a8032ab12345',
   authRequired: false,
   raw: {},
   ...over,
@@ -47,6 +48,13 @@ describe('upsertSeenDevice', () => {
     db.prepare("UPDATE devices SET name = 'Warmwasser' WHERE mac = ?").run('A8032AB12345');
     upsertSeenDevice(db, info({ name: 'Boiler 2' }), '10.0.0.1', '2026-10-14T12:00:00.000Z');
     expect(getDevice(db, 'A8032AB12345')).toMatchObject({ name: 'Warmwasser', device_name: 'Boiler 2' });
+  });
+
+  it('keeps the known device id when a protected Gen1 device reports none', () => {
+    const db = openDatabase(':memory:');
+    upsertSeenDevice(db, info({ gen: 1, deviceId: 'shelly1-A1B2C3' }), '10.0.0.1', '2026-10-14T10:00:00.000Z');
+    upsertSeenDevice(db, info({ gen: 1, deviceId: null, authRequired: true }), '10.0.0.1', '2026-10-14T11:00:00.000Z');
+    expect(getDevice(db, 'A8032AB12345')?.device_id).toBe('shelly1-A1B2C3');
   });
 
   it('keeps the known name when a protected device reports none', () => {

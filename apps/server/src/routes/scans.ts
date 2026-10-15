@@ -29,6 +29,7 @@ export const ScanDeviceResultSchema = Type.Object({
   gen: Type.Integer(),
   model: Nullable(Type.String()),
   name: Nullable(Type.String()),
+  deviceId: Nullable(Type.String()),
   authRequired: Type.Boolean(),
   created: Type.Boolean(),
   snapshot: Type.Union([Type.Literal('ok'), Type.Literal('auth_required'), Type.Literal('error')]),

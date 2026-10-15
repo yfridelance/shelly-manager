@@ -40,6 +40,35 @@ describe('migrations', () => {
     }
   });
 
+  it('backfills device ids from existing snapshots (migration 007)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shelly-mig7-'));
+    try {
+      for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f < '007')) fs.copyFileSync(path.join(MIGRATIONS_DIR, f), path.join(dir, f));
+      const db = new Database(':memory:');
+      runMigrations(db, dir);
+      const now = '2026-10-14T10:00:00.000Z';
+      const dev = db.prepare('INSERT INTO devices (mac, gen, first_seen, last_seen) VALUES (?, ?, ?, ?)');
+      const snap = db.prepare('INSERT INTO config_snapshots (mac, taken_at, info_json, config_json) VALUES (?, ?, ?, ?)');
+      dev.run('E868E7A1B2C3', 1, now, now);
+      dev.run('A8032AB12345', 2, now, now);
+      dev.run('000000000001', 2, now, now);
+      snap.run('E868E7A1B2C3', now, '{"type":"SHSW-1"}', '{"device":{"hostname":"shelly1-A1B2C3"}}');
+      snap.run('A8032AB12345', '2026-10-13T10:00:00.000Z', '{"id":"old-id"}', null);
+      snap.run('A8032AB12345', now, '{"id":"shellyplus1pm-a8032ab12345"}', null);
+
+      fs.copyFileSync(path.join(MIGRATIONS_DIR, '007_device_id.sql'), path.join(dir, '007_device_id.sql'));
+      expect(runMigrations(db, dir)).toEqual(['007_device_id.sql']);
+      expect(db.prepare('SELECT mac, device_id FROM devices ORDER BY mac').all()).toEqual([
+        { mac: '000000000001', device_id: null },
+        { mac: 'A8032AB12345', device_id: 'shellyplus1pm-a8032ab12345' },
+        { mac: 'E868E7A1B2C3', device_id: 'shelly1-A1B2C3' },
+      ]);
+      db.close();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('enforces the device state and gen constraints', () => {
     const db = openDatabase(':memory:');
     const now = new Date().toISOString();

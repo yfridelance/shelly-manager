@@ -7,14 +7,14 @@ import { InventoryPage } from './inventory-page';
 import { InventoryFilters } from './inventory-filters';
 
 const device = (over: Partial<Device>): Device => ({
-  mac: '000000000000', ip: null, gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null,
+  mac: '000000000000', ip: null, gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null,
   authRequired: false, location: null, notes: null, state: 'active',
   firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
   updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });
 
 const DEVICES: Device[] = [
-  device({ mac: 'A8032AB12345', name: 'Boiler', gen: 2, ip: '10.0.0.20', location: 'Keller', notes: 'Sicherung F3' }),
+  device({ mac: 'A8032AB12345', name: 'Boiler', gen: 2, ip: '10.0.0.20', location: 'Keller', notes: 'Sicherung F3', deviceId: 'shellyplus1pm-a8032ab12345' }),
   device({
     mac: 'E868E7A1B2C3', name: 'Licht Garten', gen: 1, ip: '10.0.0.3', firmware: '20230913-112003/v1.14.0-gcb84623',
     updateStable: '20240819-074343/v1.14.1-gcb84623',
@@ -70,6 +70,17 @@ describe('InventoryPage', () => {
     await fixture.whenStable();
     expect(names()).toEqual(['(ohne Namen)', 'Boiler', 'Licht Garten']);
     filters.sortBy('name');
+  });
+
+  it('shows the device id and finds devices by it', async () => {
+    const { fixture, el, names } = await render();
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent?.trim().replace(/[▲▼]/g, '').trim()).slice(0, 2)).toEqual(['Name', 'Geräte-ID']);
+    expect(el.querySelector('tbody tr td:nth-child(2)')?.textContent?.trim()).toBe('shellyplus1pm-a8032ab12345');
+    const filters = TestBed.inject(InventoryFilters);
+    filters.search.set('plus1pm');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Boiler']);
+    filters.reset();
   });
 
   it('filters devices without location', async () => {

@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import type { DeviceState } from '../../core/api.types';
 
-export type SortKey = 'name' | 'model' | 'gen' | 'ip' | 'mac' | 'firmware' | 'location' | 'state' | 'lastSeen';
+export type SortKey = 'name' | 'deviceId' | 'model' | 'gen' | 'ip' | 'mac' | 'firmware' | 'location' | 'state' | 'lastSeen';
 
 /** Filter and sort state, kept across navigation (list -> detail -> back). */
 @Injectable({ providedIn: 'root' })

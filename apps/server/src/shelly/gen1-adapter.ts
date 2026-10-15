@@ -33,7 +33,12 @@ export class Gen1Adapter implements ShellyAdapter {
     const info = await probeShelly(this.host, this.timeoutMs);
     if (info.authRequired && !this.authHeader) return info;
     const settings = await this.get('/settings');
-    return { ...info, name: isRecord(settings) ? stringOrNull(settings['name']) : null };
+    const device = isRecord(settings) ? settings['device'] : undefined;
+    return {
+      ...info,
+      name: isRecord(settings) ? stringOrNull(settings['name']) : null,
+      deviceId: isRecord(device) ? stringOrNull(device['hostname']) : null,
+    };
   }
 
   getConfig(): Promise<unknown> {

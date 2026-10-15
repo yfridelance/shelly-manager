@@ -130,7 +130,7 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
-Stand nach Migration 006 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+Stand nach Migration 007 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
 
 ```sql
 devices (
@@ -142,6 +142,7 @@ devices (
   firmware TEXT,                 -- Gen1: fw, Gen2+: fw_id
   name TEXT,                     -- lokaler Anzeigename (PATCH); folgt device_name, solange nicht lokal geändert
   device_name TEXT,              -- Name, den das Gerät meldet
+  device_id TEXT,                -- Shelly-ID: Gen2+ `id` aus /shelly, Gen1 Hostname aus /settings (bei geschützten Gen1 erst mit Passwort); bleibt erhalten, wenn ein Scan sie nicht lesen kann
   auth_required INTEGER NOT NULL DEFAULT 0,
   location TEXT,
   notes TEXT,
@@ -241,7 +242,7 @@ Zusätzlich umgesetzt (beibehalten):
 
 Ansichten:
 1. **Scan:** IP-Bereich, optionale Zugangsdaten, Start/Abbruch, Fortschritt, Liste der Treffer
-2. **Inventar:** Tabelle (Name, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
+2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
 3. **Gerätedetail:** Infos, Name/Standort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
 5. **Templates:** Liste, Editor (nur angehakte Einstellungen gehören zum Template, Eingabe hakt automatisch an), Anwenden mit Geräteauswahl, Vorschau pro Gerät, Passwortfeldern, «bei Bedarf neu starten», Fortschritt und Ergebnis pro Gerät

@@ -315,12 +315,12 @@ export class DeviceService {
   private snapshotUnlocked(mac: string, credentials: Credentials | undefined, ctx: ActionContext): Promise<number> {
     return this.logged(mac, 'snapshot', ctx, async (device) => {
       const { info, adapter } = await this.connect(device, credentials);
-      const name = (await adapter.getInfo()).name;
+      const { name, deviceId } = await adapter.getInfo();
       const config = await adapter.getConfig();
       const status = await adapter.getStatus();
       const now = this.options.now();
       return this.db.transaction(() => {
-        upsertSeenDevice(this.db, { ...info, name }, device.ip ?? '', now);
+        upsertSeenDevice(this.db, { ...info, name, deviceId }, device.ip ?? '', now);
         const updates = updatesFromStatus(info.gen, status);
         if (updates) recordFirmwareUpdates(this.db, info.mac, updates, now);
         return insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, config, status });

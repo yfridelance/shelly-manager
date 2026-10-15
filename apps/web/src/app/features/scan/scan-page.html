@@ -70,6 +70,7 @@
         <tr>
           <th>IP</th>
           <th>Name</th>
+          <th>Geräte-ID</th>
           <th>Modell</th>
           <th>Gen</th>
           <th>MAC</th>
@@ -83,6 +84,7 @@
           <tr>
             <td class="mono">{{ d.ip }}</td>
             <td>{{ d.name ?? '–' }}</td>
+            <td class="mono">{{ d.deviceId ?? '–' }}</td>
             <td>{{ d.model ?? '–' }}</td>
             <td>{{ d.gen }}</td>
             <td class="mono">{{ formatMac(d.mac) }}</td>

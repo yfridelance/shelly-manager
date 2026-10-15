@@ -16,6 +16,14 @@
     <section class="card">
       <h2>Gerät</h2>
       <dl class="facts">
+        <dt>Geräte-ID</dt>
+        <dd class="mono">
+          @if (d.deviceId) {
+            {{ d.deviceId }}
+          } @else {
+            <span class="muted" title="Gen1 meldet die ID nur in /settings; bei geschützten Geräten erst nach «Config neu einlesen» mit Passwort.">noch unbekannt</span>
+          }
+        </dd>
         <dt>MAC</dt>
         <dd class="mono">{{ formatMac(d.mac) }}</dd>
         <dt>IP</dt>

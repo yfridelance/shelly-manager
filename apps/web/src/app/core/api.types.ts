@@ -25,6 +25,7 @@ export interface ScanDeviceResult {
   gen: number;
   model: string | null;
   name: string | null;
+  deviceId: string | null;
   authRequired: boolean;
   created: boolean;
   snapshot: 'ok' | 'auth_required' | 'error';
@@ -53,6 +54,8 @@ export interface Device {
   /** Local display name, falls back to the device's own name. */
   name: string | null;
   deviceName: string | null;
+  /** Shelly device id: Gen2+ `id` (e.g. "shellyplus1pm-a8032ab12345"), Gen1 hostname. */
+  deviceId: string | null;
   authRequired: boolean;
   location: string | null;
   notes: string | null;

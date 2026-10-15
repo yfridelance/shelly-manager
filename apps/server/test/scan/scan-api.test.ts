@@ -84,7 +84,12 @@ describe('scan API against the mock fleet', () => {
     expect(byIp['10.0.0.5']).toMatchObject({ gen: 3, name: null, snapshot: 'ok' });
     expect(byIp['10.0.0.6']).toMatchObject({ gen: 4, authRequired: true, snapshot: 'auth_required' });
 
-    expect(getDevice(db, 'E868E7D4E5F6')).toMatchObject({ ip: '10.0.0.2', gen: 1, model: 'SHSW-25', auth_required: 1, state: 'active' });
+    expect(getDevice(db, 'E868E7D4E5F6')).toMatchObject({ ip: '10.0.0.2', gen: 1, model: 'SHSW-25', auth_required: 1, state: 'active', device_id: null });
+    // Device ids: Gen2+ from /shelly, Gen1 hostname from /settings (only readable when open).
+    expect(getDevice(db, 'E868E7A1B2C3')?.device_id).toBe('shelly1-A1B2C3');
+    expect(getDevice(db, 'A8032AB12345')?.device_id).toBe('plus1pm-a8032ab12345');
+    expect(getDevice(db, '7C2C67B2B2B2')?.device_id).toBe('s1pmg4-7c2c67b2b2b2');
+    expect(byIp['10.0.0.6']).toMatchObject({ deviceId: 's1pmg4-7c2c67b2b2b2' });
     // Snapshots only for devices we could read: raw answers stored unchanged.
     const snaps = db.prepare('SELECT mac, info_json, config_json, status_json FROM config_snapshots ORDER BY mac').all() as {
       mac: string; info_json: string; config_json: string; status_json: string;

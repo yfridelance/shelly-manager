@@ -25,6 +25,7 @@ export class InventoryPage {
 
   protected readonly columns: { key: SortKey; label: string }[] = [
     { key: 'name', label: 'Name' },
+    { key: 'deviceId', label: 'Geräte-ID' },
     { key: 'model', label: 'Modell' },
     { key: 'gen', label: 'Gen' },
     { key: 'ip', label: 'IP' },
@@ -108,7 +109,7 @@ export class InventoryPage {
 }
 
 function haystack(d: Device): string {
-  return [d.name, d.deviceName, d.mac, formatMac(d.mac), d.ip, d.model, d.app, d.location, d.notes, d.firmware]
+  return [d.name, d.deviceName, d.deviceId, d.mac, formatMac(d.mac), d.ip, d.model, d.app, d.location, d.notes, d.firmware]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();

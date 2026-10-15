@@ -18,6 +18,8 @@ export interface DeviceInfo {
   /** Gen1: `fw`, Gen2+: `fw_id` (both "<build date>/<version>-<hash>"). */
   firmware: string | null;
   name: string | null;
+  /** Gen2+: `id` from /shelly, Gen1: hostname from /settings (null until readable). */
+  deviceId: string | null;
   authRequired: boolean;
   raw: unknown;
 }

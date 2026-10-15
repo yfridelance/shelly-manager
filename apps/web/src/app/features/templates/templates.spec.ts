@@ -15,7 +15,7 @@ const TEMPLATE: Template = {
 };
 
 const device = (over: Partial<Device>): Device => ({
-  mac: '000000000000', ip: '10.0.0.1', gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null,
+  mac: '000000000000', ip: '10.0.0.1', gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null,
   authRequired: false, location: null, notes: null, state: 'active', firstSeen: '2026-10-14T10:00:00.000Z',
   lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null, updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });

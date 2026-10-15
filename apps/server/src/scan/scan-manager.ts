@@ -139,6 +139,7 @@ export class ScanManager {
       gen: info.gen,
       model: info.model,
       name: info.name,
+      deviceId: info.deviceId,
       authRequired: info.authRequired,
       created: false,
       snapshot: 'auth_required',
@@ -151,7 +152,9 @@ export class ScanManager {
     if (!info.authRequired || credentials) {
       try {
         const adapter = createAdapter(host, info.gen, { credentials, timeoutMs: this.options.adapterTimeoutMs });
-        result.name = (await adapter.getInfo()).name;
+        const full = await adapter.getInfo();
+        result.name = full.name;
+        result.deviceId = full.deviceId;
         snapshot = { config: await adapter.getConfig(), status: await adapter.getStatus() };
         result.snapshot = 'ok';
       } catch (err) {
@@ -165,7 +168,7 @@ export class ScanManager {
     try {
       const now = this.options.now();
       this.db.transaction(() => {
-        result.created = upsertSeenDevice(this.db, { ...info, name: result.name }, ip, now).created;
+        result.created = upsertSeenDevice(this.db, { ...info, name: result.name, deviceId: result.deviceId }, ip, now).created;
         if (snapshot) {
           insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, ...snapshot });
           const updates = updatesFromStatus(info.gen, snapshot.status);

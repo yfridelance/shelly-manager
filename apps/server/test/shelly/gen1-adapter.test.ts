@@ -18,7 +18,7 @@ describe('Gen1Adapter', () => {
   it('reads info with name, raw config and status from an open device', async () => {
     dev = await startMockDevice(open);
     const adapter = new Gen1Adapter(dev.host);
-    expect(await adapter.getInfo()).toMatchObject({ mac: 'E868E7A1B2C3', gen: 1, model: 'SHSW-1', name: 'Licht Keller', authRequired: false });
+    expect(await adapter.getInfo()).toMatchObject({ mac: 'E868E7A1B2C3', gen: 1, model: 'SHSW-1', name: 'Licht Keller', deviceId: 'shelly1-A1B2C3', authRequired: false });
     expect(await adapter.getConfig()).toMatchObject({ device: { type: 'SHSW-1', mac: 'E868E7A1B2C3' }, name: 'Licht Keller' });
     expect(await adapter.getStatus()).toMatchObject({ mac: 'E868E7A1B2C3', relays: [{ ison: false }] });
   });
@@ -27,7 +27,7 @@ describe('Gen1Adapter', () => {
     dev = await startMockDevice(protectedSpec);
     const adapter = new Gen1Adapter(dev.host);
     // getInfo still works without credentials, just without the name.
-    expect(await adapter.getInfo()).toMatchObject({ authRequired: true, name: null });
+    expect(await adapter.getInfo()).toMatchObject({ authRequired: true, name: null, deviceId: null });
     await expect(adapter.getConfig()).rejects.toMatchObject({ name: 'ShellyAuthError', reason: 'required' });
   });
 

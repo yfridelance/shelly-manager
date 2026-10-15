@@ -5,12 +5,12 @@ import { DEFAULT_FLEET, startMockDevice, startMockFleet, type MockFleet } from '
 describe('parseShellyInfo', () => {
   it('detects Gen1 by the missing gen field', () => {
     const info = parseShellyInfo({ type: 'SHSW-1', mac: 'E8:68:e7:A1:B2:C3', auth: true, fw: '20230913-112003/v1.14.0-gcb84623', longid: 1 });
-    expect(info).toMatchObject({ gen: 1, mac: 'E868E7A1B2C3', model: 'SHSW-1', app: null, firmware: '20230913-112003/v1.14.0-gcb84623', authRequired: true });
+    expect(info).toMatchObject({ gen: 1, mac: 'E868E7A1B2C3', model: 'SHSW-1', app: null, firmware: '20230913-112003/v1.14.0-gcb84623', deviceId: null, authRequired: true });
   });
 
   it.each([2, 3, 4])('detects RPC gen %i', (gen) => {
     const raw = { id: 'shellyplus1pm-a8032ab12345', mac: 'A8032AB12345', model: 'SNSW-001P16EU', gen, fw_id: '20241011-114455/1.4.4-g6d2a586', ver: '1.4.4', app: 'Plus1PM', auth_en: false, auth_domain: null, name: 'Boiler' };
-    expect(parseShellyInfo(raw)).toMatchObject({ gen, mac: 'A8032AB12345', model: 'SNSW-001P16EU', app: 'Plus1PM', firmware: '20241011-114455/1.4.4-g6d2a586', name: 'Boiler', authRequired: false, raw });
+    expect(parseShellyInfo(raw)).toMatchObject({ gen, mac: 'A8032AB12345', model: 'SNSW-001P16EU', app: 'Plus1PM', firmware: '20241011-114455/1.4.4-g6d2a586', name: 'Boiler', deviceId: 'shellyplus1pm-a8032ab12345', authRequired: false, raw });
   });
 
   it('keeps the raw answer unchanged', () => {

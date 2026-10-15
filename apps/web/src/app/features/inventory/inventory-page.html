@@ -21,7 +21,7 @@
 <div class="filters" role="search">
   <label class="field search">
     <span>Suche</span>
-    <input type="search" placeholder="Name, MAC, IP, Modell, Notizen …" [value]="f.search()" (input)="f.search.set(value($event))" />
+    <input type="search" placeholder="Name, Geräte-ID, MAC, IP, Modell, Notizen …" [value]="f.search()" (input)="f.search.set(value($event))" />
   </label>
   <label class="field">
     <span>Generation</span>
@@ -92,6 +92,7 @@
                 <span class="lock" title="Passwortgeschützt" aria-label="Passwortgeschützt">🔒</span>
               }
             </td>
+            <td class="mono">{{ d.deviceId ?? '–' }}</td>
             <td>{{ d.model ?? '–' }}</td>
             <td>{{ d.gen }}</td>
             <td class="mono">{{ d.ip ?? '–' }}</td>
@@ -108,7 +109,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="9" class="muted">Keine Geräte passen zum Filter.</td>
+            <td colspan="10" class="muted">Keine Geräte passen zum Filter.</td>
           </tr>
         }
       </tbody>

@@ -30,6 +30,7 @@ export function parseShellyInfo(raw: unknown): DeviceInfo | undefined {
       firmware: stringOrNull(raw['fw_id']) ?? stringOrNull(raw['ver']),
       // Present on newer firmware only; RpcAdapter.getInfo() falls back to Sys.GetConfig.
       name: stringOrNull(raw['name']),
+      deviceId: stringOrNull(raw['id']),
       authRequired: raw['auth_en'] === true,
       raw,
     };
@@ -44,6 +45,8 @@ export function parseShellyInfo(raw: unknown): DeviceInfo | undefined {
     firmware: stringOrNull(raw['fw']),
     // Gen1 exposes the name only in /settings, see Gen1Adapter.getInfo().
     name: null,
+    // Gen1 /shelly has no id; the hostname comes from /settings, see Gen1Adapter.getInfo().
+    deviceId: null,
     authRequired: raw['auth'] === true,
     raw,
   };

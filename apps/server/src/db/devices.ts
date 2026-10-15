@@ -12,6 +12,7 @@ export interface DeviceRow {
   firmware: string | null;
   name: string | null;
   device_name: string | null;
+  device_id: string | null;
   auth_required: number;
   location: string | null;
   notes: string | null;
@@ -37,8 +38,8 @@ export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: stri
     const exists = db.prepare('SELECT 1 FROM devices WHERE mac = ?').pluck().get(info.mac) !== undefined;
     db.prepare('UPDATE devices SET ip = NULL WHERE ip = ? AND mac <> ?').run(ip, info.mac);
     db.prepare(
-      `INSERT INTO devices (mac, ip, gen, model, app, firmware, name, device_name, auth_required, state, first_seen, last_seen)
-       VALUES (@mac, @ip, @gen, @model, @app, @firmware, @name, @name, @authRequired, 'active', @now, @now)
+      `INSERT INTO devices (mac, ip, gen, model, app, firmware, name, device_name, device_id, auth_required, state, first_seen, last_seen)
+       VALUES (@mac, @ip, @gen, @model, @app, @firmware, @name, @name, @deviceId, @authRequired, 'active', @now, @now)
        ON CONFLICT (mac) DO UPDATE SET
          ip = excluded.ip,
          gen = excluded.gen,
@@ -50,6 +51,8 @@ export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: stri
                      ELSE devices.name END,
          -- A protected Gen1 device without credentials reports no name; keep the known one.
          device_name = COALESCE(excluded.device_name, devices.device_name),
+         -- Gen1 reports its id only via /settings; keep the known one when that is not readable.
+         device_id = COALESCE(excluded.device_id, devices.device_id),
          auth_required = excluded.auth_required,
          state = 'active',
          last_seen = excluded.last_seen`,
@@ -61,6 +64,7 @@ export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: stri
       app: info.app,
       firmware: info.firmware,
       name: info.name,
+      deviceId: info.deviceId,
       authRequired: info.authRequired ? 1 : 0,
       now,
     });

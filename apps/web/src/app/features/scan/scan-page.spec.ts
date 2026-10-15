@@ -50,8 +50,8 @@ describe('ScanPage', () => {
     const details: ScanDetails = {
       ...summary, status: 'done', scanned: 6, found: 2, errors: 1, finishedAt: '2026-10-14T10:00:05.000Z',
       devices: [
-        { ip: '10.0.0.3', mac: 'A8032AB12345', gen: 2, model: 'SNSW-001P16EU', name: 'Boiler', authRequired: false, created: true, snapshot: 'ok', errorCode: null, error: null },
-        { ip: '10.0.0.2', mac: 'E868E7D4E5F6', gen: 1, model: 'SHSW-25', name: null, authRequired: true, created: false, snapshot: 'error', errorCode: 'auth_invalid', error: 'rejected' },
+        { ip: '10.0.0.3', mac: 'A8032AB12345', gen: 2, model: 'SNSW-001P16EU', name: 'Boiler', deviceId: 'shellyplus1pm-a8032ab12345', authRequired: false, created: true, snapshot: 'ok', errorCode: null, error: null },
+        { ip: '10.0.0.2', mac: 'E868E7D4E5F6', gen: 1, model: 'SHSW-25', name: null, deviceId: null, authRequired: true, created: false, snapshot: 'error', errorCode: 'auth_invalid', error: 'rejected' },
       ],
     };
     http.expectOne('/api/scans/scan-1').flush(details);
@@ -62,6 +62,7 @@ describe('ScanPage', () => {
     expect(rows[0]).toContain('10.0.0.2');
     expect(rows[0]).toContain('Zugangsdaten falsch');
     expect(rows[1]).toContain('Boiler');
+    expect(rows[1]).toContain('shellyplus1pm-a8032ab12345');
     expect(rows[1]).toContain('A8:03:2A:B1:23:45');
     expect(rows[1]).toContain('neu');
     expect(el.textContent).toContain('6 von 6 Adressen geprüft');

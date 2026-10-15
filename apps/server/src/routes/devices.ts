@@ -21,6 +21,8 @@ export const DeviceSchema = Type.Object({
   /** Local display name (falls back to the device's own name). */
   name: Nullable(Type.String()),
   deviceName: Nullable(Type.String()),
+  /** Shelly device id (Gen2+ `id`, Gen1 hostname). */
+  deviceId: Nullable(Type.String()),
   authRequired: Type.Boolean(),
   location: Nullable(Type.String()),
   notes: Nullable(Type.String()),
@@ -91,6 +93,7 @@ export function toDeviceDto(row: DeviceListRow) {
     firmware: row.firmware,
     name: row.name ?? row.device_name,
     deviceName: row.device_name,
+    deviceId: row.device_id,
     authRequired: row.auth_required === 1,
     location: row.location,
     notes: row.notes,
