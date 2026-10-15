@@ -250,4 +250,35 @@ describe('DevicePage', () => {
       expect(button(el, 'Beta installieren')).toBeDefined();
     });
   });
+
+  it('compares two snapshots, older one as "before"', async () => {
+    const latest = { id: 2, takenAt: '2026-10-15T08:00:00.000Z', info: {}, config: { sys: { device: { name: 'Neu' } }, ws: { enable: true } }, status: {} };
+    const older = { id: 1, takenAt: '2026-10-14T08:00:00.000Z', info: {}, config: { sys: { device: { name: 'Alt' } }, mqtt: { enable: false } }, status: {} };
+    const details: DeviceDetails = {
+      ...DETAILS,
+      latestSnapshot: latest,
+      snapshots: [
+        { id: 2, takenAt: latest.takenAt, hasConfig: true },
+        { id: 1, takenAt: older.takenAt, hasConfig: true },
+      ],
+    };
+    const { fixture, el } = await render(details);
+    const select = el.querySelector<HTMLSelectElement>('select[name="compare"]');
+    if (!select) throw new Error('no compare select');
+    // The shown (latest) snapshot is not offered as comparison partner.
+    expect([...select.options].map((o) => o.value)).toEqual(['', '1']);
+    select.value = '1';
+    select.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r));
+    http.expectOne('/api/devices/A8032AB67890/snapshots/1').flush(older);
+    await fixture.whenStable();
+
+    expect(el.textContent).toContain('3 Unterschiede: 1 geändert, 1 neu, 1 entfernt');
+    const rows = [...el.querySelectorAll('table.diff tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent?.trim()));
+    expect(rows).toEqual([
+      ['mqtt', '{"enable":false}', '', 'entfernt'],
+      ['sys.device.name', '"Alt"', '"Neu"', 'geändert'],
+      ['ws', '', '{"enable":true}', 'neu'],
+    ]);
+  });
 });

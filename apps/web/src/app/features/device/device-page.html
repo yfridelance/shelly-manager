@@ -135,9 +135,9 @@
             @if (!d.updateStable && !d.updateBeta) {
               · aktuell
             }
-            <span class="muted">(Stand {{ d.updateCheckedAt | date: 'dd.MM.yyyy HH:mm' }})</span>
+            <span class="muted">&nbsp;(Stand {{ d.updateCheckedAt | date: 'dd.MM.yyyy HH:mm' }})</span>
           } @else {
-            <span class="muted">· noch nicht geprüft</span>
+            <span class="muted">&nbsp;· noch nicht geprüft</span>
           }
         </p>
         <div class="actions">
@@ -225,6 +225,19 @@
               }
             </select>
           </label>
+          @if (snaps.length > 1) {
+            <label class="field inline">
+              <span>Vergleichen mit</span>
+              <select name="compare" (change)="selectCompare(value($event))">
+                <option value="" [selected]="compareId() === null">–</option>
+                @for (s of snaps; track s.id) {
+                  @if (s.id !== shownId()) {
+                    <option [value]="s.id" [selected]="compareId() === s.id">{{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}</option>
+                  }
+                }
+              </select>
+            </label>
+          }
           <span class="muted">{{ snaps.length }} {{ snaps.length === 1 ? 'Snapshot' : 'Snapshots' }}</span>
         }
       }
@@ -242,7 +255,46 @@
         <button type="button" class="link" (click)="copyShown()">JSON kopieren</button>
       </div>
       <div class="json" role="tabpanel">
-        @if (shown() === null) {
+        @if (compareId() !== null) {
+          @if (comparison(); as c) {
+            <p class="diff-summary">
+              @if (c.entries.length === 0) {
+                Keine Unterschiede zwischen {{ c.before.takenAt | date: 'dd.MM.yyyy HH:mm' }} und {{ c.after.takenAt | date: 'dd.MM.yyyy HH:mm' }}.
+              } @else {
+                {{ c.entries.length }} {{ c.entries.length === 1 ? 'Unterschied' : 'Unterschiede' }}:
+                {{ countKind(c.entries, 'changed') }} geändert, {{ countKind(c.entries, 'added') }} neu,
+                {{ countKind(c.entries, 'removed') }} entfernt
+                @if (tab() === 'status') {
+                  <span class="muted">(Status enthält auch Laufzeitwerte wie Uptime oder Leistung)</span>
+                }
+              }
+            </p>
+            @if (c.entries.length > 0) {
+              <table class="data-table diff">
+                <thead>
+                  <tr>
+                    <th>Pfad</th>
+                    <th>Vorher ({{ c.before.takenAt | date: 'dd.MM.yyyy HH:mm' }})</th>
+                    <th>Nachher ({{ c.after.takenAt | date: 'dd.MM.yyyy HH:mm' }})</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (e of c.entries; track e.path) {
+                    <tr [class]="e.kind">
+                      <td class="mono">{{ e.path || '(gesamt)' }}</td>
+                      <td class="mono">{{ formatDiffValue(e.before) }}</td>
+                      <td class="mono">{{ formatDiffValue(e.after) }}</td>
+                      <td>{{ diffKindText[e.kind] }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          } @else {
+            <p class="muted">Lädt Vergleich …</p>
+          }
+        } @else if (shown() === null) {
           <p class="muted">Für diesen Snapshot wurde keine {{ tab() === 'config' ? 'Config' : 'Status' }} gelesen.</p>
         } @else {
           <app-json-tree [value]="shown()" [openDepth]="openDepth()" />

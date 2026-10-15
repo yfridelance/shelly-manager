@@ -7,6 +7,7 @@ import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult }
 import { ACTION_TEXT, DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { JsonTree } from '../../shared/json-tree';
+import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
 import { ResetDialog } from './reset-dialog';
 
 type SnapshotTab = 'config' | 'status' | 'info';
@@ -49,6 +50,32 @@ export class DevicePage {
     if (id === null || id === latest?.id) return latest;
     return this.selected.hasValue() ? this.selected.value() : null;
   });
+
+  // Comparison with a second snapshot: null = no comparison.
+  protected readonly compareId = signal<number | null>(null);
+  private readonly compared = httpResource<Snapshot>(() => {
+    const id = this.compareId();
+    const latest = this.details.hasValue() ? this.details.value().latestSnapshot : null;
+    return id === null || id === latest?.id ? undefined : `/api/devices/${encodeURIComponent(this.mac())}/snapshots/${id}`;
+  });
+  protected readonly compareSnapshot = computed<Snapshot | null>(() => {
+    const latest = this.details.hasValue() ? this.details.value().latestSnapshot : null;
+    const id = this.compareId();
+    if (id === null) return null;
+    if (id === latest?.id) return latest;
+    return this.compared.hasValue() ? this.compared.value() : null;
+  });
+  /** Older snapshot as "before", newer as "after", regardless of which one was picked first. */
+  protected readonly comparison = computed<{ before: Snapshot; after: Snapshot; entries: DiffEntry[] } | null>(() => {
+    const a = this.snapshot();
+    const b = this.compareSnapshot();
+    if (!a || !b) return null;
+    const [before, after] = a.takenAt <= b.takenAt ? [a, b] : [b, a];
+    return { before, after, entries: diffJson(before[this.tab()], after[this.tab()]) };
+  });
+  protected readonly formatDiffValue = formatDiffValue;
+  protected readonly diffKindText: Record<DiffEntry['kind'], string> = { added: 'neu', removed: 'entfernt', changed: 'geändert' };
+
   protected readonly tab = signal<SnapshotTab>('config');
   protected readonly openDepth = signal(1);
   protected readonly shown = computed(() => {
@@ -106,6 +133,7 @@ export class DevicePage {
     try {
       await this.api.snapshot(device.mac, credentials);
       this.selectedId.set(null);
+      this.compareId.set(null);
       this.details.reload();
       this.message.set({ kind: 'ok', text: 'Config wurde neu eingelesen.' });
     } catch (err) {
@@ -208,6 +236,21 @@ export class DevicePage {
 
   protected selectSnapshot(value: string): void {
     this.selectedId.set(value ? Number(value) : null);
+    // Comparing a snapshot with itself makes no sense.
+    if (this.compareId() !== null && this.compareId() === this.shownId()) this.compareId.set(null);
+  }
+
+  protected selectCompare(value: string): void {
+    this.compareId.set(value ? Number(value) : null);
+  }
+
+  /** Id of the snapshot currently shown (the latest when none is selected). */
+  protected shownId(): number | null {
+    return this.selectedId() ?? (this.details.hasValue() ? (this.details.value().latestSnapshot?.id ?? null) : null);
+  }
+
+  protected countKind(entries: DiffEntry[], kind: DiffEntry['kind']): number {
+    return entries.filter((e) => e.kind === kind).length;
   }
 
   protected value(event: Event): string {

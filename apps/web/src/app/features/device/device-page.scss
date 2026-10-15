@@ -135,3 +135,27 @@
     color: var(--accent);
   }
 }
+
+.diff-summary {
+  margin: 0 0 0.75rem;
+}
+
+.diff {
+  td {
+    white-space: normal;
+    word-break: break-all;
+    vertical-align: top;
+  }
+
+  tr.added td:last-child {
+    color: var(--ok);
+  }
+
+  tr.removed td:last-child {
+    color: var(--error);
+  }
+
+  tr.changed td:last-child {
+    color: var(--warn);
+  }
+}
