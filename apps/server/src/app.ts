@@ -8,6 +8,7 @@ import { healthRoutes } from './routes/health.js';
 import { actionRoutes } from './routes/actions.js';
 import { deviceRoutes } from './routes/devices.js';
 import { exportRoutes } from './routes/export.js';
+import { templateRoutes } from './routes/templates.js';
 import { scanRoutes } from './routes/scans.js';
 import { DeviceService, type DeviceServiceOptions } from './devices/device-service.js';
 import { ScanManager, type ScanOptions } from './scan/scan-manager.js';
@@ -57,6 +58,7 @@ export async function buildApp({ config, db, scan, devices: deviceOptions, logSt
       await api.register(scanRoutes, { scans });
       await api.register(deviceRoutes, { db, devices });
       await api.register(actionRoutes, { db });
+      await api.register(templateRoutes, { db, now: scan?.now ?? (() => new Date().toISOString()) });
       await api.register(exportRoutes, { db, ...(scan?.now ? { now: scan.now } : {}) });
     },
     { prefix: '/api' },

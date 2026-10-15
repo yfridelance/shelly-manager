@@ -24,6 +24,11 @@ export interface DeviceInfo {
 
 export type FirmwareChannel = 'stable' | 'beta';
 
+/** One configuration call: Gen1 GET <path>?<params>, Gen2+ JSON-RPC <method>(params). */
+export type ConfigStep =
+  | { kind: 'gen1'; path: string; params: Record<string, string> }
+  | { kind: 'rpc'; method: string; params: Record<string, unknown> };
+
 /** Newer firmware the device offers per channel; null = none. Gen1: firmware id, Gen2+: version ("1.5.0"). */
 export interface FirmwareUpdates {
   stable: string | null;
@@ -42,6 +47,8 @@ export interface ShellyAdapter {
   checkForUpdate(): Promise<FirmwareUpdates>;
   /** Starts the OTA update; the device downloads, flashes and reboots on its own. */
   startUpdate(channel: FirmwareChannel): Promise<void>;
+  /** Sends one configuration call of this adapter's protocol. */
+  applyConfig(step: ConfigStep): Promise<{ restartRequired: boolean }>;
 }
 
 export interface AdapterOptions {

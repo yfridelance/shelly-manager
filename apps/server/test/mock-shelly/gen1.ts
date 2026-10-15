@@ -1,5 +1,36 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { sendJson, sendText, type DeviceHandler, type Gen1Spec, type MockDeviceState } from './types.js';
+import { deepMerge, sendJson, sendText, type DeviceHandler, type Gen1Spec, type MockDeviceState } from './types.js';
+
+type Kind = 'bool' | 'num' | 'str';
+
+/** Writable /settings parameters (official Gen1 docs) -> path in the /settings answer. */
+const SETTINGS_PARAMS: Record<string, { path: string[]; kind: Kind }> = {
+  mqtt_enable: { path: ['mqtt', 'enable'], kind: 'bool' },
+  mqtt_server: { path: ['mqtt', 'server'], kind: 'str' },
+  mqtt_user: { path: ['mqtt', 'user'], kind: 'str' },
+  mqtt_id: { path: ['mqtt', 'id'], kind: 'str' },
+  coiot_enable: { path: ['coiot', 'enabled'], kind: 'bool' },
+  coiot_update_period: { path: ['coiot', 'update_period'], kind: 'num' },
+  coiot_peer: { path: ['coiot', 'peer'], kind: 'str' },
+  sntp_server: { path: ['sntp', 'server'], kind: 'str' },
+  timezone: { path: ['timezone'], kind: 'str' },
+  tzautodetect: { path: ['tzautodetect'], kind: 'bool' },
+  lat: { path: ['lat'], kind: 'num' },
+  lng: { path: ['lng'], kind: 'num' },
+  led_status_disable: { path: ['led_status_disable'], kind: 'bool' },
+  ap_roaming_enabled: { path: ['ap_roaming', 'enabled'], kind: 'bool' },
+  ap_roaming_threshold: { path: ['ap_roaming', 'threshold'], kind: 'num' },
+};
+
+function parseValue(raw: string, kind: Kind): unknown {
+  if (kind === 'bool') return raw === 'true' || raw === '1';
+  if (kind === 'num') return Number(raw);
+  return raw;
+}
+
+function nested(path: string[], value: unknown): Record<string, unknown> {
+  return path.reduceRight<Record<string, unknown>>((acc, key, i) => (i === path.length - 1 ? { [key]: value } : { [key]: acc }), {});
+}
 
 const DEFAULT_FW = '20230913-112003/v1.14.0-gcb84623';
 
@@ -11,6 +42,8 @@ export class Gen1Device implements DeviceHandler {
   private wifiConfigured = true;
   private uptime = 4711;
   private fw: string;
+  /** Values written via /settings, merged over the defaults. */
+  private overrides: Record<string, unknown> = {};
   private updates: { stable?: string | undefined; beta?: string | undefined };
 
   constructor(
@@ -29,7 +62,10 @@ export class Gen1Device implements DeviceHandler {
 
   handle(req: IncomingMessage, res: ServerResponse): void {
     const url = new URL(req.url ?? '/', 'http://mock');
-    this.state.requests.push(`${req.method} ${url.pathname}${url.search}`);
+    // Log parameter names only: values may be secrets (mqtt_pass).
+    const keys = [...url.searchParams.keys()];
+    const shownQuery = url.pathname === '/settings' && keys.some((k) => k !== 'reset' && k !== 'name') ? `?${keys.join('&')}` : url.search;
+    this.state.requests.push(`${req.method} ${url.pathname}${shownQuery}`);
 
     if (url.pathname === '/shelly') {
       // /shelly never requires auth.
@@ -56,17 +92,36 @@ export class Gen1Device implements DeviceHandler {
     }
 
     switch (url.pathname) {
-      case '/settings':
+      case '/settings': {
         if (url.searchParams.has('reset')) {
           this.factoryReset();
           if (this.spec.dropConnectionOnReset) {
             res.destroy();
             return;
           }
-        } else if (url.searchParams.has('name')) {
-          this.name = url.searchParams.get('name') || null;
+          sendJson(res, 200, this.settings());
+          return;
+        }
+        for (const [key, raw] of url.searchParams) {
+          if (key === 'name') this.name = raw || null;
+          else if (key === 'mqtt_pass') this.state.secretsReceived['mqtt_pass'] = raw;
+          else if (SETTINGS_PARAMS[key]) {
+            const { path, kind } = SETTINGS_PARAMS[key];
+            this.overrides = deepMerge(this.overrides, nested(path, parseValue(raw, kind)));
+          } else {
+            // Strict on purpose: unknown parameters reveal planner bugs in tests.
+            sendText(res, 400, `Unknown parameter ${key}`);
+            return;
+          }
         }
         sendJson(res, 200, this.settings());
+        return;
+      }
+      case '/settings/cloud':
+        if (url.searchParams.has('enabled')) {
+          this.overrides = deepMerge(this.overrides, { cloud: { enabled: parseValue(url.searchParams.get('enabled') ?? '', 'bool') } });
+        }
+        sendJson(res, 200, (this.settings() as { cloud: unknown }).cloud);
         return;
       case '/status':
         sendJson(res, 200, this.status());
@@ -113,6 +168,7 @@ export class Gen1Device implements DeviceHandler {
     this.name = null;
     this.auth = undefined;
     this.wifiConfigured = false;
+    this.overrides = {};
     this.resetPending = true;
   }
 
@@ -127,6 +183,10 @@ export class Gen1Device implements DeviceHandler {
   }
 
   private settings(): Record<string, unknown> {
+    return deepMerge(this.baseSettings(), this.overrides);
+  }
+
+  private baseSettings(): Record<string, unknown> {
     const hostname = `shelly1-${this.suffix}`;
     return {
       device: { type: this.spec.type, mac: this.spec.mac, hostname, num_outputs: 1 },

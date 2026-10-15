@@ -6,6 +6,7 @@ import { parseRpcUpdates } from './firmware.js';
 import {
   DEFAULT_ADAPTER_TIMEOUT_MS,
   type AdapterOptions,
+  type ConfigStep,
   type DeviceInfo,
   type FirmwareChannel,
   type FirmwareUpdates,
@@ -65,6 +66,73 @@ export class RpcAdapter implements ShellyAdapter {
     await this.call('Shelly.Update', { stage: channel });
   }
 
+  async applyConfig(step: ConfigStep): Promise<{ restartRequired: boolean }> {
+    if (step.kind !== 'rpc') throw new Error(`RPC device cannot run ${step.kind} step`);
+    const result = await this.call(step.method, step.params);
+    return { restartRequired: isRecord(result) && result['restart_required'] === true };
+  }
+
+  /**
+   * Creates or updates a script by name (Script.List/Create/Stop/PutCode/SetConfig/Start).
+   * Code is uploaded in 1024 byte chunks, as the official tooling does; the device's code is
+   * compared first so unchanged scripts are not touched.
+   */
+  async deployScript(name: string, code: string, enable: boolean | undefined, start: boolean): Promise<ScriptDeployResult> {
+    const list = await this.call('Script.List');
+    const scripts = isRecord(list) && Array.isArray(list['scripts']) ? list['scripts'] : [];
+    const existing = scripts.find((s): s is Record<string, unknown> => isRecord(s) && s['name'] === name);
+
+    let id: number;
+    let created = false;
+    let running = false;
+    let currentEnable: unknown;
+    if (existing && typeof existing['id'] === 'number') {
+      id = existing['id'];
+      running = existing['running'] === true;
+      currentEnable = existing['enable'];
+    } else {
+      const res = await this.call('Script.Create', { name });
+      if (!isRecord(res) || typeof res['id'] !== 'number') throw new ShellyHttpError(this.host, 200, 'Script.Create: no id');
+      id = res['id'];
+      created = true;
+      currentEnable = false;
+    }
+
+    const codeChanged = created || (await this.readScriptCode(id)) !== code;
+    if (codeChanged) {
+      // PutCode fails on a running script.
+      if (running) {
+        await this.call('Script.Stop', { id });
+        running = false;
+      }
+      const CHUNK = 1024;
+      for (let offset = 0; offset < code.length; offset += CHUNK) {
+        await this.call('Script.PutCode', { id, code: code.slice(offset, offset + CHUNK), append: offset > 0 });
+      }
+    }
+
+    const enableChanged = enable !== undefined && currentEnable !== enable;
+    if (enableChanged) await this.call('Script.SetConfig', { id, config: { enable } });
+
+    let started = false;
+    if (start && (!running || codeChanged)) {
+      await this.call('Script.Start', { id });
+      started = true;
+    }
+    return { id, created, codeChanged, enableChanged, started };
+  }
+
+  private async readScriptCode(id: number): Promise<string> {
+    let code = '';
+    for (let guard = 0; guard < 1000; guard++) {
+      const res = await this.call('Script.GetCode', { id, offset: code.length });
+      if (!isRecord(res) || typeof res['data'] !== 'string') break;
+      code += res['data'];
+      if (!(typeof res['left'] === 'number' && res['left'] > 0) || res['data'] === '') break;
+    }
+    return code;
+  }
+
   /** Sends one JSON-RPC request and returns `result`. Answers a digest challenge (or a stale nonce) once. */
   async call(method: string, params?: Record<string, unknown>): Promise<unknown> {
     const body = JSON.stringify({ id: this.nextId++, src: 'shelly-manager', method, ...(params ? { params } : {}) });
@@ -111,4 +179,12 @@ export class RpcAdapter implements ShellyAdapter {
     const res = await deviceFetch(this.host, { method: 'POST', path: RPC_PATH, headers, body, timeoutMs: this.timeoutMs });
     return { res, authenticated: authorization !== undefined };
   }
+}
+
+export interface ScriptDeployResult {
+  id: number;
+  created: boolean;
+  codeChanged: boolean;
+  enableChanged: boolean;
+  started: boolean;
 }

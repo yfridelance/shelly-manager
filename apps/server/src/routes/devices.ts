@@ -5,6 +5,8 @@ import type { Db } from '../db/database.js';
 import { getDevice, listDevices, updateLocalFields, type DeviceListRow } from '../db/devices.js';
 import { getLatestSnapshot, getSnapshot, listSnapshotMeta, type SnapshotRow } from '../db/snapshots.js';
 import { DeviceActionError, type DeviceService } from '../devices/device-service.js';
+import { getTemplate } from '../db/templates.js';
+import { PlanItemSchema } from './templates.js';
 import { normalizeMac } from '../shelly/mac.js';
 
 const Nullable = <T extends Parameters<typeof Type.Union>[0][number]>(t: T) => Type.Union([t, Type.Null()]);
@@ -108,6 +110,7 @@ function toSnapshotDto(row: SnapshotRow) {
 }
 
 const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed', 'no_update']);
+// template_failed and device errors map to 502.
 
 /** Maps device action failures to HTTP: 404 unknown, 400 wrong confirmation, 409 refused by a safety check, 502 device error. */
 export function sendDeviceError(reply: FastifyReply, err: unknown): FastifyReply {
@@ -297,6 +300,65 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
       try {
         const result = await devices.updateFirmware(mac, request.body.channel, request.body.credentials, { requestedBy: request.ip });
         return reply.code(202).send(result);
+      } catch (err) {
+        return sendDeviceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    '/devices/:mac/apply-template',
+    {
+      schema: {
+        params: MacParams,
+        body: Type.Object(
+          {
+            templateId: Type.Integer(),
+            credentials: CredentialsSchema,
+            // Entered when applying; never stored or logged.
+            secrets: Type.Optional(
+              Type.Object(
+                {
+                  mqttPassword: Type.Optional(Type.String({ maxLength: 256 })),
+                  apPassword: Type.Optional(Type.String({ minLength: 8, maxLength: 64 })),
+                },
+                { additionalProperties: false },
+              ),
+            ),
+            rebootIfRequired: Type.Optional(Type.Boolean()),
+          },
+          { additionalProperties: false },
+        ),
+        response: {
+          200: Type.Object({
+            snapshotId: Type.Integer(),
+            items: Type.Array(PlanItemSchema),
+            changed: Type.Integer(),
+            restartRequired: Type.Boolean(),
+            rebooted: Type.Boolean(),
+            script: Type.Optional(
+              Type.Object({ created: Type.Boolean(), codeChanged: Type.Boolean(), enableChanged: Type.Boolean(), started: Type.Boolean() }),
+            ),
+          }),
+          400: ErrorBody,
+          404: ErrorBody,
+          409: ErrorBody,
+          502: ErrorBody,
+        },
+      },
+    },
+    async (request, reply) => {
+      const mac = macOf(request.params.mac, reply);
+      if (!mac) return reply;
+      const template = getTemplate(db, request.body.templateId);
+      if (!template) return reply.code(404).send({ error: 'template_not_found', message: 'Template nicht gefunden.' });
+      try {
+        return await devices.applyTemplate(
+          mac,
+          template,
+          { credentials: request.body.credentials, secrets: request.body.secrets, rebootIfRequired: request.body.rebootIfRequired },
+          { requestedBy: request.ip },
+        );
       } catch (err) {
         return sendDeviceError(reply, err);
       }

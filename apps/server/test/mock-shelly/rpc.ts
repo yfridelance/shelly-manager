@@ -1,6 +1,41 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { sendJson, type DeviceHandler, type MockDeviceState, type RpcSpec } from './types.js';
+import { deepMerge, sendJson, type DeviceHandler, type MockDeviceState, type RpcSpec } from './types.js';
+
+/** Component SetConfig methods and the config key they write. */
+const SET_CONFIG: Record<string, string> = {
+  'Sys.SetConfig': 'sys',
+  'MQTT.SetConfig': 'mqtt',
+  'Cloud.SetConfig': 'cloud',
+  'BLE.SetConfig': 'ble',
+  'WiFi.SetConfig': 'wifi',
+};
+
+/** Write-only keys accepted although they never appear in GetConfig. */
+const WRITE_ONLY: Record<string, string[][]> = { mqtt: [['pass']], wifi: [['ap', 'pass']] };
+
+interface MockScript {
+  id: number;
+  name: string;
+  enable: boolean;
+  running: boolean;
+  code: string;
+}
+
+/** Every key of `patch` must already exist in `base` (or be write-only), like a real device validates. */
+function unknownKey(base: unknown, patch: Record<string, unknown>, writeOnly: string[][], path: string[] = []): string | undefined {
+  for (const [key, value] of Object.entries(patch)) {
+    const here = [...path, key];
+    if (writeOnly.some((w) => w.join('.') === here.join('.'))) continue;
+    const baseValue = typeof base === 'object' && base !== null ? (base as Record<string, unknown>)[key] : undefined;
+    if (baseValue === undefined) return here.join('.');
+    if (typeof value === 'object' && value !== null && !Array.isArray(value) && typeof baseValue === 'object' && baseValue !== null) {
+      const nestedKey = unknownKey(baseValue, value as Record<string, unknown>, writeOnly, here);
+      if (nestedKey) return nestedKey;
+    }
+  }
+  return undefined;
+}
 
 const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex');
 
@@ -17,6 +52,9 @@ export class RpcDevice implements DeviceHandler {
   private ver: string;
   private fwIdValue: string;
   private updates: NonNullable<RpcSpec['updates']>;
+  /** Values written via <Component>.SetConfig, merged over the defaults. */
+  private overrides: Record<string, unknown> = {};
+  readonly scripts: MockScript[] = [];
   /** nonce -> highest nc seen (firmware >= 2.0 rejects nc that does not increase). */
   private readonly nonces = new Map<string, number>();
   readonly id: string;
@@ -85,6 +123,30 @@ export class RpcDevice implements DeviceHandler {
     }
 
     const reply = (result: unknown): void => sendJson(res, 200, { id, src: this.id, result });
+
+    const component = SET_CONFIG[method];
+    if (component) {
+      const patch = ((frame.params ?? {}) as { config?: Record<string, unknown> }).config ?? {};
+      const bad = unknownKey(this.config()[component], patch, WRITE_ONLY[component] ?? []);
+      if (bad) {
+        sendJson(res, 400, { id, src: this.id, error: { code: -103, message: `Invalid argument '${component}.${bad}'` } });
+        return;
+      }
+      const clean = structuredClone(patch);
+      if (component === 'mqtt' && typeof clean['pass'] === 'string') {
+        this.state.secretsReceived['mqtt.pass'] = clean['pass'];
+        delete clean['pass'];
+      }
+      const ap = (clean['ap'] ?? undefined) as Record<string, unknown> | undefined;
+      if (component === 'wifi' && ap && typeof ap['pass'] === 'string') {
+        this.state.secretsReceived['wifi.ap.pass'] = ap['pass'];
+        delete ap['pass'];
+      }
+      this.overrides = deepMerge(this.overrides, { [component]: clean });
+      // MQTT changes need a reboot (official docs); the others apply at runtime.
+      return reply({ restart_required: component === 'mqtt' });
+    }
+
     switch (method) {
       case 'Shelly.GetDeviceInfo':
         return reply(this.deviceInfo(true));
@@ -94,6 +156,47 @@ export class RpcDevice implements DeviceHandler {
         return reply(this.status());
       case 'Sys.GetConfig':
         return reply(this.config()['sys']);
+      case 'Script.List':
+        return reply({ scripts: this.scripts.map(({ id: sid, name, enable, running }) => ({ id: sid, name, enable, running })) });
+      case 'Script.Create': {
+        const name = String((frame.params as { name?: string } | undefined)?.name ?? `script_${this.scripts.length + 1}`);
+        const sid = this.scripts.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+        this.scripts.push({ id: sid, name, enable: false, running: false, code: '' });
+        return reply({ id: sid });
+      }
+      case 'Script.PutCode':
+      case 'Script.GetCode':
+      case 'Script.SetConfig':
+      case 'Script.Start':
+      case 'Script.Stop': {
+        const p = (frame.params ?? {}) as { id?: number; code?: string; append?: boolean; offset?: number; config?: { enable?: boolean } };
+        const script = this.scripts.find((s) => s.id === p.id);
+        if (!script) {
+          sendJson(res, 404, { id, src: this.id, error: { code: -105, message: `Argument 'id', value ${p.id} not found!` } });
+          return;
+        }
+        if (method === 'Script.PutCode') {
+          if (script.running && !p.append) {
+            sendJson(res, 400, { id, src: this.id, error: { code: -103, message: 'Script is running' } });
+            return;
+          }
+          script.code = p.append ? script.code + (p.code ?? '') : (p.code ?? '');
+          return reply({ len: script.code.length });
+        }
+        if (method === 'Script.GetCode') {
+          // Small pages to exercise the paging in the client.
+          const offset = p.offset ?? 0;
+          const data = script.code.slice(offset, offset + 700);
+          return reply({ data, left: Math.max(0, script.code.length - offset - data.length) });
+        }
+        if (method === 'Script.SetConfig') {
+          if (p.config?.enable !== undefined) script.enable = p.config.enable;
+          return reply({ restart_required: false });
+        }
+        const wasRunning = script.running;
+        script.running = method === 'Script.Start';
+        return reply({ was_running: wasRunning });
+      }
       case 'Shelly.CheckForUpdate':
         return reply(this.availableUpdates(true));
       case 'Shelly.Update': {
@@ -120,6 +223,8 @@ export class RpcDevice implements DeviceHandler {
         this.name = null;
         this.password = undefined;
         this.wifiConfigured = false;
+        this.overrides = {};
+        this.scripts.length = 0;
         this.nonces.clear();
         this.resetPending = true;
         if (this.spec.dropConnectionOnReset) {
@@ -189,6 +294,11 @@ export class RpcDevice implements DeviceHandler {
   }
 
   private config(): Record<string, unknown> {
+    const scripts = Object.fromEntries(this.scripts.map((s) => [`script:${s.id}`, { id: s.id, name: s.name, enable: s.enable }]));
+    return deepMerge({ ...this.baseConfig(), ...scripts }, this.overrides);
+  }
+
+  private baseConfig(): Record<string, unknown> {
     return {
       ble: { enable: true, rpc: { enable: true }, observer: { enable: false } },
       cloud: { enable: this.wifiConfigured, server: 'shelly-103-eu.shelly.cloud:6022/jrpc' },

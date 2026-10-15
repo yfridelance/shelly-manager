@@ -1,7 +1,12 @@
 import type { Db } from '../db/database.js';
 import { finishAction, startAction, type ActionType } from '../db/actions.js';
 import { getDevice, markReset, recordFirmwareUpdates, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
-import { insertSnapshot } from '../db/snapshots.js';
+import { getSnapshot, insertSnapshot } from '../db/snapshots.js';
+import type { Template } from '../db/templates.js';
+import { RpcAdapter } from '../shelly/rpc-adapter.js';
+import { planTemplate, type PlanItem } from '../templates/planner.js';
+import type { TemplateSecrets } from '../templates/settings.js';
+import { isRecord } from '../shelly/http.js';
 import { probeShelly } from '../shelly/detect.js';
 import { ShellyAuthError, ShellyNetworkError, ShellyTimeoutError, describeError, type DeviceErrorCode } from '../shelly/errors.js';
 import { updatesFromStatus } from '../shelly/firmware.js';
@@ -35,6 +40,7 @@ export type DeviceActionErrorCode =
   | 'confirm_mismatch'
   | 'snapshot_failed'
   | 'no_update'
+  | 'template_failed'
   | DeviceErrorCode;
 
 export class DeviceActionError extends Error {
@@ -72,6 +78,23 @@ export interface FactoryResetResult {
 }
 
 type ActionDetails = Record<string, unknown>;
+
+export interface ApplyTemplateRequest {
+  credentials?: Credentials | undefined;
+  /** Entered when applying, never stored or logged. */
+  secrets?: TemplateSecrets | undefined;
+  /** Reboot if a changed setting needs it (Gen2+ reports restart_required). */
+  rebootIfRequired?: boolean | undefined;
+}
+
+export interface ApplyTemplateResult {
+  snapshotId: number;
+  items: PlanItem[];
+  changed: number;
+  restartRequired: boolean;
+  rebooted: boolean;
+  script?: { created: boolean; codeChanged: boolean; enableChanged: boolean; started: boolean } | undefined;
+}
 
 /** Talks to one known device: verifies its identity first, logs every action, one action per device at a time. */
 export class DeviceService {
@@ -142,6 +165,75 @@ export class DeviceService {
         details.to = version;
         await adapter.startUpdate(channel);
         return { version };
+      }),
+    );
+  }
+
+  /**
+   * Applies a template to one device: 1. snapshot of the current state (blocks on failure, like
+   * a reset), 2. plan against that fresh config, 3. send only differing settings, 4. deploy the
+   * script if any, 5. reboot if required and wanted. Logged with every change (secrets masked).
+   */
+  applyTemplate(mac: string, template: Template, request: ApplyTemplateRequest = {}, ctx: ActionContext = {}): Promise<ApplyTemplateResult> {
+    return this.exclusive(mac, () =>
+      this.logged(mac, 'apply_template', ctx, async (device, details) => {
+        details.templateId = template.id;
+        details.templateName = template.name;
+
+        const snapshotId = await this.snapshotUnlocked(mac, request.credentials, ctx).catch((err: unknown) => {
+          const cause = err instanceof DeviceActionError ? err.code : describeError(err).code;
+          throw new DeviceActionError('snapshot_failed', `Snapshot before applying failed (${cause}); nothing changed`, cause);
+        });
+        details.snapshotId = snapshotId;
+        const snapshot = getSnapshot(this.db, mac, snapshotId);
+        const config = snapshot?.config_json ? (JSON.parse(snapshot.config_json) as unknown) : undefined;
+        const info = snapshot ? (JSON.parse(snapshot.info_json) as unknown) : undefined;
+
+        const { info: live, adapter } = await this.connect(device, request.credentials);
+        // {id}: Gen1 hostname from /settings, Gen2+ device id from /shelly.
+        const deviceId =
+          live.gen === 1
+            ? String((isRecord(config) && isRecord(config['device']) && config['device']['hostname']) || mac)
+            : String((isRecord(info) && info['id']) || mac);
+        const plan = planTemplate(live.gen, config, template.settings, { deviceId, mac }, request.secrets);
+
+        let restartRequired = false;
+        const done: string[] = [];
+        try {
+          for (const step of plan.steps) {
+            const res = await adapter.applyConfig(step);
+            restartRequired ||= res.restartRequired;
+            done.push(step.kind === 'gen1' ? step.path : step.method);
+          }
+        } catch (err) {
+          details.appliedSteps = done;
+          const { code, message } = describeError(err);
+          throw new DeviceActionError('template_failed', `Applying failed after ${done.length} of ${plan.steps.length} calls: ${message}`, code);
+        }
+
+        let script: ApplyTemplateResult['script'];
+        if (plan.script) {
+          if (!(adapter instanceof RpcAdapter)) throw new DeviceActionError('template_failed', 'Scripts need a Gen2+ device');
+          const r = await adapter.deployScript(plan.script.name, plan.script.code, plan.script.enable, plan.script.start);
+          script = { created: r.created, codeChanged: r.codeChanged, enableChanged: r.enableChanged, started: r.started };
+        }
+
+        let rebooted = false;
+        if (restartRequired && request.rebootIfRequired) {
+          await adapter.reboot();
+          rebooted = true;
+        }
+
+        // A script whose code, autostart and run state already matched counts as unchanged.
+        const scriptChanged = !!script && (script.created || script.codeChanged || script.enableChanged || script.started);
+        const items = plan.items.map((i) => (i.key === 'script' && i.status === 'change' && !scriptChanged ? { ...i, status: 'same' as const } : i));
+        const changes = items.filter((i) => i.status === 'change');
+        details.changes = changes.map((i) => ({ key: i.key, from: i.current ?? null, to: i.target ?? null }));
+        details.unsupported = items.filter((i) => i.status === 'unsupported').map((i) => i.key);
+        details.restartRequired = restartRequired;
+        details.rebooted = rebooted;
+        if (script) details.script = script;
+        return { snapshotId, items, changed: changes.length, restartRequired, rebooted, script };
       }),
     );
   }

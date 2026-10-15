@@ -5,6 +5,7 @@ import { parseGen1Ota } from './firmware.js';
 import {
   DEFAULT_ADAPTER_TIMEOUT_MS,
   type AdapterOptions,
+  type ConfigStep,
   type DeviceInfo,
   type FirmwareChannel,
   type FirmwareUpdates,
@@ -71,6 +72,14 @@ export class Gen1Adapter implements ShellyAdapter {
     await this.get(channel === 'beta' ? '/ota?beta=true' : '/ota?update=true');
   }
 
+  async applyConfig(step: ConfigStep): Promise<{ restartRequired: boolean }> {
+    if (step.kind !== 'gen1') throw new Error(`Gen1 device cannot run ${step.kind} step`);
+    const query = new URLSearchParams(step.params).toString();
+    await this.get(query ? `${step.path}?${query}` : step.path);
+    // Gen1 applies /settings changes immediately; no restart flag exists.
+    return { restartRequired: false };
+  }
+
   private async get(path: string): Promise<unknown> {
     const res = await deviceFetch(this.host, {
       path,
@@ -84,7 +93,9 @@ export class Gen1Adapter implements ShellyAdapter {
     if (!res.ok) {
       // Gen1 errors are 4xx with a text/plain body.
       const text = (await res.text().catch(() => '')).slice(0, 200);
-      throw new ShellyHttpError(this.host, res.status, `GET ${path} on ${this.host} failed: HTTP ${res.status} ${text}`.trim());
+      // Only the path: the query may carry secrets such as mqtt_pass.
+      const plainPath = path.split('?')[0] ?? path;
+      throw new ShellyHttpError(this.host, res.status, `GET ${plainPath} on ${this.host} failed: HTTP ${res.status} ${text}`.trim());
     }
     return readJson(this.host, res, this.timeoutMs);
   }

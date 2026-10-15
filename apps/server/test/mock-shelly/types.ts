@@ -8,8 +8,10 @@ export interface MockDeviceState {
   updateCount: number;
   /** Requests that failed authentication (missing or wrong credentials). */
   authFailures: number;
-  /** "GET /settings", "RPC Shelly.GetConfig", ... Never contains credentials. */
+  /** "GET /settings", "RPC Shelly.GetConfig", ... Never contains credentials or query values. */
   requests: string[];
+  /** Write-only secrets the device received (mqtt_pass, ap pass), so tests can check they arrived. */
+  secretsReceived: Record<string, string>;
 }
 
 interface BaseSpec {
@@ -82,4 +84,16 @@ export function sendJson(res: ServerResponse, status: number, payload: unknown, 
 export function sendText(res: ServerResponse, status: number, text: string, headers: Record<string, string> = {}): void {
   res.writeHead(status, { 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength(text), ...headers });
   res.end(text);
+}
+
+export function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...target };
+  for (const [key, value] of Object.entries(source)) {
+    const existing = out[key];
+    out[key] =
+      typeof existing === 'object' && existing !== null && !Array.isArray(existing) && typeof value === 'object' && value !== null && !Array.isArray(value)
+        ? deepMerge(existing as Record<string, unknown>, value as Record<string, unknown>)
+        : value;
+  }
+  return out;
 }

@@ -24,7 +24,7 @@ export interface MockFleet {
 
 /** Starts one HTTP server per device on 127.0.0.1 with an ephemeral port. */
 export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<MockDevice> {
-  const state: MockDeviceState = { online: true, rebootCount: 0, factoryResetCount: 0, updateCount: 0, authFailures: 0, requests: [] };
+  const state: MockDeviceState = { online: true, rebootCount: 0, factoryResetCount: 0, updateCount: 0, authFailures: 0, requests: [], secretsReceived: {} };
   const handler: DeviceHandler | undefined =
     spec.kind === 'gen1' ? new Gen1Device(spec, state) : spec.kind === 'rpc' ? new RpcDevice(spec, state) : undefined;
   const delayMs = spec.kind === 'gen1' || spec.kind === 'rpc' ? (spec.delayMs ?? 0) : 0;
