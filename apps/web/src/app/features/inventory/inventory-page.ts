@@ -39,6 +39,7 @@ export class InventoryPage {
   protected readonly locations = computed(() =>
     [...new Set(this.devices.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(collator.compare),
   );
+  protected readonly updateCount = computed(() => this.devices.value().filter((d) => d.updateStable !== null).length);
   protected readonly gens = computed(() => [...new Set(this.devices.value().map((d) => d.gen))].sort());
 
   protected readonly filtered = computed(() => {
@@ -46,8 +47,10 @@ export class InventoryPage {
     const gen = this.f.gen();
     const location = this.f.location();
     const state = this.f.state();
+    const onlyUpdates = this.f.onlyUpdates();
     const rows = this.devices.value().filter(
       (d) =>
+        (!onlyUpdates || d.updateStable !== null) &&
         (gen === null || d.gen === gen) &&
         (state === null || d.state === state) &&
         (location === null || (d.location ?? '') === location) &&
@@ -59,7 +62,8 @@ export class InventoryPage {
   });
 
   protected readonly hasFilter = computed(
-    () => !!this.f.search() || this.f.gen() !== null || this.f.location() !== null || this.f.state() !== null,
+    () =>
+      !!this.f.search() || this.f.gen() !== null || this.f.location() !== null || this.f.state() !== null || this.f.onlyUpdates(),
   );
 
   protected open(device: Device): void {

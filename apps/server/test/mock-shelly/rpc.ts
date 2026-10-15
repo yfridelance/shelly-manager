@@ -14,6 +14,9 @@ export class RpcDevice implements DeviceHandler {
   private password: string | undefined;
   private wifiConfigured = true;
   private uptime = 81234;
+  private ver: string;
+  private fwIdValue: string;
+  private updates: NonNullable<RpcSpec['updates']>;
   /** nonce -> highest nc seen (firmware >= 2.0 rejects nc that does not increase). */
   private readonly nonces = new Map<string, number>();
   readonly id: string;
@@ -25,6 +28,9 @@ export class RpcDevice implements DeviceHandler {
     this.name = spec.name ?? null;
     this.password = spec.password;
     this.id = spec.id ?? `${spec.app.toLowerCase()}-${spec.mac.toLowerCase()}`;
+    this.ver = spec.ver ?? '1.4.4';
+    this.fwIdValue = spec.fwId ?? '20241011-114455/1.4.4-g6d2a586';
+    this.updates = { ...spec.updates };
   }
 
   /** Forget all nonces; the next authenticated request gets a `stale=true` challenge. */
@@ -88,6 +94,23 @@ export class RpcDevice implements DeviceHandler {
         return reply(this.status());
       case 'Sys.GetConfig':
         return reply(this.config()['sys']);
+      case 'Shelly.CheckForUpdate':
+        return reply(this.availableUpdates(true));
+      case 'Shelly.Update': {
+        const params = (frame.params ?? {}) as { stage?: string };
+        const target = params.stage === 'beta' ? this.updates.beta : this.updates.stable;
+        if (!target) {
+          sendJson(res, 400, { id, src: this.id, error: { code: -114, message: 'No update info' } });
+          return;
+        }
+        // Real devices download, flash and reboot; the mock applies the new firmware at once.
+        this.state.updateCount++;
+        this.ver = target.version;
+        this.fwIdValue = target.buildId;
+        this.updates = {};
+        this.uptime = 0;
+        return reply(null);
+      }
       case 'Shelly.Reboot':
         this.state.rebootCount++;
         this.uptime = 0;
@@ -137,7 +160,16 @@ export class RpcDevice implements DeviceHandler {
   }
 
   private fwId(): string {
-    return this.spec.fwId ?? '20241011-114455/1.4.4-g6d2a586';
+    return this.fwIdValue;
+  }
+
+  /** Same shape for Shelly.CheckForUpdate and sys.available_updates. */
+  private availableUpdates(withBuildId: boolean): Record<string, unknown> {
+    const entry = (u: { version: string; buildId: string }) => (withBuildId ? { version: u.version, build_id: u.buildId } : { version: u.version });
+    return {
+      ...(this.updates.stable ? { stable: entry(this.updates.stable) } : {}),
+      ...(this.updates.beta ? { beta: entry(this.updates.beta) } : {}),
+    };
   }
 
   private deviceInfo(withName: boolean): Record<string, unknown> {
@@ -149,7 +181,7 @@ export class RpcDevice implements DeviceHandler {
       model: this.spec.model,
       gen: this.spec.gen,
       fw_id: this.fwId(),
-      ver: this.spec.ver ?? '1.4.4',
+      ver: this.ver,
       app: this.spec.app,
       auth_en: this.password !== undefined,
       auth_domain: this.password !== undefined ? this.id : null,
@@ -190,7 +222,7 @@ export class RpcDevice implements DeviceHandler {
       'input:0': { id: 0, state: false },
       mqtt: { connected: false },
       'switch:0': { id: 0, source: 'init', output: false, apower: 0, voltage: 231.4, freq: 50, current: 0, aenergy: { total: 1234.567, by_minute: [0, 0, 0], minute_ts: 1760445240 }, temperature: { tC: 41.2, tF: 106.2 } },
-      sys: { mac: this.spec.mac, restart_required: false, time: '12:34', unixtime: 1760445240, uptime: this.uptime, ram_size: 260000, ram_free: 140000, fs_size: 458752, fs_free: 135168, cfg_rev: 12, kvs_rev: 0, schedule_rev: 0, webhook_rev: 0, available_updates: {}, reset_reason: 3 },
+      sys: { mac: this.spec.mac, restart_required: false, time: '12:34', unixtime: 1760445240, uptime: this.uptime, ram_size: 260000, ram_free: 140000, fs_size: 458752, fs_free: 135168, cfg_rev: 12, kvs_rev: 0, schedule_rev: 0, webhook_rev: 0, available_updates: this.availableUpdates(false), reset_reason: 3 },
       wifi: { sta_ip: this.wifiConfigured ? '127.0.0.1' : null, status: this.wifiConfigured ? 'got ip' : 'disconnected', ssid: this.wifiConfigured ? 'Haus' : null, rssi: -58 },
       ws: { connected: false },
     };

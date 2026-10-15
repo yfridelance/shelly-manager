@@ -10,6 +10,7 @@ const DETAILS: DeviceDetails = {
     mac: 'A8032AB67890', ip: '10.0.0.4', gen: 2, model: 'SNSW-102P16EU', app: 'Plus2PM', firmware: '20241011-114455/1.4.4-g6d2a586',
     name: 'Rollladen Büro', deviceName: 'Rollladen Büro', authRequired: true, location: null, notes: null, state: 'active',
     firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
+    updateStable: null, updateBeta: null, updateCheckedAt: null,
   },
   latestSnapshot: null,
   snapshots: [],
@@ -209,6 +210,44 @@ describe('DevicePage', () => {
       const { el } = await render({ ...OPEN, device: { ...OPEN.device, state: 'reset' } });
       expect(button(el, 'Werkseinstellungen')).toBeUndefined();
       expect(el.textContent).toContain('nicht mehr im Netz');
+    });
+  });
+
+  describe('firmware', () => {
+    const WITH_UPDATE: DeviceDetails = {
+      ...DETAILS,
+      device: { ...DETAILS.device, authRequired: false, updateStable: '1.5.0', updateBeta: null, updateCheckedAt: '2026-10-14T10:00:00.000Z' },
+    };
+
+    it('shows the available update and installs it only after confirmation', async () => {
+      const { fixture, el } = await render(WITH_UPDATE);
+      expect(el.textContent).toContain('Update verfügbar: 1.5.0');
+      expect(button(el, 'Beta installieren')).toBeUndefined();
+
+      button(el, 'Update installieren')?.click();
+      await fixture.whenStable();
+      http.expectNone({ method: 'POST' });
+      expect(el.textContent).toContain('Das Gerät startet danach neu');
+
+      button(el, 'Ja, installieren')?.click();
+      const req = http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/firmware/update' });
+      expect(req.request.body).toEqual({ channel: 'stable' });
+      req.flush({ version: '1.5.0' });
+      await settle(fixture, WITH_UPDATE);
+      expect(el.textContent).toContain('Update auf 1.5.0 gestartet');
+    });
+
+    it('checks for updates and shows the result', async () => {
+      const current = { ...WITH_UPDATE, device: { ...WITH_UPDATE.device, updateStable: null, updateCheckedAt: null } };
+      const { fixture, el } = await render(current);
+      expect(el.textContent).toContain('noch nicht geprüft');
+      button(el, 'Auf Updates prüfen')?.click();
+      http
+        .expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/firmware/check' })
+        .flush({ stable: null, beta: '1.6.0-beta1', checkedAt: '2026-10-15T08:00:00.000Z' });
+      await settle(fixture, current);
+      expect(el.textContent).toContain('Firmware ist aktuell; Beta 1.6.0-beta1 verfügbar.');
+      expect(button(el, 'Beta installieren')).toBeDefined();
     });
   });
 });

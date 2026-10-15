@@ -22,6 +22,14 @@ export interface DeviceInfo {
   raw: unknown;
 }
 
+export type FirmwareChannel = 'stable' | 'beta';
+
+/** Newer firmware the device offers per channel; null = none. Gen1: firmware id, Gen2+: version ("1.5.0"). */
+export interface FirmwareUpdates {
+  stable: string | null;
+  beta: string | null;
+}
+
 export interface ShellyAdapter {
   readonly host: string;
   getInfo(): Promise<DeviceInfo>;
@@ -30,6 +38,10 @@ export interface ShellyAdapter {
   getStatus(): Promise<unknown>;
   reboot(): Promise<void>;
   factoryReset(): Promise<void>;
+  /** Asks the device (which asks the Shelly update server) for newer firmware. */
+  checkForUpdate(): Promise<FirmwareUpdates>;
+  /** Starts the OTA update; the device downloads, flashes and reboots on its own. */
+  startUpdate(channel: FirmwareChannel): Promise<void>;
 }
 
 export interface AdapterOptions {

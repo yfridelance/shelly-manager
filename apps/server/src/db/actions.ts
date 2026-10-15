@@ -1,6 +1,6 @@
 import type { Db } from './database.js';
 
-export type ActionType = 'snapshot' | 'reboot' | 'factory_reset';
+export type ActionType = 'snapshot' | 'reboot' | 'factory_reset' | 'firmware_update';
 
 export interface ActionRow {
   id: number;

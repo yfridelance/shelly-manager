@@ -29,6 +29,13 @@
   }
 }
 
+.check {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding-bottom: 0.45rem;
+}
+
 .table-wrap {
   overflow-x: auto;
 }

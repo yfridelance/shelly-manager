@@ -50,6 +50,9 @@ function deviceJson(d: DeviceListRow, resetAt: string | undefined) {
     firstSeen: d.first_seen,
     lastSeen: d.last_seen,
     factoryResetAt: resetAt ?? null,
+    updateStable: d.update_stable,
+    updateBeta: d.update_beta,
+    updateCheckedAt: d.update_checked_at,
   };
 }
 
@@ -111,6 +114,7 @@ export function buildCsvExport(db: Db): string {
       'Zuletzt gesehen (UTC)',
       'Letzter Snapshot (UTC)',
       'Werksreset (UTC)',
+      'Firmware-Update verfügbar',
     ],
     listDevices(db).map((d) => [
       d.name ?? d.device_name,
@@ -129,6 +133,7 @@ export function buildCsvExport(db: Db): string {
       d.last_seen,
       d.last_snapshot_at,
       resets.get(d.mac),
+      d.update_stable,
     ]),
   );
 }

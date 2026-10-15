@@ -50,6 +50,12 @@
       }
     </select>
   </label>
+  @if (updateCount() > 0 || f.onlyUpdates()) {
+    <label class="check">
+      <input type="checkbox" [checked]="f.onlyUpdates()" (change)="f.onlyUpdates.set($any($event.target).checked)" />
+      nur mit Firmware-Update ({{ updateCount() }})
+    </label>
+  }
   @if (hasFilter()) {
     <button type="button" class="secondary" (click)="f.reset()">Filter zurücksetzen</button>
   }
@@ -89,7 +95,12 @@
             <td>{{ d.gen }}</td>
             <td class="mono">{{ d.ip ?? '–' }}</td>
             <td class="mono">{{ formatMac(d.mac) }}</td>
-            <td [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</td>
+            <td [title]="d.firmware ?? ''">
+              {{ shortFirmware(d.firmware) }}
+              @if (d.updateStable) {
+                <span class="badge" [title]="'Update auf ' + shortFirmware(d.updateStable) + ' verfügbar'">Update</span>
+              }
+            </td>
             <td>{{ d.location ?? '' }}</td>
             <td><span [class]="'state ' + d.state">{{ stateText[d.state] }}</span></td>
             <td>{{ d.lastSeen | date: 'dd.MM.yyyy HH:mm' }}</td>

@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ApiError, Device, LocalDeviceFields, Snapshot } from './api.types';
+import type { ApiError, Device, FirmwareChannel, LocalDeviceFields, Snapshot } from './api.types';
 import { errorText } from './texts';
 
 export interface Credentials {
@@ -52,6 +52,19 @@ export class DevicesApi {
   /** Exactly one device. The server checks confirmMac again. */
   factoryReset(mac: string, request: FactoryResetRequest): Promise<FactoryResetResult> {
     return this.call(this.http.post<FactoryResetResult>(`/api/devices/${mac}/factory-reset`, request));
+  }
+
+  checkFirmware(mac: string, credentials?: Credentials): Promise<{ stable: string | null; beta: string | null; checkedAt: string }> {
+    return this.call(
+      this.http.post<{ stable: string | null; beta: string | null; checkedAt: string }>(
+        `/api/devices/${mac}/firmware/check`,
+        credentials ? { credentials } : {},
+      ),
+    );
+  }
+
+  updateFirmware(mac: string, channel: FirmwareChannel, credentials?: Credentials): Promise<{ version: string }> {
+    return this.call(this.http.post<{ version: string }>(`/api/devices/${mac}/firmware/update`, { channel, ...(credentials ? { credentials } : {}) }));
   }
 
   private async call<T>(request: import('rxjs').Observable<T>): Promise<T> {

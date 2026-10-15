@@ -26,6 +26,10 @@ export const DeviceSchema = Type.Object({
   firstSeen: Type.String(),
   lastSeen: Type.String(),
   lastSnapshotAt: Nullable(Type.String()),
+  /** Newer firmware the device offers (Gen1: firmware id, Gen2+: version). */
+  updateStable: Nullable(Type.String()),
+  updateBeta: Nullable(Type.String()),
+  updateCheckedAt: Nullable(Type.String()),
 });
 
 export const SnapshotSchema = Type.Object({
@@ -92,6 +96,9 @@ export function toDeviceDto(row: DeviceListRow) {
     firstSeen: row.first_seen,
     lastSeen: row.last_seen,
     lastSnapshotAt: row.last_snapshot_at,
+    updateStable: row.update_stable,
+    updateBeta: row.update_beta,
+    updateCheckedAt: row.update_checked_at,
   };
 }
 
@@ -100,7 +107,7 @@ function toSnapshotDto(row: SnapshotRow) {
   return { id: row.id, takenAt: row.taken_at, info: parse(row.info_json), config: parse(row.config_json), status: parse(row.status_json) };
 }
 
-const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed']);
+const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed', 'no_update']);
 
 /** Maps device action failures to HTTP: 404 unknown, 400 wrong confirmation, 409 refused by a safety check, 502 device error. */
 export function sendDeviceError(reply: FastifyReply, err: unknown): FastifyReply {
@@ -236,6 +243,59 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
           { confirmMac: request.body.confirmMac, credentials: request.body.credentials, allowWithoutSnapshot: request.body.allowWithoutSnapshot },
           { requestedBy: request.ip },
         );
+        return reply.code(202).send(result);
+      } catch (err) {
+        return sendDeviceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    '/devices/:mac/firmware/check',
+    {
+      schema: {
+        params: MacParams,
+        body: CredentialsBody,
+        response: {
+          200: Type.Object({ stable: Nullable(Type.String()), beta: Nullable(Type.String()), checkedAt: Type.String() }),
+          400: ErrorBody,
+          404: ErrorBody,
+          409: ErrorBody,
+          502: ErrorBody,
+        },
+      },
+      preValidation: async (request) => {
+        request.body ??= {};
+      },
+    },
+    async (request, reply) => {
+      const mac = macOf(request.params.mac, reply);
+      if (!mac) return reply;
+      try {
+        return await devices.checkFirmware(mac, request.body.credentials);
+      } catch (err) {
+        return sendDeviceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    '/devices/:mac/firmware/update',
+    {
+      schema: {
+        params: MacParams,
+        body: Type.Object(
+          { channel: Type.Union([Type.Literal('stable'), Type.Literal('beta')]), credentials: CredentialsSchema },
+          { additionalProperties: false },
+        ),
+        response: { 202: Type.Object({ version: Type.String() }), 400: ErrorBody, 404: ErrorBody, 409: ErrorBody, 502: ErrorBody },
+      },
+    },
+    async (request, reply) => {
+      const mac = macOf(request.params.mac, reply);
+      if (!mac) return reply;
+      try {
+        const result = await devices.updateFirmware(mac, request.body.channel, request.body.credentials, { requestedBy: request.ip });
         return reply.code(202).send(result);
       } catch (err) {
         return sendDeviceError(reply, err);

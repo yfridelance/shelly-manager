@@ -123,3 +123,15 @@
   overflow: auto;
   padding: 0.75rem 0;
 }
+
+.firmware {
+  margin-top: 1rem;
+
+  p {
+    margin: 0 0 0.5rem;
+  }
+
+  .update {
+    color: var(--accent);
+  }
+}

@@ -21,6 +21,7 @@ export const ACTION_ERROR_TEXT: Record<string, string> = {
   busy: 'Auf diesem Gerät läuft bereits eine Aktion',
   confirm_mismatch: 'Bestätigung stimmt nicht mit der MAC überein',
   snapshot_failed: 'Snapshot vor dem Reset fehlgeschlagen',
+  no_update: 'Auf diesem Kanal ist kein neueres Firmware-Update verfügbar',
 };
 
 /** Factory reset whose command broke off, but the device was gone when probed again. */
@@ -30,6 +31,7 @@ export const ACTION_TEXT: Record<string, string> = {
   snapshot: 'Snapshot',
   reboot: 'Neustart',
   factory_reset: 'Werksreset',
+  firmware_update: 'Firmware-Update',
 };
 
 export function errorText(code: string | null | undefined): string {

@@ -120,6 +120,65 @@
       @if (d.authRequired) {
         <p class="hint">Passwortgeschützt: Das Passwort wird nur für die nächste Aktion verwendet und nicht gespeichert.</p>
       }
+
+      <div class="firmware">
+        <h3>Firmware</h3>
+        <p>
+          Installiert: <span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span>
+          @if (d.updateStable) {
+            · <strong class="update">Update verfügbar: <span [title]="d.updateStable">{{ shortFirmware(d.updateStable) }}</span></strong>
+          }
+          @if (d.updateBeta) {
+            · Beta: <span [title]="d.updateBeta">{{ shortFirmware(d.updateBeta) }}</span>
+          }
+          @if (d.updateCheckedAt) {
+            @if (!d.updateStable && !d.updateBeta) {
+              · aktuell
+            }
+            <span class="muted">(Stand {{ d.updateCheckedAt | date: 'dd.MM.yyyy HH:mm' }})</span>
+          } @else {
+            <span class="muted">· noch nicht geprüft</span>
+          }
+        </p>
+        <div class="actions">
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+            (click)="checkFirmware()"
+          >
+            {{ running() === 'firmware' ? 'Bitte warten …' : 'Auf Updates prüfen' }}
+          </button>
+          @if (confirmUpdate(); as channel) {
+            <span class="confirm">
+              {{ channel === 'beta' ? 'Beta' : 'Update' }}
+              {{ shortFirmware(channel === 'beta' ? d.updateBeta : d.updateStable) }} installieren? Das Gerät startet danach neu.
+              <button type="button" (click)="installUpdate(channel)">Ja, installieren</button>
+              <button type="button" class="secondary" (click)="confirmUpdate.set(null)">Abbrechen</button>
+            </span>
+          } @else {
+            @if (d.updateStable) {
+              <button
+                type="button"
+                [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+                (click)="confirmUpdate.set('stable')"
+              >
+                Update installieren
+              </button>
+            }
+            @if (d.updateBeta) {
+              <button
+                type="button"
+                class="link"
+                [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+                (click)="confirmUpdate.set('beta')"
+              >
+                Beta installieren
+              </button>
+            }
+          }
+        </div>
+      </div>
     }
 
     @if (recentActions.value().length > 0) {

@@ -2,7 +2,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import type { ActionEntry, Device, DeviceDetails, LocalDeviceFields, Snapshot } from '../../core/api.types';
+import type { ActionEntry, Device, DeviceDetails, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
 import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
 import { ACTION_TEXT, DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
@@ -60,7 +60,9 @@ export class DevicePage {
   protected readonly message = signal<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   // Device actions. The password lives only until the next request is sent.
-  protected readonly running = signal<'snapshot' | 'reboot' | null>(null);
+  protected readonly running = signal<'snapshot' | 'reboot' | 'firmware' | null>(null);
+  /** Channel waiting for the user's confirmation before the update starts. */
+  protected readonly confirmUpdate = signal<FirmwareChannel | null>(null);
   protected readonly username = signal('admin');
   protected readonly password = signal('');
   protected readonly confirmReboot = signal(false);
@@ -126,6 +128,53 @@ export class DevicePage {
       this.message.set({ kind: 'ok', text: 'Neustart ausgelöst. Das Gerät ist in einigen Sekunden wieder erreichbar.' });
     } catch (err) {
       this.message.set({ kind: 'error', text: `Neustart fehlgeschlagen: ${(err as DeviceApiError).message}` });
+    } finally {
+      this.running.set(null);
+      this.recentActions.reload();
+    }
+  }
+
+  protected async checkFirmware(): Promise<void> {
+    const device = this.device();
+    if (!device) return;
+    const credentials = this.takeCredentials(device);
+    this.running.set('firmware');
+    this.message.set(null);
+    try {
+      const result = await this.api.checkFirmware(device.mac, credentials);
+      this.details.update((d) =>
+        d ? { ...d, device: { ...d.device, updateStable: result.stable, updateBeta: result.beta, updateCheckedAt: result.checkedAt } } : d,
+      );
+      this.message.set({
+        kind: 'ok',
+        text: result.stable
+          ? `Firmware-Update verfügbar: ${shortFirmware(result.stable)}.`
+          : result.beta
+            ? `Firmware ist aktuell; Beta ${shortFirmware(result.beta)} verfügbar.`
+            : 'Firmware ist aktuell.',
+      });
+    } catch (err) {
+      this.message.set({ kind: 'error', text: `Prüfung fehlgeschlagen: ${(err as DeviceApiError).message}` });
+    } finally {
+      this.running.set(null);
+    }
+  }
+
+  protected async installUpdate(channel: FirmwareChannel): Promise<void> {
+    const device = this.device();
+    if (!device) return;
+    this.confirmUpdate.set(null);
+    const credentials = this.takeCredentials(device);
+    this.running.set('firmware');
+    this.message.set(null);
+    try {
+      const { version } = await this.api.updateFirmware(device.mac, channel, credentials);
+      this.message.set({
+        kind: 'ok',
+        text: `Update auf ${shortFirmware(version)} gestartet. Das Gerät installiert die Firmware und startet neu; danach Config neu einlesen, um die neue Version zu sehen.`,
+      });
+    } catch (err) {
+      this.message.set({ kind: 'error', text: `Firmware-Update fehlgeschlagen: ${(err as DeviceApiError).message}` });
     } finally {
       this.running.set(null);
       this.recentActions.reload();

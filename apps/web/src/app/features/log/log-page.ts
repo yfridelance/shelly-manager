@@ -3,7 +3,7 @@ import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry } from '../../core/api.types';
-import { ACTION_TEXT, UNCONFIRMED_RESET_TEXT, errorText, formatMac } from '../../core/texts';
+import { ACTION_TEXT, UNCONFIRMED_RESET_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
 
 @Component({
   selector: 'app-log-page',
@@ -44,6 +44,10 @@ export class LogPage {
     const d = e.details;
     if (!d) return '';
     const parts: string[] = [];
+    if (e.action === 'firmware_update' && d.channel) {
+      const channel = d.channel === 'beta' ? 'Beta' : 'Stabil';
+      parts.push(d.to ? `${shortFirmware(d.from ?? null)} → ${shortFirmware(d.to)} (${channel})` : `Kanal ${channel}`);
+    }
     if (d.confirmed === false) {
       parts.push(d.recheck === 'auth_disabled' ? 'Reset vermutlich erfolgreich – Passwortschutz entfernt' : UNCONFIRMED_RESET_TEXT);
     }

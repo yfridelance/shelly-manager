@@ -60,7 +60,13 @@ export interface Device {
   firstSeen: string;
   lastSeen: string;
   lastSnapshotAt: string | null;
+  /** Newer firmware the device offers (Gen1: firmware id, Gen2+: version). */
+  updateStable: string | null;
+  updateBeta: string | null;
+  updateCheckedAt: string | null;
 }
+
+export type FirmwareChannel = 'stable' | 'beta';
 
 export interface Snapshot {
   id: number;
@@ -104,5 +110,9 @@ export interface ActionEntry {
     /** Factory reset: false when the device dropped the connection and was only re-checked afterwards. */
     confirmed?: boolean;
     recheck?: 'unreachable' | 'auth_disabled';
+    /** Firmware update: channel and versions. */
+    channel?: FirmwareChannel;
+    from?: string | null;
+    to?: string;
   } | null;
 }

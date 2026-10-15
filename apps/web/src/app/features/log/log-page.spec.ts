@@ -41,4 +41,31 @@ describe('LogPage', () => {
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toContain('Snapshot');
   });
+
+  it('shows firmware updates as from → to', async () => {
+    await TestBed.configureTestingModule({
+      imports: [LogPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(LogPage);
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne('/api/actions?limit=2000').flush([
+      {
+        id: 9, mac: 'A8032AB12345', deviceName: 'Boiler', action: 'firmware_update', requestedAt: '2026-10-15T08:00:00.000Z',
+        requestedBy: '127.0.0.1', finishedAt: '2026-10-15T08:00:00.300Z', result: 'ok', errorCode: null, error: null,
+        details: { channel: 'stable', from: '20241011-114455/1.4.4-g6d2a586', to: '1.5.0' },
+      },
+      {
+        id: 8, mac: 'A8032AB12345', deviceName: 'Boiler', action: 'firmware_update', requestedAt: '2026-10-15T07:00:00.000Z',
+        requestedBy: '127.0.0.1', finishedAt: '2026-10-15T07:00:00.300Z', result: 'error', errorCode: 'no_update', error: 'x',
+        details: { channel: 'beta', from: '20241011-114455/1.4.4-g6d2a586' },
+      },
+    ] satisfies ActionEntry[]);
+    await fixture.whenStable();
+    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr')].map((r) => r.textContent ?? '');
+    expect(rows[0]).toContain('Firmware-Update');
+    expect(rows[0]).toContain('1.4.4 → 1.5.0 (Stabil)');
+    expect(rows[1]).toContain('kein neueres Firmware-Update');
+    expect(rows[1]).toContain('Kanal Beta');
+  });
 });

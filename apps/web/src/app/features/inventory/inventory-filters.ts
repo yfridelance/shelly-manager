@@ -11,6 +11,7 @@ export class InventoryFilters {
   /** null: all, '': without location. */
   readonly location = signal<string | null>(null);
   readonly state = signal<DeviceState | null>(null);
+  readonly onlyUpdates = signal(false);
   readonly sortKey = signal<SortKey>('name');
   readonly sortAsc = signal(true);
 
@@ -27,5 +28,6 @@ export class InventoryFilters {
     this.gen.set(null);
     this.location.set(null);
     this.state.set(null);
+    this.onlyUpdates.set(false);
   }
 }

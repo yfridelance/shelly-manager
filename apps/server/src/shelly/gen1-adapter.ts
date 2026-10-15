@@ -1,7 +1,15 @@
 import { probeShelly } from './detect.js';
 import { ShellyAuthError, ShellyHttpError } from './errors.js';
 import { deviceFetch, isRecord, readJson, stringOrNull } from './http.js';
-import { DEFAULT_ADAPTER_TIMEOUT_MS, type AdapterOptions, type DeviceInfo, type ShellyAdapter } from './types.js';
+import { parseGen1Ota } from './firmware.js';
+import {
+  DEFAULT_ADAPTER_TIMEOUT_MS,
+  type AdapterOptions,
+  type DeviceInfo,
+  type FirmwareChannel,
+  type FirmwareUpdates,
+  type ShellyAdapter,
+} from './types.js';
 
 // Gen1 REST API, see https://shelly-api-docs.shelly.cloud/gen1/
 // Auth is HTTP Basic (plain text over HTTP) for everything except /shelly.
@@ -43,6 +51,24 @@ export class Gen1Adapter implements ShellyAdapter {
     // There is no /reset endpoint on Gen1: the `reset` parameter of /settings
     // "will perform a factory reset of the device" (official Gen1 docs, /settings).
     await this.get('/settings?reset=true');
+  }
+
+  async checkForUpdate(): Promise<FirmwareUpdates> {
+    // /ota/check triggers a fresh lookup on the device; it runs asynchronously, so /ota may still
+    // show the previous result. Older firmware may lack /ota/check: then /ota alone is used.
+    try {
+      await this.get('/ota/check');
+    } catch (err) {
+      if (!(err instanceof ShellyHttpError)) throw err;
+    }
+    const ota = await this.get('/ota');
+    if (!isRecord(ota)) throw new ShellyHttpError(this.host, 200, `${this.host}: unexpected /ota answer`);
+    return parseGen1Ota(ota);
+  }
+
+  async startUpdate(channel: FirmwareChannel): Promise<void> {
+    // /ota?update=true: default (stable) URL, /ota?beta=true: beta URL (official Gen1 docs).
+    await this.get(channel === 'beta' ? '/ota?beta=true' : '/ota?update=true');
   }
 
   private async get(path: string): Promise<unknown> {

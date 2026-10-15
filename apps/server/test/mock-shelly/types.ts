@@ -4,6 +4,8 @@ export interface MockDeviceState {
   online: boolean;
   rebootCount: number;
   factoryResetCount: number;
+  /** Started firmware updates (the mock applies them instantly). */
+  updateCount: number;
   /** Requests that failed authentication (missing or wrong credentials). */
   authFailures: number;
   /** "GET /settings", "RPC Shelly.GetConfig", ... Never contains credentials. */
@@ -31,6 +33,8 @@ export interface Gen1Spec extends BaseSpec {
   fw?: string;
   name?: string | null;
   auth?: { username: string; password: string };
+  /** Newer firmware ids offered via /ota and status.update. */
+  updates?: { stable?: string; beta?: string };
 }
 
 export interface RpcSpec extends BaseSpec {
@@ -47,6 +51,8 @@ export interface RpcSpec extends BaseSpec {
   password?: string;
   /** Older firmware does not include `name` in /shelly. */
   legacyShellyEndpoint?: boolean;
+  /** Newer firmware offered via Shelly.CheckForUpdate and sys.available_updates. */
+  updates?: { stable?: { version: string; buildId: string }; beta?: { version: string; buildId: string } };
 }
 
 /** Accepts connections but never answers. */

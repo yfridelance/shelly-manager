@@ -1,4 +1,4 @@
-import type { DeviceInfo } from '../shelly/types.js';
+import type { DeviceInfo, FirmwareUpdates } from '../shelly/types.js';
 import type { Db } from './database.js';
 
 export type DeviceState = 'active' | 'reset' | 'missing';
@@ -18,6 +18,9 @@ export interface DeviceRow {
   state: DeviceState;
   first_seen: string;
   last_seen: string;
+  update_stable: string | null;
+  update_beta: string | null;
+  update_checked_at: string | null;
 }
 
 export interface UpsertResult {
@@ -133,4 +136,14 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
 /** After a successful factory reset. The record stays for documentation. */
 export function markReset(db: Db, mac: string): void {
   db.prepare("UPDATE devices SET state = 'reset' WHERE mac = ?").run(mac);
+}
+
+/** Remembers which newer firmware the device offers. */
+export function recordFirmwareUpdates(db: Db, mac: string, updates: FirmwareUpdates, checkedAt: string): void {
+  db.prepare('UPDATE devices SET update_stable = ?, update_beta = ?, update_checked_at = ? WHERE mac = ?').run(
+    updates.stable,
+    updates.beta,
+    checkedAt,
+    mac,
+  );
 }

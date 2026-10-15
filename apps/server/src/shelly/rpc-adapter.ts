@@ -2,7 +2,15 @@ import { probeShelly } from './detect.js';
 import { DigestSession, parseDigestChallenge } from './digest.js';
 import { ShellyAuthError, ShellyHttpError, ShellyRpcError } from './errors.js';
 import { deviceFetch, isRecord, readJson, stringOrNull } from './http.js';
-import { DEFAULT_ADAPTER_TIMEOUT_MS, type AdapterOptions, type DeviceInfo, type ShellyAdapter } from './types.js';
+import { parseRpcUpdates } from './firmware.js';
+import {
+  DEFAULT_ADAPTER_TIMEOUT_MS,
+  type AdapterOptions,
+  type DeviceInfo,
+  type FirmwareChannel,
+  type FirmwareUpdates,
+  type ShellyAdapter,
+} from './types.js';
 
 // Gen2/Gen3/Gen4 JSON-RPC 2.0 over HTTP: POST /rpc.
 // Auth is HTTP Digest, SHA-256, realm = device id, user always "admin".
@@ -46,6 +54,15 @@ export class RpcAdapter implements ShellyAdapter {
 
   async factoryReset(): Promise<void> {
     await this.call('Shelly.FactoryReset');
+  }
+
+  async checkForUpdate(): Promise<FirmwareUpdates> {
+    return parseRpcUpdates(await this.call('Shelly.CheckForUpdate'));
+  }
+
+  async startUpdate(channel: FirmwareChannel): Promise<void> {
+    // Shelly.Update takes either `stage` or `url`; we only use the official channels.
+    await this.call('Shelly.Update', { stage: channel });
   }
 
   /** Sends one JSON-RPC request and returns `result`. Answers a digest challenge (or a stale nonce) once. */

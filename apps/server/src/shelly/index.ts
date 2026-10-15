@@ -4,6 +4,7 @@ import type { AdapterOptions, ShellyAdapter, ShellyGen } from './types.js';
 
 export * from './detect.js';
 export * from './errors.js';
+export * from './firmware.js';
 export * from './host-map.js';
 export * from './mac.js';
 export * from './types.js';

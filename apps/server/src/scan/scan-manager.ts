@@ -1,8 +1,9 @@
 import type { FastifyBaseLogger } from 'fastify';
 import type { Db } from '../db/database.js';
-import { markMissing, upsertSeenDevice } from '../db/devices.js';
+import { markMissing, recordFirmwareUpdates, upsertSeenDevice } from '../db/devices.js';
 import { insertSnapshot } from '../db/snapshots.js';
 import { DEFAULT_PROBE_TIMEOUT_MS, probeShelly } from '../shelly/detect.js';
+import { updatesFromStatus } from '../shelly/firmware.js';
 import { ShellyError, describeError } from '../shelly/errors.js';
 import { directHost, type HostResolver } from '../shelly/host-map.js';
 import { createAdapter } from '../shelly/index.js';
@@ -165,7 +166,11 @@ export class ScanManager {
       const now = this.options.now();
       this.db.transaction(() => {
         result.created = upsertSeenDevice(this.db, { ...info, name: result.name }, ip, now).created;
-        if (snapshot) insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, ...snapshot });
+        if (snapshot) {
+          insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, ...snapshot });
+          const updates = updatesFromStatus(info.gen, snapshot.status);
+          if (updates) recordFirmwareUpdates(this.db, info.mac, updates, now);
+        }
       })();
     } catch (err) {
       this.log.error({ err, ip, mac: info.mac }, 'storing scan result failed');

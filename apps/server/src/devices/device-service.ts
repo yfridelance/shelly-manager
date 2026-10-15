@@ -1,13 +1,21 @@
 import type { Db } from '../db/database.js';
 import { finishAction, startAction, type ActionType } from '../db/actions.js';
-import { getDevice, markReset, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
+import { getDevice, markReset, recordFirmwareUpdates, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
 import { insertSnapshot } from '../db/snapshots.js';
 import { probeShelly } from '../shelly/detect.js';
 import { ShellyAuthError, ShellyNetworkError, ShellyTimeoutError, describeError, type DeviceErrorCode } from '../shelly/errors.js';
+import { updatesFromStatus } from '../shelly/firmware.js';
 import { directHost, type HostResolver } from '../shelly/host-map.js';
 import { createAdapter } from '../shelly/index.js';
 import { normalizeMac } from '../shelly/mac.js';
-import { DEFAULT_ADAPTER_TIMEOUT_MS, type Credentials, type DeviceInfo, type ShellyAdapter } from '../shelly/types.js';
+import {
+  DEFAULT_ADAPTER_TIMEOUT_MS,
+  type Credentials,
+  type DeviceInfo,
+  type FirmwareChannel,
+  type FirmwareUpdates,
+  type ShellyAdapter,
+} from '../shelly/types.js';
 
 export interface DeviceServiceOptions {
   hostFor: HostResolver;
@@ -26,6 +34,7 @@ export type DeviceActionErrorCode =
   | 'busy'
   | 'confirm_mismatch'
   | 'snapshot_failed'
+  | 'no_update'
   | DeviceErrorCode;
 
 export class DeviceActionError extends Error {
@@ -92,6 +101,47 @@ export class DeviceService {
       this.logged(mac, 'reboot', ctx, async (device) => {
         const { adapter } = await this.connect(device, credentials);
         await adapter.reboot();
+      }),
+    );
+  }
+
+  /** Asks the device for newer firmware and remembers the answer. Read-only, therefore not logged. */
+  checkFirmware(mac: string, credentials?: Credentials): Promise<FirmwareUpdates & { checkedAt: string }> {
+    return this.exclusive(mac, async () => {
+      const device = getDevice(this.db, mac);
+      if (!device) throw new DeviceActionError('not_found', `Unknown device ${mac}`);
+      try {
+        const { adapter } = await this.connect(device, credentials);
+        const updates = await adapter.checkForUpdate();
+        const checkedAt = this.options.now();
+        recordFirmwareUpdates(this.db, mac, updates, checkedAt);
+        return { ...updates, checkedAt };
+      } catch (err) {
+        if (err instanceof DeviceActionError) throw err;
+        const { code, message } = describeError(err);
+        throw new DeviceActionError(code, message);
+      }
+    });
+  }
+
+  /**
+   * Starts an OTA update of one device on the given channel. Checks first that the device really
+   * offers a newer version there (409 no_update otherwise). The device flashes and reboots by itself;
+   * the new firmware shows up with the next scan or snapshot.
+   */
+  updateFirmware(mac: string, channel: FirmwareChannel, credentials?: Credentials, ctx: ActionContext = {}): Promise<{ version: string }> {
+    return this.exclusive(mac, () =>
+      this.logged(mac, 'firmware_update', ctx, async (device, details) => {
+        const { info, adapter } = await this.connect(device, credentials);
+        const updates = await adapter.checkForUpdate();
+        recordFirmwareUpdates(this.db, mac, updates, this.options.now());
+        const version = updates[channel];
+        details.channel = channel;
+        details.from = info.firmware;
+        if (!version) throw new DeviceActionError('no_update', `${mac} offers no ${channel} update`);
+        details.to = version;
+        await adapter.startUpdate(channel);
+        return { version };
       }),
     );
   }
@@ -170,6 +220,8 @@ export class DeviceService {
       const now = this.options.now();
       return this.db.transaction(() => {
         upsertSeenDevice(this.db, { ...info, name }, device.ip ?? '', now);
+        const updates = updatesFromStatus(info.gen, status);
+        if (updates) recordFirmwareUpdates(this.db, info.mac, updates, now);
         return insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, config, status });
       })();
     });
