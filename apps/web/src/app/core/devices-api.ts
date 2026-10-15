@@ -79,7 +79,11 @@ export class DevicesApi {
 export function toDeviceApiError(err: unknown): DeviceApiError {
   if (err instanceof HttpErrorResponse) {
     const body = err.error as (Partial<ApiError> & { cause?: string }) | null;
-    if (body?.error) return new DeviceApiError(body.error, errorText(body.error), body.cause);
+    if (body?.error) {
+      // Known codes get our German text; otherwise the server's (German) message.
+      const known = errorText(body.error);
+      return new DeviceApiError(body.error, known === body.error && body.message ? body.message : known, body.cause);
+    }
     if (err.status === 0) return new DeviceApiError('offline', 'Server nicht erreichbar.');
     return new DeviceApiError('http', `Anfrage fehlgeschlagen (HTTP ${err.status}).`);
   }

@@ -1,0 +1,99 @@
+<p class="back"><a routerLink="/templates">← Templates</a></p>
+<h1>{{ id() ? 'Template bearbeiten' : 'Neues Template' }}</h1>
+
+<form (submit)="save($event)">
+  <div class="basics">
+    <label class="field">
+      <span>Name</span>
+      <input name="name" required maxlength="100" [value]="name()" (input)="name.set(value($event))" />
+    </label>
+    <label class="field grow">
+      <span>Beschreibung (optional)</span>
+      <input name="description" maxlength="2000" [value]="description()" (input)="description.set(value($event))" />
+    </label>
+  </div>
+  <p class="muted">
+    Nur angehakte Einstellungen gehören zum Template; eine Eingabe hakt die Einstellung automatisch an. Alles andere
+    bleibt auf den Geräten unverändert.
+  </p>
+
+  @for (g of groups; track g.id) {
+    <fieldset>
+      <legend>{{ g.title }} <span class="muted">({{ g.gens }})</span></legend>
+      @if (g.hint) {
+        <p class="hint">{{ g.hint }}</p>
+      }
+      @for (f of g.fields; track f.key) {
+        <div class="row" [class.off]="!fields()[f.key]?.on">
+          <label class="include">
+            <input type="checkbox" [attr.name]="'on:' + f.key" [checked]="fields()[f.key]?.on" (change)="toggle(f.key, checked($event))" />
+            {{ f.label }}
+          </label>
+          @if (f.type === 'bool') {
+            <select [attr.name]="f.key" [attr.aria-label]="f.label" (change)="setValue(f.key, value($event))">
+              <option value="true" [selected]="fields()[f.key]?.value === 'true'">Ein</option>
+              <option value="false" [selected]="fields()[f.key]?.value === 'false'">Aus</option>
+            </select>
+          } @else {
+            <input
+              [attr.name]="f.key"
+              [type]="f.type === 'number' ? 'number' : 'text'"
+              [attr.min]="f.min ?? null"
+              [attr.max]="f.max ?? null"
+              [attr.step]="f.step ?? null"
+              [placeholder]="f.placeholder ?? ''"
+              [attr.aria-label]="f.label"
+              [value]="fields()[f.key]?.value ?? ''"
+              (input)="setValue(f.key, value($event))"
+            />
+          }
+          @if (f.hint) {
+            <span class="muted small">{{ f.hint }}</span>
+          }
+        </div>
+      }
+    </fieldset>
+  }
+
+  <fieldset>
+    <legend>
+      <label class="include">
+        <input type="checkbox" name="on:script" [checked]="scriptOn()" (change)="scriptOn.set(checked($event))" />
+        Script verteilen <span class="muted">(Gen2+)</span>
+      </label>
+    </legend>
+    <p class="hint">Wird per Name angelegt oder aktualisiert. Ist der Code auf dem Gerät gleich, bleibt das Script unberührt.</p>
+    @if (scriptOn()) {
+      <div class="row">
+        <label class="include">Name</label>
+        <input name="script.name" maxlength="64" placeholder="heizung" [value]="fields()['script.name']?.value ?? ''" (input)="setValue('script.name', value($event))" />
+      </div>
+      <label class="field">
+        <span>Code</span>
+        <textarea name="script.code" rows="10" spellcheck="false" class="mono" [value]="fields()['script.code']?.value ?? ''" (input)="setValue('script.code', value($event))"></textarea>
+      </label>
+      <div class="row">
+        <label class="include">Beim Start ausführen</label>
+        <select name="script.enable" (change)="setValue('script.enable', value($event))">
+          <option value="true" [selected]="fields()['script.enable']?.value === 'true'">Ein</option>
+          <option value="false" [selected]="fields()['script.enable']?.value === 'false'">Aus</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="include">Nach dem Verteilen (neu) starten</label>
+        <select name="script.start" (change)="setValue('script.start', value($event))">
+          <option value="true" [selected]="fields()['script.start']?.value === 'true'">Ja</option>
+          <option value="false" [selected]="fields()['script.start']?.value === 'false'">Nein</option>
+        </select>
+      </div>
+    }
+  </fieldset>
+
+  @if (error(); as e) {
+    <p class="message error" role="alert">{{ e }}</p>
+  }
+  <div class="buttons">
+    <button type="submit" [disabled]="!canSave() || saving()">Speichern und Vorschau</button>
+    <a class="button secondary" routerLink="/templates">Abbrechen</a>
+  </div>
+</form>

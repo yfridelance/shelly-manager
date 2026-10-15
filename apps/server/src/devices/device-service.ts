@@ -218,6 +218,15 @@ export class DeviceService {
           script = { created: r.created, codeChanged: r.codeChanged, enableChanged: r.enableChanged, started: r.started };
         }
 
+        // Document the new state (before a reboot takes the device away for a moment).
+        if (plan.steps.length > 0 || plan.script) {
+          try {
+            details.snapshotAfterId = await this.snapshotUnlocked(mac, request.credentials, ctx);
+          } catch (err) {
+            details.snapshotAfterError = err instanceof DeviceActionError ? err.code : describeError(err).code;
+          }
+        }
+
         let rebooted = false;
         if (restartRequired && request.rebootIfRequired) {
           await adapter.reboot();

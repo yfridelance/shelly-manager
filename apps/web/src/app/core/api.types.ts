@@ -114,5 +114,61 @@ export interface ActionEntry {
     channel?: FirmwareChannel;
     from?: string | null;
     to?: string;
+    /** Template: name, changed settings (secrets masked), reboot. */
+    templateName?: string;
+    changes?: { key: string; from: unknown; to: unknown }[];
+    unsupported?: string[];
+    restartRequired?: boolean;
+    rebooted?: boolean;
+    appliedSteps?: string[];
   } | null;
+}
+
+// --- Templates -------------------------------------------------------------------
+
+export interface TemplateSettings {
+  mqtt?: { enable?: boolean; server?: string; user?: string; clientId?: string; topicPrefix?: string };
+  cloud?: { enable?: boolean };
+  time?: { sntpServer?: string; timezone?: string; lat?: number; lon?: number };
+  eco?: { ecoMode?: boolean; ledStatusDisable?: boolean };
+  bluetooth?: { enable?: boolean; rpc?: boolean; observer?: boolean };
+  wifiAp?: { enable?: boolean };
+  apRoaming?: { enable?: boolean; threshold?: number };
+  coiot?: { enable?: boolean; updatePeriod?: number; peer?: string };
+  script?: { name: string; code: string; enable?: boolean; start?: boolean };
+}
+
+export interface Template {
+  id: number;
+  name: string;
+  description: string | null;
+  settings: TemplateSettings;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlanItem {
+  key: string;
+  status: 'change' | 'same' | 'unsupported';
+  current?: unknown;
+  target?: unknown;
+  reason?: 'generation' | 'firmware';
+}
+
+export interface TemplatePreview {
+  mac: string;
+  name: string | null;
+  gen: number;
+  state: DeviceState;
+  basedOn: string | null;
+  items: PlanItem[];
+}
+
+export interface ApplyTemplateResult {
+  snapshotId: number;
+  items: PlanItem[];
+  changed: number;
+  restartRequired: boolean;
+  rebooted: boolean;
+  script?: { created: boolean; codeChanged: boolean; enableChanged: boolean; started: boolean };
 }

@@ -131,10 +131,20 @@ describe('apply template', () => {
 
     const log = listActions(db).find((l) => l.action === 'apply_template');
     expect(log?.result).toBe('ok');
-    const details = JSON.parse(log?.details ?? '{}') as { templateName: string; changes: { key: string; from: unknown; to: unknown }[]; rebooted: boolean };
+    const details = JSON.parse(log?.details ?? '{}') as {
+      templateName: string;
+      changes: { key: string; from: unknown; to: unknown }[];
+      rebooted: boolean;
+      snapshotAfterId?: number;
+    };
     expect(details).toMatchObject({ templateName: 'Haus-Standard', rebooted: true });
     expect(details.changes).toContainEqual({ key: 'mqtt.server', from: null, to: 'mqtt.home:1883' });
     expect(details.changes).toContainEqual({ key: 'mqtt.password', from: '********', to: '********' });
+
+    // A second snapshot documents the new state, so the preview now shows nothing left to do.
+    expect(details).toMatchObject({ snapshotAfterId: expect.any(Number) });
+    const preview = (await json(a, 'POST', `/api/templates/${id}/preview`, {})).json<{ items: { status: string }[] }[]>();
+    expect(preview[0]?.items.filter((i) => i.status === 'change')).toEqual([]);
 
     // Second run: nothing to do, no reboot.
     const again = await json(a, 'POST', `/api/devices/${macs[0]}/apply-template`, { templateId: id, rebootIfRequired: true });

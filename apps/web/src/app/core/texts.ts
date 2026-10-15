@@ -20,8 +20,10 @@ export const ACTION_ERROR_TEXT: Record<string, string> = {
   mac_mismatch: 'Unter dieser IP antwortet ein anderes Gerät. Bitte neu scannen.',
   busy: 'Auf diesem Gerät läuft bereits eine Aktion',
   confirm_mismatch: 'Bestätigung stimmt nicht mit der MAC überein',
-  snapshot_failed: 'Snapshot vor dem Reset fehlgeschlagen',
+  snapshot_failed: 'Snapshot vorher fehlgeschlagen, nichts geändert',
   no_update: 'Auf diesem Kanal ist kein neueres Firmware-Update verfügbar',
+  template_failed: 'Template konnte nicht vollständig angewendet werden',
+  template_not_found: 'Template nicht gefunden',
 };
 
 /** Factory reset whose command broke off, but the device was gone when probed again. */
@@ -32,6 +34,7 @@ export const ACTION_TEXT: Record<string, string> = {
   reboot: 'Neustart',
   factory_reset: 'Werksreset',
   firmware_update: 'Firmware-Update',
+  apply_template: 'Template',
 };
 
 export function errorText(code: string | null | undefined): string {

@@ -1,0 +1,175 @@
+<p class="back"><a routerLink="/templates">← Templates</a></p>
+
+@if (template.error()) {
+  <p class="message error" role="alert">Template nicht gefunden.</p>
+} @else if (template.value(); as t) {
+  <div class="head">
+    <h1>Template anwenden: {{ t.name }}</h1>
+    <a [routerLink]="['/templates', t.id]">Bearbeiten</a>
+  </div>
+  @if (t.description) {
+    <p class="muted">{{ t.description }}</p>
+  }
+  <ul class="settings">
+    @for (l of lines(); track l) {
+      <li>{{ l }}</li>
+    }
+  </ul>
+
+  <section class="card">
+    <div class="toolbar">
+      <h2>Geräte</h2>
+      <input type="search" placeholder="Suchen …" [value]="search()" (input)="search.set(value($event))" />
+      <button type="button" class="link" (click)="selectAll(true)" [disabled]="running()">alle sichtbaren</button>
+      <button type="button" class="link" (click)="selectChanging()" [disabled]="running()">nur mit Änderungen</button>
+      <button type="button" class="link" (click)="selectAll(false)" [disabled]="running()">keine</button>
+      <span class="muted">{{ selectedDevices().length }} ausgewählt</span>
+    </div>
+    <p class="muted small">Vorschau auf Basis des neusten Snapshots je Gerät; beim Anwenden wird jedes Gerät frisch gelesen.</p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Name</th>
+          <th>Modell</th>
+          <th>Gen</th>
+          <th>IP</th>
+          <th>Vorschau</th>
+          <th>Ergebnis</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of visible(); track d.mac) {
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                [attr.aria-label]="(d.name ?? d.mac) + ' auswählen'"
+                [checked]="selected().has(d.mac)"
+                [disabled]="running()"
+                (change)="toggle(d.mac, checked($event))"
+              />
+            </td>
+            <td>
+              <a [routerLink]="['/inventar', d.mac]">{{ d.name ?? formatMac(d.mac) }}</a>
+              @if (d.authRequired) {
+                <span title="Passwortgeschützt"> 🔒</span>
+              }
+            </td>
+            <td>{{ d.model ?? '–' }}</td>
+            <td>{{ d.gen }}</td>
+            <td class="mono">{{ d.ip }}</td>
+            <td>
+              <button type="button" class="link" [class]="'link preview ' + summary(d.mac).kind" (click)="expanded.set(expanded() === d.mac ? null : d.mac)">
+                {{ summary(d.mac).text }}
+              </button>
+            </td>
+            <td>
+              @if (results()[d.mac]; as r) {
+                <span [class.error-text]="!r.ok" [class.ok-text]="r.ok">{{ r.ok ? '✓' : '✗' }} {{ r.text }}</span>
+              } @else if (running() && selected().has(d.mac)) {
+                <span class="muted">wartet …</span>
+              }
+            </td>
+          </tr>
+          @if (expanded() === d.mac) {
+            <tr class="details">
+              <td></td>
+              <td colspan="6">
+                @if (results()[d.mac]?.result; as r) {
+                  <strong>Ergebnis:</strong>
+                  <ul>
+                    @for (i of r.items; track i.key) {
+                      <li [class]="i.status">{{ itemText(i) }}</li>
+                    }
+                  </ul>
+                } @else if (previews()[d.mac]; as p) {
+                  @if (p.basedOn) {
+                    <span class="muted small">Stand Snapshot {{ p.basedOn | date: 'dd.MM.yyyy HH:mm' }}</span>
+                  }
+                  <ul>
+                    @for (i of p.items; track i.key) {
+                      <li [class]="i.status">{{ itemText(i) }}</li>
+                    } @empty {
+                      <li class="muted">Noch kein Snapshot mit Config. Die Änderungen werden beim Anwenden ermittelt.</li>
+                    }
+                  </ul>
+                }
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr>
+            <td colspan="7" class="muted">Keine aktiven Geräte mit IP.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Anwenden</h2>
+    <div class="options">
+      @if (selectedProtected().length > 0) {
+        <label class="field">
+          <span>Benutzer (nur Gen1)</span>
+          <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
+        </label>
+        <label class="field">
+          <span>Gerätepasswort ({{ selectedProtected().length }} geschützt)</span>
+          <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
+        </label>
+      }
+      @if (needsMqttPassword()) {
+        <label class="field">
+          <span>MQTT-Passwort setzen (optional)</span>
+          <input name="mqttPassword" type="password" autocomplete="off" [value]="mqttPassword()" (input)="mqttPassword.set(value($event))" />
+        </label>
+      }
+      @if (needsApPassword()) {
+        <label class="field">
+          <span>AP-Passwort (optional, min. 8 Zeichen)</span>
+          <input name="apPassword" type="password" autocomplete="off" [value]="apPassword()" (input)="apPassword.set(value($event))" />
+        </label>
+      }
+      <label class="check">
+        <input type="checkbox" name="reboot" [checked]="reboot()" (change)="reboot.set(checked($event))" />
+        Bei Bedarf automatisch neu starten
+      </label>
+    </div>
+    @if (needsApPassword() && !apPassword()) {
+      <p class="message warn">Ohne AP-Passwort ist der Access-Point offen, sofern das Gerät noch keines hat.</p>
+    }
+    <p class="muted small">
+      Vor jeder Änderung wird pro Gerät automatisch ein Snapshot gespeichert. Schlägt er fehl, bleibt das Gerät
+      unverändert. Passwörter werden nicht gespeichert.
+    </p>
+
+    <div class="buttons">
+      @if (running()) {
+        <progress [max]="total()" [value]="doneCount()"></progress>
+        <span>{{ doneCount() }} von {{ total() }}</span>
+        <button type="button" class="secondary" (click)="cancel()">Abbrechen</button>
+      } @else if (confirming()) {
+        <span>Template «{{ t.name }}» auf {{ selectedDevices().length }} {{ selectedDevices().length === 1 ? 'Gerät' : 'Geräte' }} anwenden?</span>
+        <button type="button" (click)="run()">Ja, anwenden</button>
+        <button type="button" class="secondary" (click)="confirming.set(false)">Abbrechen</button>
+      } @else {
+        <button type="button" [disabled]="selectedDevices().length === 0" (click)="confirming.set(true)">
+          Auf {{ selectedDevices().length }} {{ selectedDevices().length === 1 ? 'Gerät' : 'Geräte' }} anwenden
+        </button>
+      }
+    </div>
+    @if (!running() && doneCount() > 0) {
+      <p class="summary" role="status">
+        {{ okCount() }} von {{ total() }} erfolgreich
+        @if (okCount() < doneCount()) {
+          · <span class="error-text">{{ doneCount() - okCount() }} mit Fehler</span>
+        }
+        · Details im <a routerLink="/protokoll">Protokoll</a>
+      </p>
+    }
+  </section>
+} @else {
+  <p class="muted">Lädt …</p>
+}

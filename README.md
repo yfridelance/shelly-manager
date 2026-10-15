@@ -39,6 +39,13 @@ docker compose down            # stoppt; Daten bleiben im Volume shelly-data
 - Gescannt wird über das Docker-Bridge-Netz (ausgehende HTTP-Anfragen ins LAN). Den IP-Bereich gibt man
   im UI an; das Container-interne Netz wird nicht automatisch erkannt.
 
+## Templates
+
+Unter «Templates» lassen sich Einstellungen (MQTT, Cloud, Zeit/Standort, Eco/LED, Bluetooth, WLAN-AP, AP-Roaming,
+CoIoT, Scripts) als Template speichern und auf mehrere Geräte anwenden. Die App übersetzt sie je Generation, zeigt
+vorher pro Gerät, was sich ändert, sichert vor und nach dem Anwenden einen Snapshot und protokolliert jede Änderung.
+MQTT- und AP-Passwort werden nur beim Anwenden eingegeben und nie gespeichert.
+
 ## Export
 
 Im Inventar oder direkt per API:

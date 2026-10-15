@@ -26,9 +26,10 @@ Eine selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) in einem Netzw
 ### Über das MVP hinaus umgesetzt
 - Firmware-Updates pro Gerät: Verfügbarkeit aus dem Status (bei jedem Scan/Snapshot), explizit prüfen, Stable/Beta installieren
 - Config-Vergleich zweier Snapshots eines Geräts (erster Schritt Richtung Drift-Erkennung)
+- Templates: kuratierte Settings (MQTT, Cloud, Zeit/Standort, Eco/LED, Bluetooth inkl. BLE-RPC, WLAN-AP, AP-Roaming, CoIoT, Script) mit Vorschau pro Gerät und Anwenden auf mehrere Geräte (siehe Abschnitt 14)
 
 ### Nicht im MVP (Datenmodell aber vorbereiten)
-- Bulk-Settings, Templates, Drift-Erkennung über mehrere Geräte
+- Drift-Erkennung über mehrere Geräte (Template als Soll-Zustand ist mit der Vorschau schon fast da)
 - Multi-Site mit Agents/Collectors
 - Benutzerverwaltung / Login (App läuft lokal bzw. hinter Reverse Proxy)
 - Persistente Speicherung von Gerätepasswörtern
@@ -129,7 +130,7 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
-Stand nach Migration 005 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+Stand nach Migration 006 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
 
 ```sql
 devices (
@@ -175,6 +176,17 @@ action_log (
 )
 ```
 
+templates (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  settings_json TEXT NOT NULL,   -- TemplateSettings (apps/server/src/templates/settings.ts), nie Secrets
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+
+`action_log.action` kennt zusätzlich `apply_template` (details: templateId/-Name, snapshotId, snapshotAfterId, changes, unsupported, restartRequired, rebooted, script, bei Fehlern appliedSteps).
+
 `missing`: Ein abgeschlossener Scan markiert aktive Geräte, deren IP im Bereich lag, die aber nicht mehr antworteten. Wird ein Gerät wieder gefunden, ist es wieder `active`.
 Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurden: `state = 'reset'` setzen, damit die Dokumentation erhalten bleibt.
 
@@ -199,8 +211,14 @@ Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `te
 | POST | `/api/devices/:mac/factory-reset` | Reset, Body `{ confirmMac, credentials?, allowWithoutSnapshot? }`; Antwort `{ snapshotId, confirmed }` |
 | POST | `/api/devices/:mac/firmware/check` | Update-Prüfung (nicht protokolliert) |
 | POST | `/api/devices/:mac/firmware/update` | Update starten (`{ channel, credentials? }`); 409 `no_update` |
+| GET/POST | `/api/templates` | Templates auflisten / anlegen (`{ name, description?, settings }`) |
+| GET/PUT/DELETE | `/api/templates/:id` | Template lesen / ändern / löschen |
+| POST | `/api/templates/:id/preview` | Vorschau pro Gerät (`{ macs? }`, Default alle aktiven) aus dem neusten Snapshot, ohne Gerätezugriff |
+| POST | `/api/devices/:mac/apply-template` | Template anwenden (`{ templateId, credentials?, secrets?: { mqttPassword?, apPassword? }, rebootIfRequired? }`) |
 | GET | `/api/export.json` / `/api/export.csv` | Export (`?snapshots=all` für alle Snapshots) |
 | GET | `/api/actions` | Aktionsprotokoll (`?mac=`, `?limit=`) |
+
+Fehlercodes Templates: 409 `name_taken`, 400 `empty_template`, 404 `template_not_found`, 409 `snapshot_failed` (vorher), 502 `template_failed` (mit `cause`).
 
 MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`, 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
 
@@ -217,6 +235,7 @@ Zusätzlich umgesetzt (beibehalten):
 - Pro Gerät nur eine Aktion gleichzeitig (409 `busy`).
 - Bricht beim Reset die Verbindung ab, wird nach kurzer Wartezeit erneut geprüft: Gerät weg oder Passwortschutz entfernt → Reset gilt als unbestätigt erfolgreich (`confirmed: false`), sonst Fehler.
 - Zugangsdaten gehen nur an Geräte, die sie verlangen. Für zurückgesetzte Geräte bietet das UI keine Aktionen mehr an.
+- Templates: Anwenden nur nach Vorschau und einer Bestätigung; pro Gerät Snapshot vorher (blockiert bei Fehler) und nachher; MQTT- und AP-Passwort nur beim Anwenden, nie im Template, nie im Protokoll (maskiert); WLAN-Client-Einstellungen und Gerätepasswort sind bewusst nicht Teil von Templates.
 
 ## 10. Frontend
 
@@ -225,6 +244,7 @@ Ansichten:
 2. **Inventar:** Tabelle (Name, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
 3. **Gerätedetail:** Infos, Name/Standort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
+5. **Templates:** Liste, Editor (nur angehakte Einstellungen gehören zum Template, Eingabe hakt automatisch an), Anwenden mit Geräteauswahl, Vorschau pro Gerät, Passwortfeldern, «bei Bedarf neu starten», Fortschritt und Ergebnis pro Gerät
 
 Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Falls das eigene Web-Component-Design-System "Kern" verfügbar ist, dessen Komponenten verwenden; sonst schlichtes eigenes SCSS ohne UI-Framework.
 
@@ -236,7 +256,7 @@ Baue einen **Mock-Shelly-Server** (`apps/server/test/mock-shelly/`), der mehrere
 - realistische Antworten für `/shelly`, `/settings`, `/status`, `/rpc`
 - Reset/Reboot als Zustandsänderung, damit Tests das Ergebnis prüfen können
 
-Umgesetzt in `apps/server/test/mock-shelly/`: ein HTTP-Server pro Gerät auf eigenem Port, eigenständige Digest-Prüfung (nicht `src/shelly/digest.ts`), Optionen `failing` (Methoden/Pfade mit Fehler), `dropConnectionOnReset`, `offlineAfterReset`, `updates` (Firmware-Angebote), `delayMs`, dazu `hang`- und `foreign`-Hosts. `npm run mock -w apps/server` startet die Fleet für die manuelle Entwicklung.
+Umgesetzt in `apps/server/test/mock-shelly/`: ein HTTP-Server pro Gerät auf eigenem Port, eigenständige Digest-Prüfung (nicht `src/shelly/digest.ts`), Optionen `failing` (Methoden/Pfade mit Fehler), `dropConnectionOnReset`, `offlineAfterReset`, `updates` (Firmware-Angebote), `delayMs`, dazu `hang`- und `foreign`-Hosts. Configs sind beschreibbar (Gen1 `/settings`-Parameter, Gen2+ `<Komponente>.SetConfig`) und **strikt**: unbekannte Parameter/Felder ergeben einen Fehler, damit Planer-Fehler in Tests auffallen. Script-Methoden sind emuliert; Secrets landen in `state.secretsReceived`. `npm run mock -w apps/server` startet die Fleet für die manuelle Entwicklung.
 
 Pflichttests:
 - Gen-Erkennung aus `/shelly`
@@ -264,3 +284,26 @@ Stand: Alle sechs Phasen sind umgesetzt und abgenommen (getestet gegen den Mock;
 - Rohe Geräte-Antworten unverändert speichern; Normalisierung nur in eigenen Feldern.
 - Bei unklarem Shelly-Verhalten: Doku prüfen, Annahme im Code kommentieren, nachfragen statt raten.
 - Commits klein und pro Phase nachvollziehbar.
+
+## 14. Templates (kuratierte Settings)
+
+Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), Anwenden in `DeviceService.applyTemplate`, Labels und Feldliste im UI in `apps/web/src/app/core/template-fields.ts` (Keys müssen mit dem Planer übereinstimmen).
+
+| Template-Feld | Gen1 (`/settings…`) | Gen2+ |
+|---|---|---|
+| `mqtt.enable/server/user` | `mqtt_enable`, `mqtt_server`, `mqtt_user` | `MQTT.SetConfig` `enable/server/user` (Neustart nötig) |
+| `mqtt.clientId` | `mqtt_id` (zugleich Topic-ID) | `client_id` |
+| `mqtt.topicPrefix` | – | `topic_prefix` |
+| MQTT-Passwort (beim Anwenden) | `mqtt_pass` | `pass` (zusammen mit `user`) |
+| `cloud.enable` | `/settings/cloud?enabled` | `Cloud.SetConfig enable` |
+| `time.sntpServer/timezone/lat/lon` | `sntp_server`, `timezone` (+`tzautodetect=false`), `lat`, `lng` | `Sys.SetConfig sntp.server`, `location.tz/lat/lon` |
+| `eco.ecoMode` | – (nicht dokumentiert) | `sys.device.eco_mode` |
+| `eco.ledStatusDisable` | `led_status_disable` (nur manche Modelle) | – |
+| `bluetooth.enable/rpc/observer` | – | `BLE.SetConfig` (`enable`/`observer` nur bei älterer FW) |
+| `wifiAp.enable` (+ AP-Passwort beim Anwenden) | – (AP schliesst WLAN-Client aus) | `WiFi.SetConfig ap.enable` (`pass`, `is_open=false`) |
+| `apRoaming.enable/threshold` | `ap_roaming_enabled`, `ap_roaming_threshold` | `wifi.roam.interval` (0 = aus, sonst bisheriger Wert bzw. 60), `rssi_thr` |
+| `coiot.enable/updatePeriod/peer` | `coiot_enable`, `coiot_update_period`, `coiot_peer` | – |
+| `script` | – | `Script.List/Create/Stop/PutCode (1024 B)/SetConfig/Start`, per Name, Code-Vergleich via `GetCode` |
+
+Regeln: Nur Felder setzen, die die aktuelle Config des Geräts kennt (sonst `unsupported`, Grund `generation` oder `firmware`); gleiche Werte nicht senden; Platzhalter `{id}` (Gen1 Hostname, Gen2+ Geräte-ID) und `{mac}`; Gen1-Fehlermeldungen ohne Query-String.
+

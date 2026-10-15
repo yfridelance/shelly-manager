@@ -14,6 +14,26 @@ export const routes: Routes = [
     loadComponent: () => import('./features/device/device-page').then((m) => m.DevicePage),
   },
   {
+    path: 'templates',
+    title: 'Templates · Shelly Manager',
+    loadComponent: () => import('./features/templates/templates-page').then((m) => m.TemplatesPage),
+  },
+  {
+    path: 'templates/neu',
+    title: 'Neues Template · Shelly Manager',
+    loadComponent: () => import('./features/templates/template-editor').then((m) => m.TemplateEditor),
+  },
+  {
+    path: 'templates/:id',
+    title: 'Template · Shelly Manager',
+    loadComponent: () => import('./features/templates/template-editor').then((m) => m.TemplateEditor),
+  },
+  {
+    path: 'templates/:id/anwenden',
+    title: 'Template anwenden · Shelly Manager',
+    loadComponent: () => import('./features/templates/template-apply').then((m) => m.TemplateApply),
+  },
+  {
     path: 'protokoll',
     title: 'Protokoll · Shelly Manager',
     loadComponent: () => import('./features/log/log-page').then((m) => m.LogPage),

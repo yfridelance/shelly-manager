@@ -1,0 +1,84 @@
+.back {
+  margin: 0 0 0.5rem;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.settings {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    font-size: 1.05rem;
+    margin: 0;
+  }
+}
+
+.toolbar,
+.options,
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.options {
+  align-items: end;
+  margin: 0.75rem 0;
+}
+
+.check {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding-bottom: 0.45rem;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.preview.change {
+  color: var(--accent);
+}
+
+.preview.same,
+.preview.unknown {
+  color: var(--text-muted);
+}
+
+.ok-text {
+  color: var(--ok);
+}
+
+tr.details td {
+  white-space: normal;
+  background: var(--surface-2);
+
+  ul {
+    margin: 0.25rem 0;
+    padding-left: 1.2rem;
+  }
+
+  li.same,
+  li.unsupported {
+    color: var(--text-muted);
+  }
+}
+
+progress {
+  width: 16rem;
+}
