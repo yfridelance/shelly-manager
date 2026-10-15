@@ -14,6 +14,7 @@
       <a class="button secondary" href="/api/export.json" download title="Inkl. neuster Config pro Gerät">Export JSON</a>
       <a href="/api/export.json?snapshots=all" download>JSON mit allen Snapshots</a>
     </nav>
+    <app-firmware-check-panel [devices]="devices.value()" (checked)="applyCheck($event)" (showUpdates)="showOnlyUpdates()" />
   }
 </div>
 

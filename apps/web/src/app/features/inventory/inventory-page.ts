@@ -4,13 +4,14 @@ import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import type { Device, DeviceState } from '../../core/api.types';
 import { DEVICE_STATE_TEXT, formatMac, ipSortKey, shortFirmware } from '../../core/texts';
+import { FirmwareCheckPanel, type FirmwareCheckResult } from './firmware-check-panel';
 import { InventoryFilters, type SortKey } from './inventory-filters';
 
 const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
 
 @Component({
   selector: 'app-inventory-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, FirmwareCheckPanel],
   templateUrl: './inventory-page.html',
   styleUrl: './inventory-page.scss',
 })
@@ -65,6 +66,21 @@ export class InventoryPage {
     () =>
       !!this.f.search() || this.f.gen() !== null || this.f.location() !== null || this.f.state() !== null || this.f.onlyUpdates(),
   );
+
+  /** Live update of one row after its firmware check. */
+  protected applyCheck(result: FirmwareCheckResult): void {
+    if (result.checkedAt === null) return;
+    this.devices.update((list) =>
+      list.map((d) =>
+        d.mac === result.mac ? { ...d, updateStable: result.stable, updateBeta: result.beta, updateCheckedAt: result.checkedAt } : d,
+      ),
+    );
+  }
+
+  protected showOnlyUpdates(): void {
+    this.f.reset();
+    this.f.onlyUpdates.set(true);
+  }
 
   protected open(device: Device): void {
     void this.router.navigate(['/inventar', device.mac]);

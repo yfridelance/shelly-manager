@@ -1,0 +1,77 @@
+<button type="button" class="secondary" [disabled]="running()" (click)="toggle()" [attr.aria-expanded]="open()">
+  Alle auf Updates prüfen
+</button>
+
+@if (open()) {
+  <section class="panel" aria-label="Firmware-Prüfung">
+    @if (!running() && !finished()) {
+      <form (submit)="start($event)">
+        <p>
+          {{ candidates().length }} aktive {{ candidates().length === 1 ? 'Gerät' : 'Geräte' }} werden gefragt, ob neuere Firmware
+          verfügbar ist. Dabei wird nichts installiert.
+        </p>
+        @if (protectedCount() > 0) {
+          <p class="muted">
+            {{ protectedCount() }} davon {{ protectedCount() === 1 ? 'ist' : 'sind' }} passwortgeschützt. Ohne Passwort
+            {{ protectedCount() === 1 ? 'wird es' : 'werden sie' }} übersprungen.
+          </p>
+          <div class="credentials">
+            <label class="field">
+              <span>Benutzer (nur Gen1)</span>
+              <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
+            </label>
+            <label class="field">
+              <span>Gerätepasswort (optional)</span>
+              <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
+            </label>
+          </div>
+        }
+        <div class="buttons">
+          <button type="submit" [disabled]="candidates().length === 0">Prüfung starten</button>
+          <button type="button" class="secondary" (click)="close()">Schliessen</button>
+        </div>
+      </form>
+    } @else {
+      <div class="progress" aria-live="polite">
+        <progress [max]="total()" [value]="done()"></progress>
+        <span>{{ done() }} von {{ total() }} geprüft</span>
+        @if (running()) {
+          <button type="button" class="secondary" (click)="cancel()">Abbrechen</button>
+        }
+      </div>
+      @if (finished()) {
+        <p class="summary">
+          <strong>{{ count('update') }}</strong> mit Update, {{ count('current') }} aktuell
+          @if (betaCount() > 0) {
+            · {{ betaCount() }} mit Beta
+          }
+          @if (count('error') > 0) {
+            · <span class="error-text">{{ count('error') }} Fehler</span>
+          }
+          @if (count('skipped') > 0) {
+            · {{ count('skipped') }} übersprungen
+          }
+          @if (done() < total()) {
+            · <span class="muted">abgebrochen</span>
+          }
+        </p>
+        @if (problems().length > 0) {
+          <ul class="problems">
+            @for (p of problems(); track p.mac) {
+              <li>
+                <a [routerLink]="['/inventar', p.mac]">{{ p.name ?? p.mac }}</a>:
+                <span [class.error-text]="p.outcome === 'error'">{{ p.error }}</span>
+              </li>
+            }
+          </ul>
+        }
+        <div class="buttons">
+          @if (count('update') > 0) {
+            <button type="button" (click)="showUpdates.emit()">Nur Geräte mit Update anzeigen</button>
+          }
+          <button type="button" class="secondary" (click)="close()">Schliessen</button>
+        </div>
+      }
+    }
+  </section>
+}

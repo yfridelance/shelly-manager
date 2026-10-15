@@ -222,7 +222,7 @@ Zusätzlich umgesetzt (beibehalten):
 
 Ansichten:
 1. **Scan:** IP-Bereich, optionale Zugangsdaten, Start/Abbruch, Fortschritt, Liste der Treffer
-2. **Inventar:** Tabelle (Name, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons
+2. **Inventar:** Tabelle (Name, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
 3. **Gerätedetail:** Infos, Name/Standort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
 
