@@ -23,42 +23,49 @@ Eine selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) in einem Netzw
 8. Factory Reset **pro Gerät** mit Bestätigungsdialog
 9. Aktionsprotokoll: wer/was/wann/Ergebnis
 
+### Über das MVP hinaus umgesetzt
+- Firmware-Updates pro Gerät: Verfügbarkeit aus dem Status (bei jedem Scan/Snapshot), explizit prüfen, Stable/Beta installieren
+- Config-Vergleich zweier Snapshots eines Geräts (erster Schritt Richtung Drift-Erkennung)
+
 ### Nicht im MVP (Datenmodell aber vorbereiten)
-- Bulk-Settings, Templates, Drift-Erkennung
+- Bulk-Settings, Templates, Drift-Erkennung über mehrere Geräte
 - Multi-Site mit Agents/Collectors
 - Benutzerverwaltung / Login (App läuft lokal bzw. hinter Reverse Proxy)
 - Persistente Speicherung von Gerätepasswörtern
 - mDNS/CoIoT-Discovery
-- Firmware-Updates (optional, falls Zeit bleibt; niedrige Priorität)
 - Shelly Cloud, BLU-Geräte
 
 ## 3. Technologie-Stack (fix)
 
 | Bereich | Wahl |
 |---|---|
-| Runtime | Node.js 24 LTS, TypeScript (strict) |
+| Runtime | Node.js 24 LTS (mindestens 24.15, wegen Angular CLI 22; `.nvmrc`), TypeScript 6.0 strict (Angular 22 verlangt `>=6.0 <6.1`) |
 | Backend | Fastify, `@fastify/static`, Schemas mit TypeBox (`@fastify/type-provider-typebox`) |
 | DB | SQLite über `better-sqlite3`, SQL-Migrationen als nummerierte Dateien |
 | Frontend | Angular 22, Standalone Components, Signals, SCSS |
 | Monorepo | npm Workspaces (`apps/server`, `apps/web`) |
 | Tests | Vitest (Server), Angular-Standard für Web |
-| Container | Vorhandenes `Dockerfile`, `docker-compose.yml`, `.devcontainer/` |
+| Container | `Dockerfile` (mehrstufig, `node:24-bookworm-slim`), `docker-compose.yml`, `.devcontainer/` |
 
 Keine weiteren schweren Abhängigkeiten ohne Begründung. Für HTTP zu den Geräten reicht das native `fetch` von Node; Digest Auth selbst implementieren (kleines, getestetes Modul).
 
-## 4. Bestehende Dateien und Container-Vertrag
+## 4. Build-, Dev- und Container-Vertrag
 
-Folgende Dateien existieren bereits und definieren einen Vertrag. **Nicht brechen**, oder Dockerfile/README im selben Schritt anpassen:
+Diese Punkte definieren einen Vertrag. **Nicht brechen**, oder Dockerfile/README im selben Schritt anpassen:
 
 | Punkt | Erwartung |
 |---|---|
 | Server-Build | `npm run build -w apps/server` → `apps/server/dist/main.js` (ESM, `"type": "module"`) |
 | Web-Build | `npm run build -w apps/web` → `apps/web/dist/web/browser` |
-| Root-Build | `npm run build` baut beide |
-| Dev | `npm run dev -w apps/server` (tsx watch), `npm run start -w apps/web` (ng serve) |
-| Env | `PORT` (Dev 3000, Container 8080), `DATA_DIR` (SQLite-Ablage), `STATIC_DIR` (nur Produktion: Angular-Bundle ausliefern), `LOG_LEVEL` |
+| Root-Build | `npm run build` baut beide; `npm test` testet beide |
+| Dev | `npm run dev` startet Server (tsx watch, fest Port 3000) und Angular (fest Port 4200). Einzeln: `npm run dev -w apps/server`, `npm run start -w apps/web` |
+| Dev ohne Geräte | `npm run dev:mock`: zusätzlich Mock-Fleet auf Ports 18001–18008, Bereich `10.99.0.0/24` per `SHELLY_HOST_MAP` umgeleitet, eigene DB unter `apps/server/data/mock` |
+| Env | `PORT` (Dev 3000, Container 8080), `HOST` (Default `127.0.0.1`, Container `0.0.0.0`), `DATA_DIR` (SQLite-Ablage), `STATIC_DIR` (nur Produktion: Angular-Bundle ausliefern), `LOG_LEVEL`, `SHELLY_HOST_MAP` (nur Dev/Tests: IPs auf Mock-Geräte umleiten) |
 | Health | `GET /api/health` → 200 `{ status: "ok" }` |
-| Dev-Proxy | Angular leitet `/api` auf `http://localhost:3000` weiter (`proxy.conf.json`) |
+| Dev-Proxy | Angular leitet `/api` auf `http://localhost:3000` weiter (`proxy.conf.json`), SSE inklusive |
+| Migrationen | Nummerierte SQL-Dateien in `apps/server/migrations/` (neben `src`/`dist`), laufen beim Start automatisch; das Dockerfile kopiert den Ordner mit |
+| Container | `docker compose up -d --build` → App unter `http://localhost:8080`; Port nur auf `127.0.0.1` gebunden (kein Login); Daten im Volume `shelly-data` (`/data`); läuft als Benutzer `node` mit Healthcheck |
+| npm | npm ≥ 11.19 blockiert Install-Scripts; native Pakete sind in `allowScripts` der Root-`package.json` freigegeben |
 
 Alle API-Routen liegen unter `/api`. In Produktion liefert Fastify das SPA aus, mit Fallback auf `index.html` für unbekannte Nicht-API-Pfade.
 
@@ -73,19 +80,24 @@ Es gibt faktisch **zwei Protokolle**. Gen3 und Gen4 sprechen dieselbe API wie Ge
 
 MAC normalisieren (Grossbuchstaben, ohne Trennzeichen). **Die MAC ist der Primärschlüssel**, nie die IP.
 
+Gerätename: Gen1 liefert ihn nur über `/settings` (bei geschützten Geräten also nur mit Zugangsdaten). Gen2+ liefert ihn in `/shelly` erst ab neuerer Firmware, sonst über `Sys.GetConfig` → `device.name`.
+
 ### Gen1 (REST)
-- Auth: HTTP Basic (unverschlüsselt über HTTP)
+- Auth: HTTP Basic (unverschlüsselt über HTTP); Fehlerantworten sind 4xx mit `text/plain`
 - `GET /settings` – Config
-- `GET /status` – Status
+- `GET /status` – Status (enthält `update: { has_update, new_version, beta_version }`)
 - `GET /reboot` – Neustart
+- `GET /ota/check` – neue Update-Prüfung anstossen (asynchron), `GET /ota` – Update-Info, `GET /ota?update=true` bzw. `?beta=true` – Update starten
 - `GET /settings?reset=true` – Factory Reset (laut offizieller Gen1-Doku: Parameter `reset` auf `/settings`, „Will perform a factory reset of the device". Einen Endpoint `/reset` gibt es nicht.)
 
 ### Gen2+ (JSON-RPC 2.0)
 - Endpoint `POST /rpc` mit `{ "id": 1, "method": "...", "params": {...} }`
 - Auth: HTTP Digest, Algorithmus SHA-256, Realm = Geräte-ID; Benutzer ist immer `admin`
 - `Shelly.GetDeviceInfo`, `Shelly.GetConfig`, `Shelly.GetStatus`
-- `Shelly.Reboot`, `Shelly.FactoryReset`
-- Optional: `Shelly.CheckForUpdate`, `Shelly.Update`
+- `Shelly.Reboot`, `Shelly.FactoryReset`, `Sys.GetConfig`
+- `Shelly.CheckForUpdate` (`{ stable?: { version, build_id }, beta?: … }`, leeres Objekt = kein Update), `Shelly.Update` (`{ stage: "stable" | "beta" }`)
+- Status: `sys.available_updates` enthält dieselbe Info ohne Zusatzanfrage
+- Digest-Details: Nonce wiederverwenden mit strikt steigendem `nc` (ab FW 2.0 Pflicht); bei `stale=true` einmal neu versuchen; bei falschem Passwort nicht wiederholen (Geräte drosseln nach vielen Fehlversuchen bis zu 5 Minuten)
 
 Referenz: offizielle Shelly-API-Dokumentation (shelly-api-docs.shelly.cloud). Bei Unsicherheiten dort nachsehen, nicht raten.
 
@@ -97,6 +109,8 @@ interface ShellyAdapter {
   getStatus(): Promise<unknown>;
   reboot(): Promise<void>;
   factoryReset(): Promise<void>;
+  checkForUpdate(): Promise<FirmwareUpdates>;   // { stable, beta }: Gen1 Firmware-ID, Gen2+ Version
+  startUpdate(channel: 'stable' | 'beta'): Promise<void>;
 }
 ```
 Implementierungen: `Gen1Adapter`, `RpcAdapter`. Auswahl über das Ergebnis von `/shelly`.
@@ -115,21 +129,27 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
+Stand nach Migration 005 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+
 ```sql
 devices (
   mac TEXT PRIMARY KEY,
-  ip TEXT,
+  ip TEXT,                       -- letzte bekannte IP; übernimmt ein anderes Gerät die IP, wird sie hier geleert
   gen INTEGER NOT NULL,          -- 1, 2, 3, 4
   model TEXT,                    -- Gen1: type, Gen2+: model
   app TEXT,                      -- Gen2+: app
-  firmware TEXT,
-  name TEXT,
+  firmware TEXT,                 -- Gen1: fw, Gen2+: fw_id
+  name TEXT,                     -- lokaler Anzeigename (PATCH); folgt device_name, solange nicht lokal geändert
+  device_name TEXT,              -- Name, den das Gerät meldet
   auth_required INTEGER NOT NULL DEFAULT 0,
   location TEXT,
   notes TEXT,
   state TEXT NOT NULL DEFAULT 'active', -- active | reset | missing
   first_seen TEXT NOT NULL,
-  last_seen TEXT NOT NULL
+  last_seen TEXT NOT NULL,
+  update_stable TEXT,            -- angebotenes Firmware-Update (Gen1: ID, Gen2+: Version)
+  update_beta TEXT,
+  update_checked_at TEXT
 )
 
 config_snapshots (
@@ -143,35 +163,46 @@ config_snapshots (
 
 action_log (
   id INTEGER PRIMARY KEY,
-  mac TEXT NOT NULL,
-  action TEXT NOT NULL,          -- reboot | factory_reset | snapshot | ...
+  mac TEXT NOT NULL,             -- bewusst ohne FK
+  action TEXT NOT NULL,          -- snapshot | reboot | factory_reset | firmware_update
   requested_at TEXT NOT NULL,
+  requested_by TEXT,             -- Client-Adresse (es gibt keine Benutzer)
   finished_at TEXT,
   result TEXT,                   -- ok | error
-  error TEXT
+  error_code TEXT,               -- stabiler Code, das UI zeigt deutschen Text
+  error TEXT,                    -- technische Meldung (Englisch)
+  details TEXT                   -- JSON, z.B. { snapshotId }, { snapshotSkipped }, { confirmed: false }, { channel, from, to }
 )
 ```
+
+`missing`: Ein abgeschlossener Scan markiert aktive Geräte, deren IP im Bereich lag, die aber nicht mehr antworteten. Wird ein Gerät wieder gefunden, ist es wieder `active`.
 Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurden: `state = 'reset'` setzen, damit die Dokumentation erhalten bleibt.
 
 Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `templates`, Zuordnung Gerät → Site.
 
-## 8. REST-API (Vorschlag)
+## 8. REST-API
 
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/api/health` | Health |
-| POST | `/api/scans` | Scan starten (`{ range, credentials? }`) |
-| GET | `/api/scans/:id` | Status/Fortschritt |
-| GET | `/api/scans/:id/events` | SSE-Fortschritt (optional) |
+| POST | `/api/scans` | Scan starten (`{ range, credentials? }`); 409, wenn schon einer läuft |
+| GET | `/api/scans` | Letzte Scans (im Speicher) |
+| GET | `/api/scans/:id` | Status/Fortschritt inkl. Treffer |
+| GET | `/api/scans/:id/events` | SSE: `snapshot`, `progress`, `device`, `finished` |
 | DELETE | `/api/scans/:id` | Scan abbrechen |
 | GET | `/api/devices` | Liste |
-| GET | `/api/devices/:mac` | Details inkl. letztem Snapshot |
-| PATCH | `/api/devices/:mac` | `location`, `notes`, `name` (nur lokal, nicht aufs Gerät) |
-| POST | `/api/devices/:mac/snapshot` | Config neu einlesen |
+| GET | `/api/devices/:mac` | Details inkl. neustem Snapshot und Snapshot-Liste |
+| GET | `/api/devices/:mac/snapshots/:id` | Einzelner Snapshot |
+| PATCH | `/api/devices/:mac` | `location`, `notes`, `name` (nur lokal, nicht aufs Gerät; leerer Name = Gerätename) |
+| POST | `/api/devices/:mac/snapshot` | Config neu einlesen (`{ credentials? }`) |
 | POST | `/api/devices/:mac/reboot` | Neustart |
-| POST | `/api/devices/:mac/factory-reset` | Reset, Body `{ confirmMac }` muss mit `:mac` übereinstimmen |
-| GET | `/api/export.json` / `/api/export.csv` | Export |
-| GET | `/api/actions` | Aktionsprotokoll |
+| POST | `/api/devices/:mac/factory-reset` | Reset, Body `{ confirmMac, credentials?, allowWithoutSnapshot? }`; Antwort `{ snapshotId, confirmed }` |
+| POST | `/api/devices/:mac/firmware/check` | Update-Prüfung (nicht protokolliert) |
+| POST | `/api/devices/:mac/firmware/update` | Update starten (`{ channel, credentials? }`); 409 `no_update` |
+| GET | `/api/export.json` / `/api/export.csv` | Export (`?snapshots=all` für alle Snapshots) |
+| GET | `/api/actions` | Aktionsprotokoll (`?mac=`, `?limit=`) |
+
+MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`, 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
 
 ## 9. Sicherheitsregeln (nicht verhandelbar)
 
@@ -181,12 +212,18 @@ Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `te
 - Passwörter nie loggen, nie persistieren, nie im Frontend-State länger als nötig halten.
 - Fehler pro Gerät sauber zurückmelden; ein Fehler bei einem Gerät darf keinen Scan abbrechen.
 
+Zusätzlich umgesetzt (beibehalten):
+- Vor jeder Geräteaktion per `/shelly` prüfen, dass unter der gespeicherten IP dieselbe MAC antwortet (sonst 409 `mac_mismatch`).
+- Pro Gerät nur eine Aktion gleichzeitig (409 `busy`).
+- Bricht beim Reset die Verbindung ab, wird nach kurzer Wartezeit erneut geprüft: Gerät weg oder Passwortschutz entfernt → Reset gilt als unbestätigt erfolgreich (`confirmed: false`), sonst Fehler.
+- Zugangsdaten gehen nur an Geräte, die sie verlangen. Für zurückgesetzte Geräte bietet das UI keine Aktionen mehr an.
+
 ## 10. Frontend
 
 Ansichten:
 1. **Scan:** IP-Bereich, optionale Zugangsdaten, Start/Abbruch, Fortschritt, Liste der Treffer
-2. **Inventar:** Tabelle (Name, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status, Suche
-3. **Gerätedetail:** Infos, Standort und Notizen (Inline-Edit), Config als einklappbarer JSON-Baum, Snapshot-Historie, Aktionen (Snapshot, Reboot, Reset)
+2. **Inventar:** Tabelle (Name, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons
+3. **Gerätedetail:** Infos, Name/Standort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
 
 Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Falls das eigene Web-Component-Design-System "Kern" verfügbar ist, dessen Komponenten verwenden; sonst schlichtes eigenes SCSS ohne UI-Framework.
@@ -199,6 +236,8 @@ Baue einen **Mock-Shelly-Server** (`apps/server/test/mock-shelly/`), der mehrere
 - realistische Antworten für `/shelly`, `/settings`, `/status`, `/rpc`
 - Reset/Reboot als Zustandsänderung, damit Tests das Ergebnis prüfen können
 
+Umgesetzt in `apps/server/test/mock-shelly/`: ein HTTP-Server pro Gerät auf eigenem Port, eigenständige Digest-Prüfung (nicht `src/shelly/digest.ts`), Optionen `failing` (Methoden/Pfade mit Fehler), `dropConnectionOnReset`, `offlineAfterReset`, `updates` (Firmware-Angebote), `delayMs`, dazu `hang`- und `foreign`-Hosts. `npm run mock -w apps/server` startet die Fleet für die manuelle Entwicklung.
+
 Pflichttests:
 - Gen-Erkennung aus `/shelly`
 - Digest-Auth gegen den Mock (inkl. falsches Passwort)
@@ -208,7 +247,7 @@ Pflichttests:
 
 ## 12. Vorgehen und Abnahme
 
-Arbeite in dieser Reihenfolge. Nach jeder Phase muss `npm run build` grün sein und die Tests laufen.
+Stand: Alle sechs Phasen sind umgesetzt und abgenommen (getestet gegen den Mock; echte Geräte noch nicht). Bei weiteren Änderungen gilt weiterhin: `npm run build` grün und `npm test` grün.
 
 1. **Gerüst:** Server (Fastify, Health, Static, Config über Env), Angular-App mit Proxy, Migrationen. *Abnahme:* `npm run dev` startet beides, `/api/health` antwortet über Port 4200.
 2. **Adapter + Mock:** Gen1- und RPC-Adapter, Digest-Auth, Mock-Server, Tests. *Abnahme:* Tests grün.
