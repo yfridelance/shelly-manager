@@ -188,12 +188,15 @@
           @for (a of recentActions.value(); track a.id) {
             <tr>
               <td>{{ a.requestedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
-              <td>{{ actionText[a.action] ?? a.action }}</td>
-              <td>
+              <td>{{ actionLabel(a) }}</td>
+              <td [title]="actionDetail(a) || (a.error ?? '')">
                 @if (a.result === 'ok') {
                   <span class="state active">OK</span>
+                  @if (actionSummary(a); as summary) {
+                    <span class="muted"> · {{ summary }}</span>
+                  }
                 } @else if (a.result === 'error') {
-                  <span class="error-text" [title]="a.error ?? ''">{{ errorText(a.errorCode) }}</span>
+                  <span class="error-text">{{ actionSummary(a) }}</span>
                 } @else {
                   <span class="muted">läuft</span>
                 }

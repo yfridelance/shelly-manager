@@ -281,4 +281,35 @@ describe('DevicePage', () => {
       ['ws', '', '{"enable":true}', 'neu'],
     ]);
   });
+
+  it('names the template and summarizes the outcome in the recent actions', async () => {
+    const fixture = TestBed.createComponent(DevicePage);
+    fixture.componentRef.setInput('mac', DETAILS.device.mac);
+    fixture.detectChanges();
+    for (const req of http.match((r) => r.method === 'GET')) {
+      if (req.request.url.startsWith('/api/actions')) {
+        req.flush([
+          {
+            id: 3, mac: DETAILS.device.mac, deviceName: null, action: 'apply_template', requestedAt: '2026-10-15T17:53:24.000Z',
+            requestedBy: '127.0.0.1', finishedAt: '2026-10-15T17:53:25.000Z', result: 'ok', errorCode: null, error: null,
+            details: { templateName: 'test', changes: [{ key: 'wifiAp.enable', from: false, to: true }, { key: 'mqtt.password', from: '********', to: '********' }], rebooted: true },
+          },
+          {
+            id: 2, mac: DETAILS.device.mac, deviceName: null, action: 'apply_template', requestedAt: '2026-10-15T17:46:18.000Z',
+            requestedBy: '127.0.0.1', finishedAt: '2026-10-15T17:46:18.000Z', result: 'error', errorCode: 'template_failed',
+            error: 'Applying failed after 0 of 1 calls', details: { templateName: 'test', appliedSteps: [] },
+          },
+        ]);
+      } else if (req.request.url === '/api/devices') req.flush([]);
+      else req.flush(DETAILS);
+    }
+    await fixture.whenStable();
+    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('table.compact tr')];
+    const text = rows.map((r) => r.textContent?.replace(/\s+/g, ' ').trim());
+    expect(text[0]).toContain('Template «test»');
+    expect(text[0]).toContain('OK · 2 geändert, neu gestartet');
+    expect(rows[0]?.querySelector('td:last-child')?.getAttribute('title')).toContain('Access-Point an: Aus → Ein');
+    expect(text[1]).toContain('Template «test»');
+    expect(text[1]).toContain('Template konnte nicht vollständig angewendet werden');
+  });
 });

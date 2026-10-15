@@ -54,7 +54,7 @@
               <a [routerLink]="['/inventar', e.mac]">{{ e.deviceName ?? '(ohne Namen)' }}</a>
               <div class="mono muted">{{ formatMac(e.mac) }}</div>
             </td>
-            <td>{{ actionText[e.action] ?? e.action }}</td>
+            <td>{{ actionLabel(e) }}</td>
             <td>
               @if (e.result === 'ok') {
                 <span class="state active">OK</span>

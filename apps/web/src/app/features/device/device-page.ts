@@ -3,8 +3,9 @@ import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
+import { actionDetail, actionLabel, actionSummary } from '../../core/action-text';
 import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
-import { ACTION_TEXT, DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, errorText, formatMac, shortFirmware } from '../../core/texts';
+import { DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, formatMac, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { JsonTree } from '../../shared/json-tree';
 import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
@@ -25,8 +26,9 @@ export class DevicePage {
   readonly mac = input.required<string>();
 
   protected readonly stateText = DEVICE_STATE_TEXT;
-  protected readonly actionText = ACTION_TEXT;
-  protected readonly errorText = errorText;
+  protected readonly actionLabel = actionLabel;
+  protected readonly actionSummary = actionSummary;
+  protected readonly actionDetail = actionDetail;
   protected readonly formatMac = formatMac;
   protected readonly shortFirmware = shortFirmware;
 
