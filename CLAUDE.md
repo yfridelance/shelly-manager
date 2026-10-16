@@ -2,6 +2,8 @@
 
 Briefing für Coding-Agents. Lies dieses Dokument vollständig, bevor du Code schreibst.
 
+Die Dokumentation für Menschen liegt in `docs/` ([Benutzerhandbuch](docs/benutzerhandbuch.md), [Betrieb](docs/betrieb.md), [Entwicklung](docs/entwicklung.md)). Wer Verhalten, Bedienung, Konfiguration oder Betrieb ändert, führt die betroffenen Dokumente im selben Commit nach.
+
 ## 1. Ziel
 
 Eine selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) in einem Netzwerk findet, inventarisiert und verwaltet.
@@ -52,7 +54,7 @@ Keine weiteren schweren Abhängigkeiten ohne Begründung. Für HTTP zu den Gerä
 
 ## 4. Build-, Dev- und Container-Vertrag
 
-Diese Punkte definieren einen Vertrag. **Nicht brechen**, oder Dockerfile/README im selben Schritt anpassen:
+Diese Punkte definieren einen Vertrag. **Nicht brechen**, oder Dockerfile und [docs/betrieb.md](docs/betrieb.md) im selben Schritt anpassen:
 
 | Punkt | Erwartung |
 |---|---|

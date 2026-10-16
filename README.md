@@ -2,79 +2,50 @@
 
 [![CI](https://github.com/yfridelance/shelly-manager/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/yfridelance/shelly-manager/actions/workflows/ci.yml)
 
-Selbst gehostete Web-App zum Finden, Inventarisieren und Verwalten von Shelly-Geräten (Gen1–Gen4).
-Details zu Ziel, Scope und Architektur: [CLAUDE.md](CLAUDE.md).
+Selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) im lokalen Netz findet, dokumentiert und verwaltet.
 
-## Voraussetzungen
+- **Scan** eines IP-Bereichs mit Erkennung von Generation, Modell, Geräte-ID, MAC, Firmware und Name
+- **Inventar** mit Suche, Filtern, Standort und Notizen pro Gerät, Export als CSV und JSON
+- **Config-Snapshots** mit Historie und Vergleich zweier Stände
+- **Neustart, Firmware-Updates** und **Werksreset pro Gerät** mit Schutzmechanismen
+  (Bestätigung per MAC, automatischer Snapshot vorher, kein Sammel-Reset)
+- **Templates**: Einstellungen wie MQTT, Cloud, Zeit, Bluetooth oder Scripts mit Vorschau auf mehrere Geräte anwenden,
+  für Gen1 und Gen2+ übersetzt
+- **Protokoll** aller Aktionen; Gerätepasswörter werden nie gespeichert
 
-- Node.js 24 LTS, mindestens 24.15 (Angular CLI 22). Mit nvm: `nvm use` (liest `.nvmrc`).
-- Alternativ: `.devcontainer/` für VS Code Dev Containers (Ports 4200 und 3000 werden weitergeleitet).
+## Schnellstart
 
-## Entwicklung
+```bash
+docker compose up -d --build
+```
+
+Danach läuft die App unter **http://localhost:8080**. Im UI unter «Scan» den IP-Bereich eingeben, z.B. `192.168.1.0/24`.
+
+## Dokumentation
+
+| Dokument | Inhalt |
+|---|---|
+| [Benutzerhandbuch](docs/benutzerhandbuch.md) | Bedienung: Scan, Inventar, Gerätedetail, Werksreset, Firmware, Templates, Protokoll, Export, Fehlerbehebung |
+| [Betrieb](docs/betrieb.md) | Docker, Netzwerk, Reverse Proxy und `ALLOWED_HOSTS`, Umgebungsvariablen, Backup, Updates, Betrieb ohne Docker |
+| [Entwicklung](docs/entwicklung.md) | Setup, Architektur, Datenbank, Tests und Mock-Fleet, CI, Erweitern |
+| [CLAUDE.md](CLAUDE.md) | Verbindliche Regeln und Referenz: Vertrag, Shelly-API-Wissen, Datenmodell, REST-API, Sicherheitsregeln |
+
+## Entwicklung in Kürze
+
+Voraussetzung: Node.js 24 (mindestens 24.15), z.B. per `nvm use`.
 
 ```bash
 npm install
-npm run dev            # Server (Port 3000, tsx watch) + Angular (Port 4200, Proxy /api → 3000)
-npm run build          # apps/server/dist und apps/web/dist/web/browser
-npm test               # Vitest (Server) + Angular-Tests (Web)
-npm run dev:mock       # wie dev, plus Mock-Shelly-Fleet; im UI 10.99.0.0/24 scannen
+npm run dev        # Server :3000 + Angular :4200
+npm run dev:mock   # zusätzlich Mock-Shelly-Fleet; im UI 10.99.0.0/24 scannen
+npm run build
+npm test
 ```
 
-### Ohne echte Geräte entwickeln
+Details in [docs/entwicklung.md](docs/entwicklung.md).
 
-`npm run dev:mock` startet zusätzlich eine Mock-Fleet (Gen1–Gen4, mit und ohne Passwort, ein hängender Host,
-ein fremder HTTP-Server) auf den Ports 18001–18008 und leitet den Bereich `10.99.0.0/24` per `SHELLY_HOST_MAP`
-dorthin um. Die Datenbank liegt dann separat in `apps/server/data/mock`. Die Testpasswörter gibt das Mock-Skript
-beim Start aus.
+## Sicherheit
 
-## CI
-
-GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) läuft bei jedem Push auf `master` und bei Pull Requests:
-
-- `test`: Node gemäss `.nvmrc` (neustes 24.x), `npm ci`, `npm run typecheck -w apps/server`, `npm run build`, `npm test`
-- `docker`: baut das Image aus dem `Dockerfile` (ohne Push, Layer-Cache über GitHub Actions)
-
-## Betrieb mit Docker
-
-```bash
-docker compose up -d --build   # App unter http://localhost:8080
-docker compose down            # stoppt; Daten bleiben im Volume shelly-data
-```
-
-- Die SQLite-Datenbank liegt im benannten Volume `shelly-data` (`/data` im Container) und übersteht
-  Neustarts und Rebuilds. `docker compose down -v` löscht sie.
-- Der Port ist nur auf `127.0.0.1` gebunden, weil die App kein Login hat und Geräte zurücksetzen kann.
-  Für Zugriff von anderen Rechnern einen Reverse Proxy mit Authentifizierung davorsetzen.
-- Gescannt wird über das Docker-Bridge-Netz (ausgehende HTTP-Anfragen ins LAN). Den IP-Bereich gibt man
-  im UI an; das Container-interne Netz wird nicht automatisch erkannt.
-
-## Templates
-
-Unter «Templates» lassen sich Einstellungen (MQTT, Cloud, Zeit/Standort, Eco/LED, Bluetooth, WLAN-AP, AP-Roaming,
-CoIoT, Scripts) als Template speichern und auf mehrere Geräte anwenden. Die App übersetzt sie je Generation, zeigt
-vorher pro Gerät, was sich ändert, sichert vor und nach dem Anwenden einen Snapshot und protokolliert jede Änderung.
-MQTT- und AP-Passwort werden nur beim Anwenden eingegeben und nie gespeichert.
-
-## Export
-
-Im Inventar oder direkt per API:
-
-- `GET /api/export.csv`: Übersicht für Excel (Semikolon, UTF-8 mit BOM, Zeiten in UTC)
-- `GET /api/export.json`: alle Geräte inkl. neuster Config, Status und Geräteinfo (rohe Geräteantworten)
-- `GET /api/export.json?snapshots=all`: zusätzlich alle älteren Snapshots
-
-Gerätepasswörter werden nie gespeichert und sind daher auch nicht im Export.
-
-## Umgebungsvariablen (Server)
-
-| Variable | Default | Zweck |
-|---|---|---|
-| `PORT` | `3000` | HTTP-Port (Container: `8080`) |
-| `HOST` | `127.0.0.1` | Bind-Adresse; im Container `0.0.0.0` |
-| `DATA_DIR` | `./data` | Ablage der SQLite-Datenbank |
-| `STATIC_DIR` | – | Nur Produktion: Angular-Bundle ausliefern (SPA-Fallback auf `index.html`) |
-| `LOG_LEVEL` | `info` | `fatal` … `trace`, `silent` |
-| `SHELLY_HOST_MAP` | – | Nur Entwicklung/Tests: IPs auf Mock-Geräte umleiten, z.B. `10.99.0.0/24=127.0.0.1:18000` |
-| `ALLOWED_HOSTS` | – | Zusätzliche Hostnamen (kommagetrennt, `*.` als Wildcard), unter denen die API erreichbar sein darf, z.B. der Name eines Reverse Proxys. `localhost`, `*.localhost`, `127.0.0.1` und `::1` sind immer erlaubt; andere Host-Header (DNS-Rebinding) und schreibende Anfragen mit fremdem `Origin` werden mit 403 abgelehnt |
-
-SQL-Migrationen liegen nummeriert in `apps/server/migrations/` und laufen beim Start automatisch.
+Die App hat kein Login und kann Geräte zurücksetzen. Der Docker-Port ist deshalb nur an `127.0.0.1` gebunden, und
+die API akzeptiert nur erlaubte Hostnamen. Für den Zugriff von anderen Rechnern einen Reverse Proxy mit Anmeldung
+davorsetzen; siehe [Betrieb](docs/betrieb.md#zugriff-von-anderen-rechnern).
