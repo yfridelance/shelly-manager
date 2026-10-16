@@ -4,7 +4,8 @@ Shelly Manager findet Shelly-Geräte (Gen1 bis Gen4) im lokalen Netz, dokumentie
 Konfiguration sichern, Neustart, Firmware-Updates, Einstellungen per Template auf mehrere Geräte verteilen und
 Geräte einzeln auf Werkseinstellungen zurücksetzen.
 
-Die App läuft im Browser. Installation und Betrieb sind in [betrieb.md](betrieb.md) beschrieben.
+Die App läuft im Browser. Installation und Betrieb sind in [betrieb.md](betrieb.md) beschrieben. Die Screenshots
+zeigen Beispieldaten aus der Mock-Fleet, mit der die App ohne echte Geräte getestet wird.
 
 **Inhalt**
 
@@ -61,6 +62,8 @@ Höchstens **1024 Adressen** pro Scan. Die App fragt 32 Adressen gleichzeitig an
 1,5 Sekunden. Ein `/24`-Netz dauert so meist nur wenige Sekunden. Es läuft immer nur ein Scan; mit **Abbrechen**
 lässt er sich jederzeit stoppen.
 
+![Netzwerk-Scan mit Trefferliste](img/scan.png)
+
 **Zugangsdaten (optional):** Sind Geräte passwortgeschützt, kannst du Benutzer und Passwort angeben. Gen2+ verwendet
 immer den Benutzer `admin`; der Benutzer im Feld gilt nur für Gen1. Pro Scan gibt es genau ein Paar Zugangsdaten.
 Geräte mit einem anderen Passwort werden trotzdem erfasst, aber ohne Config. Das Passwortfeld wird beim Start geleert.
@@ -89,6 +92,8 @@ Die Tabelle zeigt alle bekannten Geräte: Name, Geräte-ID, Modell, Generation, 
 und «zuletzt gesehen». Ein Klick auf eine Zeile öffnet die [Detailansicht](#4-gerätedetail). Ein 🔒 hinter dem
 Namen bedeutet: passwortgeschützt.
 
+![Inventar mit Geräte-ID, Standort und Update-Hinweisen](img/inventar.png)
+
 - **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Standort, Notizen und Firmware.
 - **Filter:** Generation, Standort (auch «ohne Standort»), Status (Aktiv, Vermisst, Zurückgesetzt) und
   «nur mit Firmware-Update».
@@ -110,6 +115,8 @@ Status:
 | Zurückgesetzt | per App auf Werkseinstellungen zurückgesetzt; der Eintrag bleibt als Dokumentation erhalten |
 
 ## 4. Gerätedetail
+
+![Gerätedetail mit Dokumentation, Aktionen, Firmware und letzten Aktionen](img/geraet.png)
 
 ### Gerät
 
@@ -152,6 +159,8 @@ Die Config, der Status und die Geräteinfo werden als einklappbarer Baum angezei
   mit Pfaden wie `sys.device.name` oder `relays[0].ison`, markiert als geändert, neu oder entfernt. Im Reiter Status
   ändern sich auch Laufzeitwerte wie Uptime oder Leistung.
 
+![Vergleich zweier Snapshots: vorher und nachher eines Templates](img/config-vergleich.png)
+
 ## 5. Werkseinstellungen
 
 Der Werksreset ist absichtlich nur **pro Gerät** möglich. Ablauf:
@@ -162,6 +171,8 @@ Der Werksreset ist absichtlich nur **pro Gerät** möglich. Ablauf:
 3. Zur Bestätigung die **MAC** (Schreibweise egal) oder den **Gerätenamen** eintippen. Erst dann wird
    «Endgültig zurücksetzen» aktiv.
 4. Bei geschützten Geräten das Gerätepasswort angeben.
+
+![Reset-Dialog mit Warnung und Bestätigung per Gerätename](img/reset-dialog.png)
 
 Was die App dabei tut:
 
@@ -186,6 +197,8 @@ verschwunden), gilt der Reset als vermutlich erfolgreich. Ein neuer Scan zeigt d
   Abbruch. Ein optionales Passwort gilt nur für geschützte Geräte; ohne Passwort werden diese übersprungen. Am Ende
   zeigt eine Zusammenfassung, wie viele Geräte ein Update haben; «Nur Geräte mit Update anzeigen» filtert direkt.
   Dabei wird nichts installiert.
+
+![Ergebnis von «Alle auf Updates prüfen»](img/firmware-pruefung.png)
 - **Update installieren** (Detailansicht) startet nach einer Rückfrage das Update auf dem stabilen Kanal; Beta-Versionen
   lassen sich separat installieren, wenn das Gerät eine anbietet. Das Gerät lädt die Firmware, installiert sie und
   startet selbst neu. Die neue Version erscheint nach dem nächsten Scan oder «Config neu einlesen».
@@ -228,6 +241,8 @@ zum Template**; alles andere bleibt auf den Geräten unverändert.
 
 «Speichern und Vorschau» speichert das Template und öffnet die Seite zum Anwenden.
 
+![Template-Editor: nur angehakte Einstellungen gehören zum Template](img/template-editor.png)
+
 ### Template anwenden
 
 1. **Geräte wählen:** einzeln, «alle sichtbaren», «nur mit Änderungen» oder «keine». Die Suche schränkt die Liste ein.
@@ -254,6 +269,8 @@ Pro Gerät passiert dann:
 Es laufen vier Geräte gleichzeitig. Die Spalte **Ergebnis** zeigt pro Gerät «✓ 3 Einstellungen geändert, neu
 gestartet», «✓ keine Änderung nötig» oder «✗» mit Grund. Ein Fehler betrifft nur dieses Gerät.
 
+![Template anwenden: Auswahl, Vorschau und Ergebnis pro Gerät](img/template-anwenden.png)
+
 > **Access-Point einschalten:** Seit Firmware 2.0 verlangen Shellys dafür ein Passwort. Ohne AP-Passwort wird der AP
 > nicht eingeschaltet («AP-Passwort nötig, wird nicht eingeschaltet»); die übrigen Einstellungen werden trotzdem
 > angewendet.
@@ -262,6 +279,8 @@ gestartet», «✓ keine Änderung nötig» oder «✗» mit Grund. Ein Fehler b
 > «Vergleichen mit» prüfen und erst dann auf alle.
 
 ## 8. Protokoll
+
+![Protokoll mit Template-Änderungen und Fehlern](img/protokoll.png)
 
 Das Protokoll listet alle Aktionen: Snapshot, Neustart, Werksreset, Firmware-Update und Template. Zu jedem Eintrag
 gehören Zeitpunkt, Gerät, Ergebnis, Details, Dauer und **Von** (die Adresse des Rechners, von dem die Aktion kam; es

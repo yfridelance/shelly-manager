@@ -59,7 +59,8 @@ apps/
       core/                   API-Typen, API-Clients, deutsche Texte, Template-Feldliste
       features/               scan, inventory, device, templates, log
       shared/                 JSON-Baum, JSON-Diff, Inline-Edit
-docs/                         diese Dokumentation
+docs/                         diese Dokumentation (Bilder in docs/img)
+scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
 .github/workflows/ci.yml      CI
 ```
 
@@ -139,6 +140,22 @@ Fehlercodes steht in [CLAUDE.md, Abschnitt 8](../CLAUDE.md#8-rest-api). Fehler h
 - `test`: Node gemäss `.nvmrc` (neustes 24.x), `npm ci`, Prüfung des nativen SQLite-Moduls,
   `npm run typecheck -w apps/server`, `npm run build`, `npm test`.
 - `docker`: Image-Build aus dem `Dockerfile` (ohne Push, mit GitHub-Actions-Cache).
+
+## Screenshots der Doku
+
+Die Bilder in `docs/img/` entstehen automatisch aus der Mock-Fleet:
+
+```bash
+npm run build
+./scripts/docs-screenshots/run.sh
+```
+
+Das Skript startet Mock-Fleet und einen Server auf Port 3100 mit einer temporären Datenbank (`setup.sh` legt
+Beispieldaten an: Scans, Namen, Standorte, ein Template). Dann steuert es Chrome im Headless-Modus über das
+DevTools-Protokoll (`shots.mjs`, ohne zusätzliche Abhängigkeiten) und speichert die Bilder in 1280 px Breite.
+Voraussetzungen: Google Chrome (anderer Pfad über `CHROME=…`) sowie freie Ports 3100 und 18001–18008.
+Echte Geräte und `apps/server/data` werden nicht berührt. Nach UI-Änderungen das Skript erneut laufen lassen und die
+Bilder mitcommitten.
 
 ## Häufige Erweiterungen
 

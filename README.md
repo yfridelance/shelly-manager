@@ -13,6 +13,8 @@ Selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) im lokalen Netz fin
   für Gen1 und Gen2+ übersetzt
 - **Protokoll** aller Aktionen; Gerätepasswörter werden nie gespeichert
 
+![Inventar](docs/img/inventar.png)
+
 ## Schnellstart
 
 ```bash
