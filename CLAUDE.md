@@ -130,7 +130,7 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
-Stand nach Migration 007 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+Stand nach Migration 009 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
 
 ```sql
 devices (
@@ -160,7 +160,8 @@ config_snapshots (
   taken_at TEXT NOT NULL,
   info_json TEXT NOT NULL,
   config_json TEXT,
-  status_json TEXT
+  status_json TEXT,
+  confirmed_at TEXT              -- zuletzt mit identischer Info/Config gesehen (NULL = nur einmal)
 )
 
 action_log (
@@ -187,6 +188,8 @@ templates (
 )
 
 `action_log.action` kennt zusätzlich `apply_template` (details: templateId/-Name, snapshotId, snapshotAfterId, changes, unsupported, restartRequired, rebooted, script, bei Fehlern appliedSteps).
+
+Snapshots werden nur bei Änderung neu angelegt (`insertSnapshot`, `src/db/snapshots.ts`): Sind `info_json` und `config_json` gleich wie beim neusten Snapshot des Geräts, werden in dieser Zeile nur `status_json` und `confirmed_at` aktualisiert, und ihre ID wird zurückgegeben (bleibt als «vorher gesichert» korrekt). Gen1-Configs werden ohne die Geräteuhr (`time`, `unixtime` in `/settings`) verglichen, gespeichert wird roh. Die Migrationen 008/009 haben ältere Duplikate zusammengefasst (ältestes `taken_at` bleibt, `confirmed_at`/`status_json` vom jüngsten); Zeilen, die in `action_log.details` (`snapshotId`, `snapshotAfterId`) referenziert sind, werden nie gelöscht.
 
 `missing`: Ein abgeschlossener Scan markiert aktive Geräte, deren IP im Bereich lag, die aber nicht mehr antworteten. Wird ein Gerät wieder gefunden, ist es wieder `active`.
 Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurden: `state = 'reset'` setzen, damit die Dokumentation erhalten bleibt.

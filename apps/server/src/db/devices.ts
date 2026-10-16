@@ -93,7 +93,7 @@ export interface DeviceListRow extends DeviceRow {
 }
 
 const SELECT_WITH_SNAPSHOT = `
-  SELECT d.*, (SELECT MAX(taken_at) FROM config_snapshots s WHERE s.mac = d.mac) AS last_snapshot_at
+  SELECT d.*, (SELECT MAX(COALESCE(confirmed_at, taken_at)) FROM config_snapshots s WHERE s.mac = d.mac) AS last_snapshot_at
   FROM devices d`;
 
 export function getDevice(db: Db, mac: string): DeviceListRow | undefined {

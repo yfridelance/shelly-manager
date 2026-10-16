@@ -231,7 +231,7 @@
             <select (change)="selectSnapshot(value($event))">
               @for (s of snaps; track s.id; let first = $first) {
                 <option [value]="first ? '' : s.id" [selected]="first ? selectedId() === null : selectedId() === s.id">
-                  {{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}{{ first ? ' (neuster)' : '' }}{{ s.hasConfig ? '' : ' – ohne Config' }}
+                  {{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}{{ first ? ' (neuster)' : '' }}{{ s.confirmedAt ? ' – bestätigt bis ' + (s.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }}{{ s.hasConfig ? '' : ' – ohne Config' }}
                 </option>
               }
             </select>
@@ -243,7 +243,9 @@
                 <option value="" [selected]="compareId() === null">–</option>
                 @for (s of snaps; track s.id) {
                   @if (s.id !== shownId()) {
-                    <option [value]="s.id" [selected]="compareId() === s.id">{{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}</option>
+                    <option [value]="s.id" [selected]="compareId() === s.id">
+                      {{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}{{ s.confirmedAt ? ' – bestätigt bis ' + (s.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }}
+                    </option>
                   }
                 }
               </select>
@@ -265,6 +267,12 @@
         <button type="button" class="link" (click)="openDepth.set(1)">Zuklappen</button>
         <button type="button" class="link" (click)="copyShown()">JSON kopieren</button>
       </div>
+      @if (s.confirmedAt && compareId() === null) {
+        <p class="muted snapshot-confirmed">
+          Config gelesen am {{ s.takenAt | date: 'dd.MM.yyyy HH:mm' }}, unverändert bestätigt bis {{ s.confirmedAt | date: 'dd.MM.yyyy HH:mm' }}.
+          Der Status stammt vom {{ s.confirmedAt | date: 'dd.MM.yyyy HH:mm' }}.
+        </p>
+      }
       <div class="json" role="tabpanel">
         @if (compareId() !== null) {
           @if (comparison(); as c) {
@@ -285,8 +293,8 @@
                 <thead>
                   <tr>
                     <th>Pfad</th>
-                    <th>Vorher ({{ c.before.takenAt | date: 'dd.MM.yyyy HH:mm' }})</th>
-                    <th>Nachher ({{ c.after.takenAt | date: 'dd.MM.yyyy HH:mm' }})</th>
+                    <th>Vorher ({{ c.before.takenAt | date: 'dd.MM.yyyy HH:mm' }}{{ c.before.confirmedAt ? ', bestätigt bis ' + (c.before.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }})</th>
+                    <th>Nachher ({{ c.after.takenAt | date: 'dd.MM.yyyy HH:mm' }}{{ c.after.confirmedAt ? ', bestätigt bis ' + (c.after.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }})</th>
                     <th></th>
                   </tr>
                 </thead>

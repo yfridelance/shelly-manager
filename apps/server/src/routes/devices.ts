@@ -39,13 +39,20 @@ export const DeviceSchema = Type.Object({
 export const SnapshotSchema = Type.Object({
   id: Type.Integer(),
   takenAt: Type.String(),
+  /** Last time the device answered with the same info/config (null = seen once). */
+  confirmedAt: Nullable(Type.String()),
   // Raw device answers, unchanged.
   info: Type.Unknown(),
   config: Type.Unknown(),
   status: Type.Unknown(),
 });
 
-const SnapshotMetaSchema = Type.Object({ id: Type.Integer(), takenAt: Type.String(), hasConfig: Type.Boolean() });
+const SnapshotMetaSchema = Type.Object({
+  id: Type.Integer(),
+  takenAt: Type.String(),
+  confirmedAt: Nullable(Type.String()),
+  hasConfig: Type.Boolean(),
+});
 
 const DeviceDetailsSchema = Type.Object({
   device: DeviceSchema,
@@ -109,7 +116,7 @@ export function toDeviceDto(row: DeviceListRow) {
 
 function toSnapshotDto(row: SnapshotRow) {
   const parse = (json: string | null): unknown => (json === null ? null : JSON.parse(json));
-  return { id: row.id, takenAt: row.taken_at, info: parse(row.info_json), config: parse(row.config_json), status: parse(row.status_json) };
+  return { id: row.id, takenAt: row.taken_at, confirmedAt: row.confirmed_at, info: parse(row.info_json), config: parse(row.config_json), status: parse(row.status_json) };
 }
 
 const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed', 'no_update']);
@@ -150,7 +157,7 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
       return {
         device: toDeviceDto(device),
         latestSnapshot: latest ? toSnapshotDto(latest) : null,
-        snapshots: listSnapshotMeta(db, mac).map((s) => ({ id: s.id, takenAt: s.taken_at, hasConfig: s.has_config === 1 })),
+        snapshots: listSnapshotMeta(db, mac).map((s) => ({ id: s.id, takenAt: s.taken_at, confirmedAt: s.confirmed_at, hasConfig: s.has_config === 1 })),
       };
     },
   );

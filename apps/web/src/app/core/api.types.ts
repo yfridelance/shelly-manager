@@ -74,6 +74,8 @@ export type FirmwareChannel = 'stable' | 'beta';
 export interface Snapshot {
   id: number;
   takenAt: string;
+  /** Last time the device answered with the same info/config (null = seen once). */
+  confirmedAt: string | null;
   info: unknown;
   config: unknown;
   status: unknown;
@@ -82,6 +84,7 @@ export interface Snapshot {
 export interface SnapshotMeta {
   id: number;
   takenAt: string;
+  confirmedAt: string | null;
   hasConfig: boolean;
 }
 

@@ -211,8 +211,9 @@ export class Gen1Device implements DeviceHandler {
       tz_utc_offset: 7200,
       tz_dst: false,
       tz_dst_auto: true,
-      time: '12:34',
-      unixtime: 1760445240,
+      // Device clock: changes on every read, like on a real Gen1.
+      time: new Date().toISOString().slice(11, 16),
+      unixtime: Math.floor(Date.now() / 1000),
       led_status_disable: false,
       debug_enable: false,
       allow_cross_origin: false,
@@ -228,8 +229,9 @@ export class Gen1Device implements DeviceHandler {
       wifi_sta: { connected: this.wifiConfigured, ssid: this.wifiConfigured ? 'Haus' : '', ip: '127.0.0.1', rssi: -61 },
       cloud: { enabled: this.wifiConfigured, connected: false },
       mqtt: { connected: false },
-      time: '12:34',
-      unixtime: 1760445240,
+      // Device clock: changes on every read, like on a real Gen1.
+      time: new Date().toISOString().slice(11, 16),
+      unixtime: Math.floor(Date.now() / 1000),
       serial: 1,
       has_update: false,
       mac: this.spec.mac,

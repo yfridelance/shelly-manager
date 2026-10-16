@@ -117,6 +117,27 @@ describe('scan API against the mock fleet', () => {
     expect(getDevice(db, '7C2C67B2B2B2')).toMatchObject({ auth_required: 1, ip: '10.0.0.6' });
   });
 
+  it('does not add identical snapshots on a rescan, but confirms the existing ones', async () => {
+    const a = await makeApp();
+    await waitFor(a, (await startScan(a, { range: '10.0.0.1-10.0.0.8' })).id);
+    const before = db.prepare('SELECT id, mac, taken_at FROM config_snapshots ORDER BY id').all() as { id: number; mac: string; taken_at: string }[];
+    expect(before).toHaveLength(3);
+
+    await new Promise((r) => setTimeout(r, 5));
+    await waitFor(a, (await startScan(a, { range: '10.0.0.1-10.0.0.8' })).id);
+    const after = db.prepare('SELECT id, mac, taken_at, confirmed_at FROM config_snapshots ORDER BY id').all() as { id: number; confirmed_at: string | null }[];
+    // Includes the Gen1 device, whose /settings carries a changing clock.
+    expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
+    for (const [i, row] of after.entries()) expect(row.confirmed_at && row.confirmed_at > (before[i]?.taken_at ?? '')).toBe(true);
+
+    const details = (await a.inject({ method: 'GET', url: '/api/devices/E868E7A1B2C3' })).json<{
+      latestSnapshot: { id: number; confirmedAt: string | null };
+      snapshots: { id: number; confirmedAt: string | null }[];
+    }>();
+    expect(details.snapshots).toEqual([expect.objectContaining({ id: details.latestSnapshot.id, confirmedAt: expect.any(String) })]);
+    expect(details.latestSnapshot.confirmedAt).toBe(details.snapshots[0]?.confirmedAt);
+  });
+
   it('never returns or logs the password', async () => {
     const lines: string[] = [];
     const a = await makeApp({}, { write: (msg) => lines.push(msg) }, 'trace');

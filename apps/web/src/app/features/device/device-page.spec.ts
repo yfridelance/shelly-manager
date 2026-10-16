@@ -252,17 +252,22 @@ describe('DevicePage', () => {
   });
 
   it('compares two snapshots, older one as "before"', async () => {
-    const latest = { id: 2, takenAt: '2026-10-15T08:00:00.000Z', info: {}, config: { sys: { device: { name: 'Neu' } }, ws: { enable: true } }, status: {} };
-    const older = { id: 1, takenAt: '2026-10-14T08:00:00.000Z', info: {}, config: { sys: { device: { name: 'Alt' } }, mqtt: { enable: false } }, status: {} };
+    const latest = { id: 2, takenAt: '2026-10-15T08:00:00.000Z', confirmedAt: '2026-10-16T12:00:00.000Z', info: {}, config: { sys: { device: { name: 'Neu' } }, ws: { enable: true } }, status: {} };
+    const older = { id: 1, takenAt: '2026-10-14T08:00:00.000Z', confirmedAt: null, info: {}, config: { sys: { device: { name: 'Alt' } }, mqtt: { enable: false } }, status: {} };
     const details: DeviceDetails = {
       ...DETAILS,
       latestSnapshot: latest,
       snapshots: [
-        { id: 2, takenAt: latest.takenAt, hasConfig: true },
-        { id: 1, takenAt: older.takenAt, hasConfig: true },
+        { id: 2, takenAt: latest.takenAt, confirmedAt: latest.confirmedAt, hasConfig: true },
+        { id: 1, takenAt: older.takenAt, confirmedAt: null, hasConfig: true },
       ],
     };
     const { fixture, el } = await render(details);
+    // Unchanged rescans confirm the latest snapshot instead of adding new ones.
+    const options = [...el.querySelectorAll('select:not([name]) option')].map((o) => o.textContent?.trim());
+    expect(options[0]).toContain('(neuster) – bestätigt bis 16.10.2026');
+    expect(options[1]).not.toContain('bestätigt');
+    expect(el.querySelector('.snapshot-confirmed')?.textContent).toContain('unverändert bestätigt bis 16.10.2026');
     const select = el.querySelector<HTMLSelectElement>('select[name="compare"]');
     if (!select) throw new Error('no compare select');
     // The shown (latest) snapshot is not offered as comparison partner.
@@ -274,6 +279,9 @@ describe('DevicePage', () => {
     await fixture.whenStable();
 
     expect(el.textContent).toContain('3 Unterschiede: 1 geändert, 1 neu, 1 entfernt');
+    const headers = [...el.querySelectorAll('table.diff thead th')].map((th) => th.textContent?.trim());
+    expect(headers[1]).not.toContain('bestätigt');
+    expect(headers[2]).toContain('bestätigt bis 16.10.2026');
     const rows = [...el.querySelectorAll('table.diff tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent?.trim()));
     expect(rows).toEqual([
       ['mqtt', '{"enable":false}', '', 'entfernt'],

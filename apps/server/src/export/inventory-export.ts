@@ -6,6 +6,7 @@ interface SnapshotJsonRow {
   id: number;
   mac: string;
   taken_at: string;
+  confirmed_at: string | null;
   info_json: string;
   config_json: string | null;
   status_json: string | null;
@@ -84,6 +85,7 @@ export function buildJsonExport(db: Db, options: { allSnapshots: boolean; now: s
       snapshots: (byMac.get(d.mac) ?? []).map((s) => ({
         id: s.id,
         takenAt: s.taken_at,
+        confirmedAt: s.confirmed_at,
         info: parse(s.info_json),
         config: parse(s.config_json),
         status: parse(s.status_json),
