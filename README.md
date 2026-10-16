@@ -66,5 +66,6 @@ Gerätepasswörter werden nie gespeichert und sind daher auch nicht im Export.
 | `STATIC_DIR` | – | Nur Produktion: Angular-Bundle ausliefern (SPA-Fallback auf `index.html`) |
 | `LOG_LEVEL` | `info` | `fatal` … `trace`, `silent` |
 | `SHELLY_HOST_MAP` | – | Nur Entwicklung/Tests: IPs auf Mock-Geräte umleiten, z.B. `10.99.0.0/24=127.0.0.1:18000` |
+| `ALLOWED_HOSTS` | – | Zusätzliche Hostnamen (kommagetrennt, `*.` als Wildcard), unter denen die API erreichbar sein darf, z.B. der Name eines Reverse Proxys. `localhost`, `*.localhost`, `127.0.0.1` und `::1` sind immer erlaubt; andere Host-Header (DNS-Rebinding) und schreibende Anfragen mit fremdem `Origin` werden mit 403 abgelehnt |
 
 SQL-Migrationen liegen nummeriert in `apps/server/migrations/` und laufen beim Start automatisch.

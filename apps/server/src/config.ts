@@ -13,6 +13,8 @@ export interface AppConfig {
   logLevel: LogLevel;
   /** Development/tests only: map scanned IPs to mock devices, see shelly/host-map.ts. */
   shellyHostMap: string | undefined;
+  /** Additional host names (besides loopback) under which the API may be called, e.g. a reverse proxy. `*.` allowed. */
+  allowedHosts: string[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -37,5 +39,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     staticDir: staticDir ? path.resolve(staticDir) : undefined,
     logLevel,
     shellyHostMap: env['SHELLY_HOST_MAP']?.trim() || undefined,
+    allowedHosts: (env['ALLOWED_HOSTS'] ?? '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter((h) => h !== ''),
   };
 }

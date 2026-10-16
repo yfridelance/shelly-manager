@@ -61,7 +61,7 @@ Diese Punkte definieren einen Vertrag. **Nicht brechen**, oder Dockerfile/README
 | Root-Build | `npm run build` baut beide; `npm test` testet beide |
 | Dev | `npm run dev` startet Server (tsx watch, fest Port 3000) und Angular (fest Port 4200). Einzeln: `npm run dev -w apps/server`, `npm run start -w apps/web` |
 | Dev ohne Geräte | `npm run dev:mock`: zusätzlich Mock-Fleet auf Ports 18001–18008, Bereich `10.99.0.0/24` per `SHELLY_HOST_MAP` umgeleitet, eigene DB unter `apps/server/data/mock` |
-| Env | `PORT` (Dev 3000, Container 8080), `HOST` (Default `127.0.0.1`, Container `0.0.0.0`), `DATA_DIR` (SQLite-Ablage), `STATIC_DIR` (nur Produktion: Angular-Bundle ausliefern), `LOG_LEVEL`, `SHELLY_HOST_MAP` (nur Dev/Tests: IPs auf Mock-Geräte umleiten) |
+| Env | `PORT` (Dev 3000, Container 8080), `HOST` (Default `127.0.0.1`, Container `0.0.0.0`), `DATA_DIR` (SQLite-Ablage), `STATIC_DIR` (nur Produktion: Angular-Bundle ausliefern), `LOG_LEVEL`, `SHELLY_HOST_MAP` (nur Dev/Tests: IPs auf Mock-Geräte umleiten), `ALLOWED_HOSTS` (zusätzliche erlaubte Hostnamen für die API, kommagetrennt, z.B. Reverse Proxy) |
 | Health | `GET /api/health` → 200 `{ status: "ok" }` |
 | Dev-Proxy | Angular leitet `/api` auf `http://localhost:3000` weiter (`proxy.conf.json`), SSE inklusive |
 | Migrationen | Nummerierte SQL-Dateien in `apps/server/migrations/` (neben `src`/`dist`), laufen beim Start automatisch; das Dockerfile kopiert den Ordner mit |
@@ -221,7 +221,7 @@ Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `te
 
 Fehlercodes Templates: 409 `name_taken`, 400 `empty_template`, 404 `template_not_found`, 409 `snapshot_failed` (vorher), 502 `template_failed` (mit `cause`).
 
-MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`, 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
+MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`, 403 `host_not_allowed`/`origin_not_allowed` (Abschnitt 9), 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
 
 ## 9. Sicherheitsregeln (nicht verhandelbar)
 
@@ -234,6 +234,7 @@ MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen a
 Zusätzlich umgesetzt (beibehalten):
 - Vor jeder Geräteaktion per `/shelly` prüfen, dass unter der gespeicherten IP dieselbe MAC antwortet (sonst 409 `mac_mismatch`).
 - Pro Gerät nur eine Aktion gleichzeitig (409 `busy`).
+- Schutz gegen DNS-Rebinding/Cross-Site (`apps/server/src/security/host-guard.ts`): Alle `/api`-Anfragen brauchen einen erlaubten Host-Header (`localhost`, `*.localhost`, `127.0.0.1`, `::1` plus `ALLOWED_HOSTS`), sonst 403 `host_not_allowed`. Schreibende Anfragen (POST/PUT/PATCH/DELETE) mit `Origin`-Header brauchen einen erlaubten Origin-Host, sonst 403 `origin_not_allowed`. Das SPA selbst wird ohne Prüfung ausgeliefert.
 - Bricht beim Reset die Verbindung ab, wird nach kurzer Wartezeit erneut geprüft: Gerät weg oder Passwortschutz entfernt → Reset gilt als unbestätigt erfolgreich (`confirmed: false`), sonst Fehler.
 - Zugangsdaten gehen nur an Geräte, die sie verlangen. Für zurückgesetzte Geräte bietet das UI keine Aktionen mehr an.
 - Templates: Anwenden nur nach Vorschau und einer Bestätigung; pro Gerät Snapshot vorher (blockiert bei Fehler) und nachher; MQTT- und AP-Passwort nur beim Anwenden, nie im Template, nie im Protokoll (maskiert); WLAN-Client-Einstellungen und Gerätepasswort sind bewusst nicht Teil von Templates.

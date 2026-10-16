@@ -13,9 +13,10 @@ import { scanRoutes } from './routes/scans.js';
 import { DeviceService, type DeviceServiceOptions } from './devices/device-service.js';
 import { ScanManager, type ScanOptions } from './scan/scan-manager.js';
 import { parseHostMap } from './shelly/host-map.js';
+import { registerHostGuard } from './security/host-guard.js';
 
 export interface BuildAppOptions {
-  config: Pick<AppConfig, 'staticDir' | 'logLevel'> & Partial<Pick<AppConfig, 'shellyHostMap'>>;
+  config: Pick<AppConfig, 'staticDir' | 'logLevel'> & Partial<Pick<AppConfig, 'shellyHostMap' | 'allowedHosts'>>;
   db: Db;
   /** Overrides for tests (timeouts, host resolution, clock). */
   scan?: Partial<ScanOptions>;
@@ -51,6 +52,9 @@ export async function buildApp({ config, db, scan, devices: deviceOptions, logSt
     await scans.shutdown();
     db.close();
   });
+
+  // DNS rebinding / cross-site protection for the API, before any route runs.
+  registerHostGuard(app, config.allowedHosts);
 
   await app.register(
     async (api) => {
