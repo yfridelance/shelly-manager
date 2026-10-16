@@ -106,6 +106,7 @@ describe('TemplateApply', () => {
     device({ mac: '7C2C67B2B2B2', name: 'Garage', ip: '10.0.0.6', gen: 4, authRequired: true }),
     device({ mac: 'E868E7A1B2C3', name: 'Licht', ip: '10.0.0.1', gen: 1 }),
     device({ mac: '111111111111', name: 'Weg', state: 'reset' }),
+    device({ mac: '222222222222', name: 'Mini', ip: '10.0.0.5', gen: 3 }),
   ];
   const PREVIEWS: TemplatePreview[] = [
     { mac: 'A8032AB12345', name: 'Boiler', gen: 2, state: 'active', basedOn: '2026-10-15T08:00:00.000Z', items: [
@@ -116,6 +117,10 @@ describe('TemplateApply', () => {
     { mac: 'E868E7A1B2C3', name: 'Licht', gen: 1, state: 'active', basedOn: '2026-10-15T08:00:00.000Z', items: [
       { key: 'mqtt.enable', status: 'same', current: true, target: true },
       { key: 'cloud.enable', status: 'same', current: false, target: false },
+    ] },
+    // Only unsupported settings: nothing to change, must not be selected by "nur mit Änderungen".
+    { mac: '222222222222', name: 'Mini', gen: 3, state: 'active', basedOn: '2026-10-15T08:00:00.000Z', items: [
+      { key: 'coiot.enable', status: 'unsupported', target: false, reason: 'generation' },
     ] },
   ];
 
@@ -147,10 +152,11 @@ describe('TemplateApply', () => {
   it('previews per device and applies to the chosen ones after one confirmation', async () => {
     const { fixture, el, button } = await render();
     const rows = () => [...el.querySelectorAll('tbody tr')].map((r) => r.textContent?.replace(/\s+/g, ' ') ?? '');
-    expect(rows()).toHaveLength(3); // the reset device is not offered
+    expect(rows()).toHaveLength(4); // the reset device is not offered
     expect(rows()[0]).toContain('1 Änderung');
     expect(rows()[1]).toContain('kein Snapshot');
     expect(rows()[2]).toContain('keine Änderung');
+    expect(rows()[3]).toContain('1 nicht unterstützt');
 
     button('nur mit Änderungen')?.click();
     await fixture.whenStable();

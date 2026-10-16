@@ -104,9 +104,14 @@ export class TemplateApply {
     this.selected.set(on ? new Set(this.visible().map((d) => d.mac)) : new Set());
   }
 
-  /** Select exactly the devices whose preview shows changes (or that have no snapshot yet). */
+  /**
+   * Select exactly the devices whose preview shows changes, or that have no snapshot yet (unknown).
+   * Devices with only unsupported settings have nothing to change and stay unselected.
+   */
   protected selectChanging(): void {
-    this.selected.set(new Set(this.candidates().filter((d) => this.summary(d.mac).kind !== 'same').map((d) => d.mac)));
+    this.selected.set(
+      new Set(this.candidates().filter((d) => ['change', 'unknown'].includes(this.summary(d.mac).kind)).map((d) => d.mac)),
+    );
   }
 
   protected async run(): Promise<void> {
