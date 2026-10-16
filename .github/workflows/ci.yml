@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # .nvmrc says "24": setup-node resolves the newest 24.x, which satisfies
+      # Angular CLI 22 (>= 24.15) and ships npm >= 11.19, so `allowScripts` in
+      # the root package.json decides which install scripts (better-sqlite3 …) run.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: npm
+
+      - name: Versions
+        run: node --version && npm --version
+
+      - run: npm ci
+
+      # Fail early if better-sqlite3 did not get its native binary.
+      - name: Check native SQLite module
+        working-directory: apps/server
+        run: node -e "new (require('better-sqlite3'))(':memory:').close()"
+
+      - run: npm run typecheck -w apps/server
+      - run: npm run build
+      - run: npm test
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: shelly-manager:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

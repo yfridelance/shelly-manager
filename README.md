@@ -1,5 +1,7 @@
 # Shelly Manager
 
+[![CI](https://github.com/yfridelance/shelly-manager/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/yfridelance/shelly-manager/actions/workflows/ci.yml)
+
 Selbst gehostete Web-App zum Finden, Inventarisieren und Verwalten von Shelly-Geräten (Gen1–Gen4).
 Details zu Ziel, Scope und Architektur: [CLAUDE.md](CLAUDE.md).
 
@@ -24,6 +26,13 @@ npm run dev:mock       # wie dev, plus Mock-Shelly-Fleet; im UI 10.99.0.0/24 sca
 ein fremder HTTP-Server) auf den Ports 18001–18008 und leitet den Bereich `10.99.0.0/24` per `SHELLY_HOST_MAP`
 dorthin um. Die Datenbank liegt dann separat in `apps/server/data/mock`. Die Testpasswörter gibt das Mock-Skript
 beim Start aus.
+
+## CI
+
+GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) läuft bei jedem Push auf `master` und bei Pull Requests:
+
+- `test`: Node gemäss `.nvmrc` (neustes 24.x), `npm ci`, `npm run typecheck -w apps/server`, `npm run build`, `npm test`
+- `docker`: baut das Image aus dem `Dockerfile` (ohne Push, Layer-Cache über GitHub Actions)
 
 ## Betrieb mit Docker
 
