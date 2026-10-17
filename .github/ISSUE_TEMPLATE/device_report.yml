@@ -1,0 +1,44 @@
+name: Device report
+description: Tell us how Shelly Manager works with your real devices (works or not).
+labels: [device-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The test suite only runs against emulated devices, so every report from real hardware helps.
+        Successful tests are just as welcome as problems.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: Model, app name, generation and firmware, as shown on the device page.
+      placeholder: S3SW-001X16EU (Mini1G3), Gen3, firmware 1.4.4
+    validations:
+      required: true
+  - type: checkboxes
+    id: tested
+    attributes:
+      label: What did you try?
+      options:
+        - label: Scan and detection (name, device ID, function)
+        - label: Config snapshot (with and without password)
+        - label: Reboot
+        - label: Firmware check / update
+        - label: Factory reset
+        - label: Template (please name the settings below)
+        - label: Static IP / DHCP via template
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Everything worked
+        - Partly worked
+        - Did not work
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What worked, what did not, error messages. If you attach config JSON, remove Wi-Fi names, MQTT servers/users and coordinates first.

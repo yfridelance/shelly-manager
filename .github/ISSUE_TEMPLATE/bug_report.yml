@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! English or German is fine.
+        **Never paste device passwords.** For security issues use the private report in SECURITY.md instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Scan 192.168.1.0/24
+        2. Open device …
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: Shelly Manager version
+      description: Commit hash or date of your checkout (`git log -1 --format='%h %cs'`).
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: How do you run it?
+      options:
+        - Docker / docker compose
+        - Node.js directly
+        - Development (npm run dev)
+  - type: textarea
+    id: devices
+    attributes:
+      label: Affected devices
+      description: Model, generation and firmware, as shown on the device page.
+      placeholder: SNSW-102P16EU (Plus2PM), Gen2, firmware 1.4.4
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message or logs
+      description: Message shown in the UI, entry in the action log, or server log (`docker compose logs`). Remove anything sensitive.
+      render: text

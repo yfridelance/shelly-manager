@@ -9,6 +9,7 @@
     "test": "ng test --watch=false"
   },
   "private": true,
+  "license": "MIT",
   "packageManager": "npm@11.19.1",
   "dependencies": {
     "@angular/common": "^22.2.0",
