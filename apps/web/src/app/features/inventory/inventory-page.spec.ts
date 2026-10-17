@@ -7,7 +7,7 @@ import { InventoryPage } from './inventory-page';
 import { InventoryFilters } from './inventory-filters';
 
 const device = (over: Partial<Device>): Device => ({
-  mac: '000000000000', ip: null, gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null,
+  mac: '000000000000', ip: null, gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null, siteId: 1,
   authRequired: false, location: null, notes: null, state: 'active',
   firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
   updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
@@ -33,7 +33,7 @@ describe('InventoryPage', () => {
   async function render() {
     const fixture = TestBed.createComponent(InventoryPage);
     fixture.detectChanges();
-    TestBed.inject(HttpTestingController).expectOne('/api/devices').flush(DEVICES);
+    TestBed.inject(HttpTestingController).expectOne('/api/devices?site=1').flush(DEVICES);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     const names = () => [...el.querySelectorAll('tbody tr td:first-child')].map((td) => td.textContent?.trim());

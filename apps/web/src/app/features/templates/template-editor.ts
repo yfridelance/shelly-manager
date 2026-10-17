@@ -5,6 +5,7 @@ import type { NetworkSettings, Template, TemplateSettings, WifiInterface } from 
 import type { DeviceApiError } from '../../core/devices-api';
 import { SCRIPT_FIELDS, TEMPLATE_GROUPS, WIFI_LABEL, type TemplateField } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
+import { SiteService } from '../../core/site.service';
 
 /** Per field: included in the template, and its raw input value ('true'/'false' for booleans). */
 type FieldState = Record<string, { on: boolean; value: string }>;
@@ -36,6 +37,7 @@ function stateFromSettings(settings: TemplateSettings): FieldState {
 export class TemplateEditor {
   private readonly api = inject(TemplatesApi);
   private readonly router = inject(Router);
+  private readonly site = inject(SiteService);
 
   /** Route parameter; undefined for a new template. */
   readonly id = input<string>();
@@ -139,7 +141,7 @@ export class TemplateEditor {
     const input = { name: this.name().trim(), description: this.description().trim() || null, settings: this.settings() };
     try {
       const id = this.id();
-      const saved = id ? await this.api.update(Number(id), input) : await this.api.create(input);
+      const saved = id ? await this.api.update(Number(id), input) : await this.api.create({ ...input, siteId: this.site.siteId() });
       void this.router.navigate(['/templates', saved.id, 'anwenden']);
     } catch (err) {
       this.error.set(`Speichern fehlgeschlagen: ${(err as DeviceApiError).message}`);

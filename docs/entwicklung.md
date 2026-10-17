@@ -57,7 +57,7 @@ apps/
   web/                        Angular 22, Standalone Components, Signals, SCSS
     src/app/
       core/                   API-Typen, API-Clients, deutsche Texte, Template-Feldliste
-      features/               scan, inventory, device, templates, log
+      features/               scan, inventory, device, templates, log, sites
       shared/                 JSON-Baum, JSON-Diff, Inline-Edit
 docs/                         diese Dokumentation (Bilder in docs/img)
 scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
@@ -87,6 +87,10 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   `planTemplate(gen, config, settings, ctx, secrets)` ist eine reine Funktion. Er erzeugt pro Feld einen Plan-Eintrag
   (`change`, `same`, `unsupported` mit Grund) und die nötigen Aufrufe: Gen1-`/settings`-Parameter oder Gen2+
   `<Komponente>.SetConfig`, je Komponente zusammengefasst. Gesetzt werden nur Felder, die die aktuelle Config kennt.
+- **Standorte** (`src/db/sites.ts`, `src/routes/sites.ts`): `site_id` an Geräten, Templates und Protokolleinträgen.
+  Listen-Endpunkte nehmen `?site=`, Scans und neue Templates `siteId`. IPs sind nur pro Standort eindeutig: alle
+  IP-Prüfungen (`upsertSeenDevice`, `markMissing`, `updateDeviceIp`, IP-Planung) filtern nach Standort. Ein Scan
+  liest und ändert keine Geräte anderer Standorte (`snapshot: 'foreign'`).
 - **Sicherheit**: Host-Guard für alle `/api`-Routen. Ajv entfernt unbekannte Felder nicht, sondern lehnt sie ab
   (`additionalProperties: false` greift wirklich). Log-Redaction für Credentials. Gen1-Fehlermeldungen enthalten keinen
   Query-String, weil darin `mqtt_pass` stehen kann.
@@ -151,7 +155,7 @@ npm run build
 ```
 
 Das Skript startet Mock-Fleet und einen Server auf Port 3100 mit einer temporären Datenbank (`setup.sh` legt
-Beispieldaten an: Scans, Namen, Standorte, ein Template). Dann steuert es Chrome im Headless-Modus über das
+Beispieldaten an: Scans, Namen, Orte, ein Template, ein zweiter Standort). Dann steuert es Chrome im Headless-Modus über das
 DevTools-Protokoll (`shots.mjs`, ohne zusätzliche Abhängigkeiten) und speichert die Bilder in 1280 px Breite.
 Voraussetzungen: Google Chrome (anderer Pfad über `CHROME=…`) sowie freie Ports 3100 und 18001–18008.
 Echte Geräte und `apps/server/data` werden nicht berührt. Nach UI-Änderungen das Skript erneut laufen lassen und die

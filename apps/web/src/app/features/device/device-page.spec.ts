@@ -8,7 +8,7 @@ import { DevicePage } from './device-page';
 const DETAILS: DeviceDetails = {
   device: {
     mac: 'A8032AB67890', ip: '10.0.0.4', gen: 2, model: 'SNSW-102P16EU', app: 'Plus2PM', firmware: '20241011-114455/1.4.4-g6d2a586',
-    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', authRequired: true, location: null, notes: null, state: 'active',
+    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', siteId: 1, authRequired: true, location: null, notes: null, state: 'active',
     firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
     updateStable: null, updateBeta: null, updateCheckedAt: null,
   },
@@ -30,7 +30,7 @@ describe('DevicePage', () => {
   /** Answers background loads (device list for suggestions, action history, details reload). */
   function answerBackground(details: DeviceDetails = DETAILS): void {
     for (const req of http.match((r) => r.method === 'GET')) {
-      if (req.request.url === '/api/devices') req.flush([]);
+      if (req.request.url.startsWith('/api/devices?') || req.request.url === '/api/sites') req.flush([]);
       else if (req.request.url.startsWith('/api/actions')) req.flush([]);
       else if (req.request.url === `/api/devices/${details.device.mac}`) req.flush(details);
     }
@@ -38,8 +38,12 @@ describe('DevicePage', () => {
 
   /** Lets promise chains run, answers what they requested, then waits for rendering. */
   async function settle(fixture: { whenStable(): Promise<unknown> }, details?: DeviceDetails): Promise<void> {
-    await new Promise((r) => setTimeout(r));
-    answerBackground(details);
+    // Two rounds: the «Ort» suggestions are requested only once the device (and its site) is known.
+    for (let i = 0; i < 2; i++) {
+      await new Promise((r) => setTimeout(r));
+      TestBed.tick();
+      answerBackground(details);
+    }
     await fixture.whenStable();
   }
 
@@ -48,7 +52,7 @@ describe('DevicePage', () => {
     fixture.componentRef.setInput('mac', details.device.mac);
     fixture.detectChanges();
     answerBackground(details);
-    await fixture.whenStable();
+    await settle(fixture, details);
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
@@ -64,7 +68,7 @@ describe('DevicePage', () => {
 
   it('saves the location inline via PATCH', async () => {
     const { fixture, el } = await render();
-    el.querySelector<HTMLButtonElement>('button[aria-label="Standort bearbeiten"]')?.click();
+    el.querySelector<HTMLButtonElement>('button[aria-label="Ort bearbeiten"]')?.click();
     await fixture.whenStable();
     const input = el.querySelector<HTMLInputElement>('app-editable-field input');
     type(input, 'Büro OG');
@@ -308,9 +312,12 @@ describe('DevicePage', () => {
             error: 'Applying failed after 0 of 1 calls', details: { templateName: 'test', appliedSteps: [] },
           },
         ]);
-      } else if (req.request.url === '/api/devices') req.flush([]);
+      } else if (req.request.url.startsWith('/api/devices?') || req.request.url === '/api/sites') req.flush([]);
       else req.flush(DETAILS);
     }
+    await new Promise((r) => setTimeout(r));
+    TestBed.tick();
+    for (const req of http.match((r) => r.method === 'GET')) req.flush([]);
     await fixture.whenStable();
     const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('table.compact tr')];
     const text = rows.map((r) => r.textContent?.replace(/\s+/g, ' ').trim());
@@ -319,5 +326,41 @@ describe('DevicePage', () => {
     expect(rows[0]?.querySelector('td:last-child')?.getAttribute('title')).toContain('Access-Point an: Aus → Ein');
     expect(text[1]).toContain('Template «test»');
     expect(text[1]).toContain('Template konnte nicht vollständig angewendet werden');
+  });
+
+  it('moves the device to another site after confirmation', async () => {
+    const fixture = TestBed.createComponent(DevicePage);
+    fixture.componentRef.setInput('mac', DETAILS.device.mac);
+    fixture.detectChanges();
+    const sites = [
+      { id: 1, name: 'Standard', description: null, createdAt: '2026-10-17T10:00:00.000Z', deviceCount: 1, templateCount: 0 },
+      { id: 2, name: 'Ferienhaus', description: null, createdAt: '2026-10-17T10:00:00.000Z', deviceCount: 0, templateCount: 0 },
+    ];
+    for (let i = 0; i < 2; i++) {
+      for (const req of http.match((r) => r.method === 'GET')) {
+        if (req.request.url === '/api/sites') req.flush(sites);
+        else if (req.request.url.startsWith('/api/devices?') || req.request.url.startsWith('/api/actions')) req.flush([]);
+        else req.flush(DETAILS);
+      }
+      await new Promise((r) => setTimeout(r));
+      TestBed.tick();
+    }
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const select = el.querySelector<HTMLSelectElement>('select[name="site"]');
+    if (!select) throw new Error('no site select');
+    select.value = '2';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    expect(el.textContent).toContain('Nach «Ferienhaus» verschieben?');
+    http.expectNone({ method: 'PATCH' });
+    button(el, 'Ja, verschieben')?.click();
+    const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
+    expect(patch.request.body).toEqual({ siteId: 2 });
+    patch.flush({ ...DETAILS.device, siteId: 2 });
+    await new Promise((r) => setTimeout(r));
+    for (const req of http.match((r) => r.method === 'GET')) req.flush(req.request.url === '/api/sites' ? sites : req.request.url.startsWith('/api/devices/') ? DETAILS : []);
+    await fixture.whenStable();
+    expect(el.textContent).toContain('Gerät nach «Ferienhaus» verschoben.');
   });
 });

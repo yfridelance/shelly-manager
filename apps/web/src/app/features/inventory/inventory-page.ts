@@ -6,6 +6,7 @@ import type { Device, DeviceState } from '../../core/api.types';
 import { DEVICE_STATE_TEXT, formatMac, ipSortKey, shortFirmware } from '../../core/texts';
 import { FirmwareCheckPanel, type FirmwareCheckResult } from './firmware-check-panel';
 import { InventoryFilters, type SortKey } from './inventory-filters';
+import { SiteService } from '../../core/site.service';
 
 const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
 
@@ -31,12 +32,13 @@ export class InventoryPage {
     { key: 'ip', label: 'IP' },
     { key: 'mac', label: 'MAC' },
     { key: 'firmware', label: 'Firmware' },
-    { key: 'location', label: 'Standort' },
+    { key: 'location', label: 'Ort' },
     { key: 'state', label: 'Status' },
     { key: 'lastSeen', label: 'Zuletzt gesehen' },
   ];
 
-  protected readonly devices = httpResource<Device[]>(() => '/api/devices', { defaultValue: [] });
+  protected readonly site = inject(SiteService);
+  protected readonly devices = httpResource<Device[]>(() => `/api/devices?site=${this.site.siteId()}`, { defaultValue: [] });
 
   protected readonly locations = computed(() =>
     [...new Set(this.devices.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(collator.compare),

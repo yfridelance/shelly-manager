@@ -8,7 +8,7 @@ import { InventoryFilters } from './inventory-filters';
 
 const device = (over: Partial<Device>): Device => ({
   mac: '000000000000', ip: '10.0.0.1', gen: 2, model: null, app: null, firmware: '20241011-114455/1.4.4-g6d2a586',
-  name: null, deviceName: null, deviceId: null, authRequired: false, location: null, notes: null, state: 'active',
+  name: null, deviceName: null, deviceId: null, siteId: 1, authRequired: false, location: null, notes: null, state: 'active',
   firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
   updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });
@@ -38,7 +38,7 @@ describe('Inventory: check all devices for firmware updates', () => {
   async function render() {
     const fixture = TestBed.createComponent(InventoryPage);
     fixture.detectChanges();
-    http.expectOne('/api/devices').flush(DEVICES);
+    http.expectOne('/api/devices?site=1').flush(DEVICES);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     const button = (text: string) => [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(text));

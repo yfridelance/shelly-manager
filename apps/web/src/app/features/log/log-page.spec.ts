@@ -20,7 +20,7 @@ describe('LogPage', () => {
     }).compileComponents();
     const fixture = TestBed.createComponent(LogPage);
     fixture.detectChanges();
-    TestBed.inject(HttpTestingController).expectOne('/api/actions?limit=2000').flush(ENTRIES);
+    TestBed.inject(HttpTestingController).expectOne('/api/actions?limit=2000&site=1').flush(ENTRIES);
     await fixture.whenStable();
 
     const el = fixture.nativeElement as HTMLElement;
@@ -49,7 +49,7 @@ describe('LogPage', () => {
     }).compileComponents();
     const fixture = TestBed.createComponent(LogPage);
     fixture.detectChanges();
-    TestBed.inject(HttpTestingController).expectOne('/api/actions?limit=2000').flush([
+    TestBed.inject(HttpTestingController).expectOne('/api/actions?limit=2000&site=1').flush([
       {
         id: 9, mac: 'A8032AB12345', deviceName: 'Boiler', action: 'firmware_update', requestedAt: '2026-10-15T08:00:00.000Z',
         requestedBy: '127.0.0.1', finishedAt: '2026-10-15T08:00:00.300Z', result: 'ok', errorCode: null, error: null,

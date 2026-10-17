@@ -5,6 +5,8 @@ import type { ApplyTemplateResult, Template, TemplatePreview, TemplateSettings }
 import { toDeviceApiError, type Credentials } from './devices-api';
 
 export interface TemplateInput {
+  /** Only used when creating. */
+  siteId?: number;
   name: string;
   description: string | null;
   settings: TemplateSettings;

@@ -4,8 +4,18 @@ export type ScanStatus = 'running' | 'done' | 'failed' | 'cancelled';
 
 export type DeviceErrorCode = 'auth_required' | 'auth_invalid' | 'timeout' | 'network' | 'not_shelly' | 'http' | 'rpc' | 'internal';
 
+export interface Site {
+  id: number;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  deviceCount: number;
+  templateCount: number;
+}
+
 export interface ScanSummary {
   id: string;
+  siteId: number;
   range: string;
   status: ScanStatus;
   total: number;
@@ -28,7 +38,9 @@ export interface ScanDeviceResult {
   deviceId: string | null;
   authRequired: boolean;
   created: boolean;
-  snapshot: 'ok' | 'auth_required' | 'error';
+  /** foreign: belongs to another site and was left untouched. */
+  snapshot: 'ok' | 'auth_required' | 'error' | 'foreign';
+  foreignSite?: { id: number; name: string };
   errorCode: DeviceErrorCode | null;
   error: string | null;
 }
@@ -56,6 +68,7 @@ export interface Device {
   deviceName: string | null;
   /** Shelly device id: Gen2+ `id` (e.g. "shellyplus1pm-a8032ab12345"), Gen1 hostname. */
   deviceId: string | null;
+  siteId: number;
   authRequired: boolean;
   location: string | null;
   notes: string | null;
@@ -160,6 +173,7 @@ export interface NetworkSettings {
 
 export interface Template {
   id: number;
+  siteId: number;
   name: string;
   description: string | null;
   settings: TemplateSettings;

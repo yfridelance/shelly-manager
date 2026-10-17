@@ -21,10 +21,12 @@ export class ScanService {
   readonly error = signal<string | null>(null);
   readonly busy = signal(false);
 
-  /** Re-attaches to a scan that is still running on the server (e.g. after a reload). */
-  async resume(): Promise<void> {
-    if (this.current()) return;
-    const scans = await firstValueFrom(this.http.get<ScanSummary[]>('/api/scans')).catch(() => []);
+  /** Re-attaches to the newest scan of this site (e.g. after a reload or a site switch). */
+  async resume(siteId: number): Promise<void> {
+    if (this.current()?.siteId === siteId) return;
+    this.stopFollowing();
+    this.current.set(null);
+    const scans = await firstValueFrom(this.http.get<ScanSummary[]>(`/api/scans?site=${siteId}`)).catch(() => []);
     const latest = scans[0];
     if (latest) {
       this.current.set({ ...latest, devices: [] });
@@ -32,11 +34,13 @@ export class ScanService {
     }
   }
 
-  async start(range: string, credentials?: ScanCredentials): Promise<void> {
+  async start(range: string, siteId: number, credentials?: ScanCredentials): Promise<void> {
     this.error.set(null);
     this.busy.set(true);
     try {
-      const summary = await firstValueFrom(this.http.post<ScanSummary>('/api/scans', { range, ...(credentials ? { credentials } : {}) }));
+      const summary = await firstValueFrom(
+        this.http.post<ScanSummary>('/api/scans', { range, siteId, ...(credentials ? { credentials } : {}) }),
+      );
       this.current.set({ ...summary, devices: [] });
       this.follow(summary.id);
     } catch (err) {

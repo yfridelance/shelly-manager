@@ -5,7 +5,7 @@ import type { ScanDetails } from '../../core/api.types';
 import { ScanPage } from './scan-page';
 
 const summary = {
-  id: 'scan-1', range: '10.0.0.0/29', status: 'running' as const, total: 6, scanned: 0, found: 0, errors: 0,
+  id: 'scan-1', siteId: 1, range: '10.0.0.0/29', status: 'running' as const, total: 6, scanned: 0, found: 0, errors: 0,
   withCredentials: true, startedAt: '2026-10-14T10:00:00.000Z', finishedAt: null, error: null, missing: [],
 };
 
@@ -32,7 +32,7 @@ describe('ScanPage', () => {
     const fixture = TestBed.createComponent(ScanPage);
     const el = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
-    http.expectOne('/api/scans').flush([]);
+    http.expectOne('/api/scans?site=1').flush([]);
     await fixture.whenStable();
 
     setInput(el, 'range', '10.0.0.0/29');
@@ -41,7 +41,7 @@ describe('ScanPage', () => {
     el.querySelector('form')?.dispatchEvent(new Event('submit'));
 
     const post = http.expectOne({ method: 'POST', url: '/api/scans' });
-    expect(post.request.body).toEqual({ range: '10.0.0.0/29', credentials: { password: 'geheim' } });
+    expect(post.request.body).toEqual({ range: '10.0.0.0/29', siteId: 1, credentials: { password: 'geheim' } });
     await fixture.whenStable();
     expect(el.querySelector<HTMLInputElement>('input[name="password"]')?.value).toBe('');
     post.flush(summary);
@@ -73,7 +73,7 @@ describe('ScanPage', () => {
     const fixture = TestBed.createComponent(ScanPage);
     const el = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
-    http.expectOne('/api/scans').flush([]);
+    http.expectOne('/api/scans?site=1').flush([]);
     setInput(el, 'range', '10.0.0.0/8');
     await fixture.whenStable();
     el.querySelector('form')?.dispatchEvent(new Event('submit'));

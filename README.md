@@ -5,12 +5,13 @@
 Selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) im lokalen Netz findet, dokumentiert und verwaltet.
 
 - **Scan** eines IP-Bereichs mit Erkennung von Generation, Modell, Geräte-ID, MAC, Firmware und Name
-- **Inventar** mit Suche, Filtern, Standort und Notizen pro Gerät, Export als CSV und JSON
+- **Standorte**: mehrere Häuser oder Kunden mit getrenntem Inventar, eigenen Templates und eigenem Protokoll
+- **Inventar** mit Suche, Filtern, Ort und Notizen pro Gerät, Export als CSV und JSON
 - **Config-Snapshots** mit Historie und Vergleich zweier Stände
 - **Neustart, Firmware-Updates** und **Werksreset pro Gerät** mit Schutzmechanismen
   (Bestätigung per MAC, automatischer Snapshot vorher, kein Sammel-Reset)
-- **Templates**: Einstellungen wie MQTT, Cloud, Zeit, Bluetooth oder Scripts mit Vorschau auf mehrere Geräte anwenden,
-  für Gen1 und Gen2+ übersetzt
+- **Templates**: Einstellungen wie MQTT, Cloud, Zeit, Bluetooth, Scripts oder statische IPs (fortlaufend vergeben)
+  mit Vorschau auf mehrere Geräte anwenden, für Gen1 und Gen2+ übersetzt
 - **Protokoll** aller Aktionen; Gerätepasswörter werden nie gespeichert
 
 ![Inventar](docs/img/inventar.png)

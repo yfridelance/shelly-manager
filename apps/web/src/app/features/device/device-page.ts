@@ -4,6 +4,8 @@ import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
 import { actionDetail, actionLabel, actionSummary } from '../../core/action-text';
+import { SitesStore } from '../../core/site.service';
+import { SitesApi } from '../../core/sites-api';
 import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
 import { DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, formatMac, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
@@ -34,7 +36,14 @@ export class DevicePage {
 
   protected readonly details = httpResource<DeviceDetails>(() => `/api/devices/${encodeURIComponent(this.mac())}`);
   protected readonly device = computed(() => this.details.hasValue() ? this.details.value().device : null);
-  protected readonly locations = httpResource<Device[]>(() => '/api/devices', { defaultValue: [] });
+  // Suggestions for «Ort» come from the devices of the same site.
+  protected readonly locations = httpResource<Device[]>(
+    () => (this.device() ? `/api/devices?site=${this.device()?.siteId}` : undefined),
+    { defaultValue: [] },
+  );
+  protected readonly sites = inject(SitesStore);
+  private readonly sitesApi = inject(SitesApi);
+  protected readonly moveTo = signal<number | null>(null);
   protected readonly locationSuggestions = computed(() =>
     [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(),
   );
@@ -124,6 +133,22 @@ export class DevicePage {
     if (!device.authRequired || !password) return undefined;
     const username = this.username().trim();
     return { password, ...(device.gen === 1 && username ? { username } : {}) };
+  }
+
+  /** Moves the device to another site (after a confirmation in the UI). */
+  protected async moveDevice(): Promise<void> {
+    const device = this.device();
+    const target = this.moveTo();
+    if (!device || target === null) return;
+    this.moveTo.set(null);
+    try {
+      await this.sitesApi.moveDevice(device.mac, target);
+      this.details.reload();
+      this.sites.list.reload();
+      this.message.set({ kind: 'ok', text: `Gerät nach «${this.sites.name(target)}» verschoben.` });
+    } catch (err) {
+      this.message.set({ kind: 'error', text: `Verschieben fehlgeschlagen: ${(err as DeviceApiError).message}` });
+    }
   }
 
   protected async takeSnapshot(): Promise<void> {

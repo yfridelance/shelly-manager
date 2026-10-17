@@ -6,6 +6,7 @@ import type { Template } from '../../core/api.types';
 import type { DeviceApiError } from '../../core/devices-api';
 import { groupTitles } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
+import { SiteService } from '../../core/site.service';
 
 @Component({
   selector: 'app-templates-page',
@@ -17,7 +18,7 @@ import { TemplatesApi } from '../../core/templates-api';
       <a class="button" routerLink="/templates/neu">Neues Template</a>
     </div>
     <p class="muted intro">
-      Ein Template fasst Einstellungen zusammen, die auf mehrere Geräte angewendet werden, für Gen1 und Gen2+ übersetzt.
+      Ein Template fasst Einstellungen zusammen, die auf mehrere Geräte des aktuellen Standorts angewendet werden, für Gen1 und Gen2+ übersetzt.
       Vor dem Anwenden siehst du pro Gerät, was sich ändert.
     </p>
 
@@ -75,7 +76,8 @@ import { TemplatesApi } from '../../core/templates-api';
 })
 export class TemplatesPage {
   private readonly api = inject(TemplatesApi);
-  protected readonly templates = httpResource<Template[]>(() => '/api/templates', { defaultValue: [] });
+  private readonly site = inject(SiteService);
+  protected readonly templates = httpResource<Template[]>(() => `/api/templates?site=${this.site.siteId()}`, { defaultValue: [] });
   protected readonly confirmDelete = signal<number | null>(null);
   protected readonly message = signal<string | null>(null);
   protected readonly groupTitles = groupTitles;

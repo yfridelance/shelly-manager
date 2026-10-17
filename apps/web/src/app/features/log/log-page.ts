@@ -1,4 +1,5 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { SiteService } from '../../core/site.service';
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -18,7 +19,8 @@ export class LogPage {
   protected readonly formatMac = formatMac;
   protected readonly errorText = errorText;
 
-  protected readonly entries = httpResource<ActionEntry[]>(() => '/api/actions?limit=2000', { defaultValue: [] });
+  private readonly site = inject(SiteService);
+  protected readonly entries = httpResource<ActionEntry[]>(() => `/api/actions?limit=2000&site=${this.site.siteId()}`, { defaultValue: [] });
   protected readonly action = signal('');
   protected readonly result = signal('');
   protected readonly search = signal('');

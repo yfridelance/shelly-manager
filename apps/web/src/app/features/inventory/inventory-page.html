@@ -10,9 +10,9 @@
   <span class="spacer"></span>
   @if (devices.value().length > 0) {
     <nav class="export" aria-label="Export">
-      <a class="button secondary" href="/api/export.csv" download>Export CSV</a>
-      <a class="button secondary" href="/api/export.json" download title="Inkl. neuster Config pro Gerät">Export JSON</a>
-      <a href="/api/export.json?snapshots=all" download>JSON mit allen Snapshots</a>
+      <a class="button secondary" [href]="'/api/export.csv?site=' + site.siteId()" download>Export CSV</a>
+      <a class="button secondary" [href]="'/api/export.json?site=' + site.siteId()" download title="Inkl. neuster Config pro Gerät">Export JSON</a>
+      <a [href]="'/api/export.json?snapshots=all&site=' + site.siteId()" download>JSON mit allen Snapshots</a>
     </nav>
     <app-firmware-check-panel [devices]="devices.value()" (checked)="applyCheck($event)" (showUpdates)="showOnlyUpdates()" />
   }
@@ -33,10 +33,10 @@
     </select>
   </label>
   <label class="field">
-    <span>Standort</span>
+    <span>Ort</span>
     <select (change)="setLocation(value($event))">
       <option value="*" [selected]="f.location() === null">Alle</option>
-      <option value="" [selected]="f.location() === ''">(ohne Standort)</option>
+      <option value="" [selected]="f.location() === ''">(ohne Ort)</option>
       @for (l of locations(); track l) {
         <option [value]="l" [selected]="f.location() === l">{{ l }}</option>
       }

@@ -26,6 +26,22 @@
         </dd>
         <dt>MAC</dt>
         <dd class="mono">{{ formatMac(d.mac) }}</dd>
+        <dt>Standort</dt>
+        <dd>
+          @if (moveTo(); as target) {
+            <span class="confirm">
+              Nach «{{ sites.name(target) }}» verschieben?
+              <button type="button" (click)="moveDevice()">Ja, verschieben</button>
+              <button type="button" class="secondary" (click)="moveTo.set(null)">Abbrechen</button>
+            </span>
+          } @else {
+            <select name="site" aria-label="Standort des Geräts" (change)="moveTo.set(+value($event))">
+              @for (s of sites.list.value(); track s.id) {
+                <option [value]="s.id" [selected]="s.id === d.siteId">{{ s.name }}</option>
+              }
+            </select>
+          }
+        </dd>
         <dt>IP</dt>
         <dd class="mono">
           @if (d.ip) {
@@ -64,9 +80,9 @@
         <app-editable-field label="Name" [value]="d.name" [saving]="saving()" (saved)="saveField('name', $event)" />
       </div>
       <div class="doc-field">
-        <h3>Standort</h3>
+        <h3>Ort</h3>
         <app-editable-field
-          label="Standort"
+          label="Ort"
           listId="location-suggestions"
           [value]="d.location"
           [saving]="saving()"

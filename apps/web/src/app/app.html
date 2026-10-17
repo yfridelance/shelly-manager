@@ -6,6 +6,16 @@
     <a routerLink="/templates" routerLinkActive="active">Templates</a>
     <a routerLink="/protokoll" routerLinkActive="active">Protokoll</a>
   </nav>
+  <span class="spacer"></span>
+  <label class="site">
+    <span>Standort</span>
+    <select name="site" aria-label="Standort wählen" (change)="selectSite($event)">
+      @for (s of sites.list.value(); track s.id) {
+        <option [value]="s.id" [selected]="s.id === site.siteId()">{{ s.name }}</option>
+      }
+    </select>
+  </label>
+  <a class="manage" routerLink="/standorte" routerLinkActive="active">Standorte</a>
   <span class="health" [class]="'health ' + health.state()" data-testid="health">
     @switch (health.state()) {
       @case ('ok') { Server verbunden }

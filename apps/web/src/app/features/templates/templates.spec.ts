@@ -10,12 +10,12 @@ import { TemplateEditor } from './template-editor';
 const tick = () => new Promise((r) => setTimeout(r));
 
 const TEMPLATE: Template = {
-  id: 7, name: 'Haus-Standard', description: null, createdAt: '2026-10-15T08:00:00.000Z', updatedAt: '2026-10-15T08:00:00.000Z',
+  id: 7, siteId: 1, name: 'Haus-Standard', description: null, createdAt: '2026-10-15T08:00:00.000Z', updatedAt: '2026-10-15T08:00:00.000Z',
   settings: { mqtt: { enable: true, server: 'mqtt.home:1883' }, cloud: { enable: false } },
 };
 
 const device = (over: Partial<Device>): Device => ({
-  mac: '000000000000', ip: '10.0.0.1', gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null,
+  mac: '000000000000', ip: '10.0.0.1', gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null, siteId: 1,
   authRequired: false, location: null, notes: null, state: 'active', firstSeen: '2026-10-14T10:00:00.000Z',
   lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null, updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });
@@ -78,6 +78,7 @@ describe('TemplateEditor', () => {
     el.querySelector('form')?.dispatchEvent(new Event('submit'));
     const req = http.expectOne({ method: 'POST', url: '/api/templates' });
     expect(req.request.body).toEqual({
+      siteId: 1,
       name: 'Haus-Standard',
       description: null,
       settings: { mqtt: { server: 'mqtt.home:1883' }, cloud: { enable: false }, time: { lat: 47.37 } },
@@ -144,7 +145,9 @@ describe('TemplateApply', () => {
     fixture.componentRef.setInput('id', '7');
     fixture.detectChanges();
     http.expectOne('/api/templates/7').flush(TEMPLATE);
-    http.expectOne('/api/devices').flush(DEVICES);
+    await tick();
+    TestBed.tick(); // the device list depends on the template's site
+    http.expectOne('/api/devices?site=1').flush(DEVICES);
     await tick();
     TestBed.tick(); // runs the effect that loads the preview
     await tick();
@@ -239,6 +242,7 @@ describe('network templates in the UI', () => {
     expect(save()?.disabled).toBe(false);
     el.querySelector('form')?.dispatchEvent(new Event('submit'));
     expect(http.expectOne({ method: 'POST', url: '/api/templates' }).request.body).toEqual({
+      siteId: 1,
       name: 'Fix-IP',
       description: null,
       settings: { network: { sta: { mode: 'static', ipFrom: '192.168.10.50', netmask: '255.255.255.0', gateway: '192.168.10.1' } } },
@@ -260,7 +264,9 @@ describe('network templates in the UI', () => {
     fixture.componentRef.setInput('id', '7');
     fixture.detectChanges();
     http.expectOne('/api/templates/7').flush(template);
-    http.expectOne('/api/devices').flush(devices);
+    await tick();
+    TestBed.tick();
+    http.expectOne('/api/devices?site=1').flush(devices);
     await tick();
     TestBed.tick();
     await tick();

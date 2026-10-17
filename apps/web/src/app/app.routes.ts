@@ -34,6 +34,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/templates/template-apply').then((m) => m.TemplateApply),
   },
   {
+    path: 'standorte',
+    title: 'Standorte · Shelly Manager',
+    loadComponent: () => import('./features/sites/sites-page').then((m) => m.SitesPage),
+  },
+  {
     path: 'protokoll',
     title: 'Protokoll · Shelly Manager',
     loadComponent: () => import('./features/log/log-page').then((m) => m.LogPage),

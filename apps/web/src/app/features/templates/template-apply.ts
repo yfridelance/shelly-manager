@@ -36,7 +36,11 @@ export class TemplateApply {
   protected readonly itemText = itemText;
 
   protected readonly template = httpResource<Template>(() => `/api/templates/${this.id()}`);
-  protected readonly devices = httpResource<Device[]>(() => '/api/devices', { defaultValue: [] });
+  // Only devices of the template's site can be configured with it.
+  protected readonly devices = httpResource<Device[]>(
+    () => (this.template.hasValue() ? `/api/devices?site=${this.template.value().siteId}` : undefined),
+    { defaultValue: [] },
+  );
   protected readonly previews = signal<Record<string, TemplatePreview>>({});
   protected readonly lines = computed(() => (this.template.hasValue() ? describeSettings(this.template.value().settings) : []));
   protected readonly needsMqttPassword = computed(() => this.template.hasValue() && this.template.value().settings.mqtt !== undefined);

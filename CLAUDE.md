@@ -28,11 +28,12 @@ Eine selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) in einem Netzw
 ### Über das MVP hinaus umgesetzt
 - Firmware-Updates pro Gerät: Verfügbarkeit aus dem Status (bei jedem Scan/Snapshot), explizit prüfen, Stable/Beta installieren
 - Config-Vergleich zweier Snapshots eines Geräts (erster Schritt Richtung Drift-Erkennung)
-- Templates: kuratierte Settings (MQTT, Cloud, Zeit/Standort, Eco/LED, Bluetooth inkl. BLE-RPC, WLAN-AP, AP-Roaming, CoIoT, Script) mit Vorschau pro Gerät und Anwenden auf mehrere Geräte (siehe Abschnitt 14)
+- Templates: kuratierte Settings (MQTT, Cloud, Zeit/Koordinaten, Eco/LED, Bluetooth inkl. BLE-RPC, WLAN-AP, AP-Roaming, CoIoT, Script, Netzwerk mit fortlaufender statischer IP) mit Vorschau pro Gerät und Anwenden auf mehrere Geräte (siehe Abschnitt 14)
+- Standorte (Mandanten ohne Login): getrennte Inventare, Templates und Protokolle; Auswahl im UI (siehe Abschnitt 15)
 
 ### Nicht im MVP (Datenmodell aber vorbereiten)
 - Drift-Erkennung über mehrere Geräte (Template als Soll-Zustand ist mit der Vorschau schon fast da)
-- Multi-Site mit Agents/Collectors
+- Verteilte Agents/Collectors pro Standort
 - Benutzerverwaltung / Login (App läuft lokal bzw. hinter Reverse Proxy)
 - Persistente Speicherung von Gerätepasswörtern
 - mDNS/CoIoT-Discovery
@@ -132,7 +133,7 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
-Stand nach Migration 009 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+Stand nach Migration 010 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
 
 ```sql
 devices (
@@ -144,6 +145,7 @@ devices (
   firmware TEXT,                 -- Gen1: fw, Gen2+: fw_id
   name TEXT,                     -- lokaler Anzeigename (PATCH); folgt device_name, solange nicht lokal geändert
   device_name TEXT,              -- Name, den das Gerät meldet
+  site_id INTEGER NOT NULL DEFAULT 1, -- Standort (sites.id), App hält die Referenz gültig
   device_id TEXT,                -- Shelly-ID: Gen2+ `id` aus /shelly, Gen1 Hostname aus /settings (bei geschützten Gen1 erst mit Passwort); bleibt erhalten, wenn ein Scan sie nicht lesen kann
   auth_required INTEGER NOT NULL DEFAULT 0,
   location TEXT,
@@ -196,7 +198,7 @@ Snapshots werden nur bei Änderung neu angelegt (`insertSnapshot`, `src/db/snaps
 `missing`: Ein abgeschlossener Scan markiert aktive Geräte, deren IP im Bereich lag, die aber nicht mehr antworteten. Wird ein Gerät wieder gefunden, ist es wieder `active`.
 Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurden: `state = 'reset'` setzen, damit die Dokumentation erhalten bleibt.
 
-Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `templates`, Zuordnung Gerät → Site.
+`sites (id, name UNIQUE, description, created_at)`; `templates.site_id` (Namen eindeutig pro Standort), `action_log.site_id` (Standort zum Zeitpunkt der Aktion). Ohne `REFERENCES` angelegt (SQLite erlaubt bei ADD COLUMN mit Default ≠ NULL keine FK); ein Standort lässt sich nur löschen, wenn er leer ist, der letzte nie.
 
 ## 8. REST-API
 
@@ -222,7 +224,11 @@ Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `te
 | POST | `/api/templates/:id/preview` | Vorschau pro Gerät (`{ macs? }`, Default alle aktiven) aus dem neusten Snapshot, ohne Gerätezugriff; mit geplanten statischen IPs (`assignedIps`) für genau diese Auswahl |
 | POST | `/api/devices/:mac/apply-template` | Template anwenden (`{ templateId, credentials?, secrets?: { mqttPassword?, apPassword? }, rebootIfRequired?, network?: { sta?, sta1? } }`; Antwort u.a. `network: { ip, confirmed }`) |
 | GET | `/api/export.json` / `/api/export.csv` | Export (`?snapshots=all` für alle Snapshots) |
-| GET | `/api/actions` | Aktionsprotokoll (`?mac=`, `?limit=`) |
+| GET | `/api/actions` | Aktionsprotokoll (`?mac=`, `?site=`, `?limit=`) |
+| GET/POST | `/api/sites` | Standorte auflisten (mit Anzahl Geräte/Templates) / anlegen |
+| GET/PUT/DELETE | `/api/sites/:id` | lesen / umbenennen / löschen (nur leer; 409 `site_not_empty`, `last_site`) |
+
+`?site=` filtert `/api/devices`, `/api/scans`, `/api/templates`, `/api/actions`, `/api/export.*` (ohne = alle). `POST /api/scans` und `POST /api/templates` nehmen `siteId` (Default 1); `PATCH /api/devices/:mac { siteId }` verschiebt ein Gerät; `apply-template` verlangt gleichen Standort (409 `site_mismatch`).
 
 Fehlercodes Templates: 409 `name_taken`, 400 `empty_template`, 400 `invalid_network`, 409 `ip_conflict`, 404 `template_not_found`, 409 `snapshot_failed` (vorher), 502 `template_failed` (mit `cause`).
 
@@ -249,10 +255,11 @@ Zusätzlich umgesetzt (beibehalten):
 
 Ansichten:
 1. **Scan:** IP-Bereich, optionale Zugangsdaten, Start/Abbruch, Fortschritt, Liste der Treffer
-2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Standort, Status, zuletzt gesehen), Filter nach Gen/Standort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
-3. **Gerätedetail:** Infos, Name/Standort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
+2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Ort, Status, zuletzt gesehen) des gewählten Standorts, Filter nach Gen/Ort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
+3. **Gerätedetail:** Infos inkl. Standort (verschieben mit Rückfrage), Name/Ort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
 5. **Templates:** Liste, Editor (nur angehakte Einstellungen gehören zum Template, Eingabe hakt automatisch an), Anwenden mit Geräteauswahl, Vorschau pro Gerät, Passwortfeldern, «bei Bedarf neu starten», Fortschritt und Ergebnis pro Gerät
+6. **Standorte:** Auswahl in der Kopfzeile (im Browser gemerkt), Verwaltung unter «Standorte»; das Gerätefeld `location` heisst im UI «Ort»
 
 Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Falls das eigene Web-Component-Design-System "Kern" verfügbar ist, dessen Komponenten verwenden; sonst schlichtes eigenes SCSS ohne UI-Framework.
 
@@ -317,4 +324,13 @@ Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), 
 **Netzwerk (WLAN-IP):** SSID und WLAN-Passwort werden nie gesendet (Gen2-Doku: `pass` nur zusammen mit `ssid` nötig; Gen1 wendet `/settings/sta`-Parameter einzeln an – am echten Gerät noch zu bestätigen). Statische IPs plant `src/templates/ip-plan.ts` (`assignStaticIps`): pro Auswahl, sortiert nach Standort und Name, bestehende statische IPs im Bereich bleiben, sonst nächste freie ab `ipFrom` (belegt = IP eines anderen Geräts im Inventar, Gateway, Netz/Broadcast; während laufender Anwendungen reserviert). Beim Anwenden: angefragte IP prüfen (`ip_conflict`, auch wenn unter der Adresse etwas per HTTP antwortet), Netzwerk-Schritte zuletzt und das aktive WLAN (erkannt über die SSID im Status) ganz zuletzt, danach das Gerät unter der neuen IP suchen (MAC-Prüfung), `devices.ip` nachführen, erst dann Snapshot und Neustart. Nicht wiedergefunden: Ergebnis `network.confirmed = false`, kein Snapshot/Neustart. Wechsel auf DHCP: alte IP prüfen, sonst `ip = NULL` (neu scannen).
 
 Regeln: Nur Felder setzen, die die aktuelle Config des Geräts kennt (sonst `unsupported`, Grund `generation` oder `firmware`); gleiche Werte nicht senden; Platzhalter `{id}` (Gen1 Hostname, Gen2+ Geräte-ID) und `{mac}`; Gen1-Fehlermeldungen ohne Query-String.
+
+## 15. Standorte
+
+Ein Standort trennt Inventar, Templates und Protokoll (Haus, Kunde). Umsetzung: `site_id` an `devices`, `templates`, `action_log` (Migration 010, Standard-Standort 1). Regeln:
+
+- Die MAC bleibt global eindeutig: ein Gerät gehört genau zu einem Standort. Ein Scan in Standort B, der ein Gerät von Standort A findet, meldet es nur (`snapshot: 'foreign'`, `foreignSite`), liest keine Config (keine Zugangsdaten von B an A-Geräte) und ändert nichts; verschoben wird nur explizit (`PATCH { siteId }`, im UI mit Rückfrage).
+- IPs sind nur pro Standort eindeutig (getrennte Netze). `upsertSeenDevice`, `markMissing`, `updateDeviceIp`, `moveDevice` und die statische IP-Planung arbeiten pro Standort.
+- Templates gelten nur für Geräte ihres Standorts; Vorschau und Anwenden prüfen das.
+- Im UI heisst `devices.location` «Ort» (Raum), «Standort» ist der Site-Begriff. Der aktuelle Standort liegt in `SiteService` (localStorage); `SitesStore` lädt die Liste nur dort, wo sie gebraucht wird.
 

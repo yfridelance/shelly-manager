@@ -26,8 +26,34 @@ nav {
   }
 }
 
+.spacer {
+  flex: 1;
+}
+
+.site {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+
+  select {
+    padding: 0.2rem 0.4rem;
+  }
+}
+
+.manage {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+
+  &.active {
+    color: var(--text);
+    font-weight: 600;
+  }
+}
+
 .health {
-  margin-left: auto;
   font-size: 0.85rem;
   color: var(--text-muted);
 

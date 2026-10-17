@@ -21,6 +21,7 @@ zeigen Beispieldaten aus der Mock-Fleet, mit der die App ohne echte Geräte gete
 10. [Passwörter und Sicherheit](#10-passwörter-und-sicherheit)
 11. [Ablauf beim Hausverkauf](#11-ablauf-beim-hausverkauf)
 12. [Meldungen und Fehlerbehebung](#12-meldungen-und-fehlerbehebung)
+13. [Standorte](#13-standorte)
 
 ---
 
@@ -34,13 +35,14 @@ Die Navigation oben hat vier Bereiche:
 | **Inventar** | Alle bekannten Geräte, Suche, Filter, Export, Firmware-Prüfung |
 | **Templates** | Einstellungen zusammenstellen und auf mehrere Geräte anwenden |
 | **Protokoll** | Alle ausgeführten Aktionen mit Ergebnis |
+| **Standort** (oben rechts) | Auswahl des Standorts, in dem du arbeitest; «Standorte» verwaltet sie |
 
 Oben rechts zeigt «Server verbunden», dass die App ihren Server erreicht.
 
 Ein paar Grundsätze, die überall gelten:
 
 - **Ein Gerät ist durch seine MAC-Adresse bestimmt**, nicht durch die IP. Wechselt ein Gerät die IP, bleibt es dasselbe
-  Gerät im Inventar, mit Standort und Notizen.
+  Gerät im Inventar, mit Ort und Notizen.
 - **Bevor die App etwas an einem Gerät tut**, prüft sie, ob unter der gespeicherten IP noch dasselbe Gerät antwortet.
   Antwortet dort ein anderes, bricht sie ab («Unter dieser IP antwortet ein anderes Gerät. Bitte neu scannen.»).
 - **Pro Gerät läuft immer nur eine Aktion gleichzeitig.**
@@ -76,7 +78,7 @@ werden konnte. Neu entdeckte Geräte sind mit «neu» markiert.
 - Fehlertexte (z.B. «Zugangsdaten falsch») betreffen nur dieses eine Gerät; der Scan läuft weiter.
 
 **Was ein Scan im Inventar aktualisiert:** IP, Firmware, Generation, Modell, «zuletzt gesehen» und verfügbare
-Firmware-Updates. **Standort und Notizen bleiben immer unverändert.** Bekannte Geräte, die im gescannten Bereich
+Firmware-Updates. **Ort und Notizen bleiben immer unverändert.** Bekannte Geräte, die im gescannten Bereich
 nicht mehr antworten, werden als **Vermisst** markiert (nur bei abgeschlossenen, nicht bei abgebrochenen Scans).
 Taucht ein vermisstes Gerät wieder auf, ist es wieder **Aktiv**.
 
@@ -88,14 +90,14 @@ letzten (siehe [Gerätedetail](#konfiguration-und-snapshots)).
 
 ## 3. Inventar
 
-Die Tabelle zeigt alle bekannten Geräte: Name, Geräte-ID, Modell, Generation, IP, MAC, Firmware, Standort, Status
+Die Tabelle zeigt alle Geräte des gewählten [Standorts](#13-standorte): Name, Geräte-ID, Modell, Generation, IP, MAC, Firmware, Ort, Status
 und «zuletzt gesehen». Ein Klick auf eine Zeile öffnet die [Detailansicht](#4-gerätedetail). Ein 🔒 hinter dem
 Namen bedeutet: passwortgeschützt.
 
-![Inventar mit Geräte-ID, Standort und Update-Hinweisen](img/inventar.png)
+![Inventar mit Geräte-ID, Ort und Update-Hinweisen](img/inventar.png)
 
-- **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Standort, Notizen und Firmware.
-- **Filter:** Generation, Standort (auch «ohne Standort»), Status (Aktiv, Vermisst, Zurückgesetzt) und
+- **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Ort, Notizen und Firmware.
+- **Filter:** Generation, Ort (auch «ohne Ort»), Status (Aktiv, Vermisst, Zurückgesetzt) und
   «nur mit Firmware-Update».
 - **Sortieren:** Klick auf eine Spaltenüberschrift, nochmals klicken kehrt die Reihenfolge um.
   Filter und Sortierung bleiben erhalten, wenn du ins Detail und zurück wechselst.
@@ -125,9 +127,12 @@ Gerät sowie «erstmals» und «zuletzt gesehen».
 
 ### Dokumentation
 
-**Name, Standort und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät**. Klick auf «Bearbeiten»,
-ändern, mit Enter (bei Notizen Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Standort schlägt
-die App bereits verwendete Standorte vor.
+**Name, Ort und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät**. Klick auf «Bearbeiten»,
+ändern, mit Enter (bei Notizen Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Ort (Raum, z.B.
+«Keller») schlägt die App bereits verwendete Orte des Standorts vor.
+
+Unter **Gerät → Standort** lässt sich das Gerät nach einer Rückfrage in einen anderen [Standort](#13-standorte)
+verschieben.
 
 Den lokalen Namen leeren zeigt wieder den Namen, den das Gerät selbst meldet. Solange du den Namen nicht lokal
 änderst, übernimmt die App Umbenennungen auf dem Gerät automatisch.
@@ -180,7 +185,7 @@ Was die App dabei tut:
   ausgeführt. Erst dann bietet der Dialog die Option «Trotzdem ohne Snapshot zurücksetzen» an; diese Wahl wird im
   Protokoll festgehalten.
 - Sie prüft nochmals, dass unter der IP wirklich dieses Gerät antwortet.
-- Nach dem Reset bleibt der Eintrag im Inventar mit Status **Zurückgesetzt**, inklusive Standort, Notizen und
+- Nach dem Reset bleibt der Eintrag im Inventar mit Status **Zurückgesetzt**, inklusive Ort, Notizen und
   gesichertem Snapshot.
 
 **«Reset vermutlich erfolgreich – Gerät nicht mehr erreichbar»:** Manche Geräte trennen die Verbindung, bevor sie den
@@ -221,7 +226,7 @@ zum Template**; alles andere bleibt auf den Geräten unverändert.
 | MQTT | aktiv, Server, Benutzer, Client-ID | ✓ | ✓ (Neustart nötig) |
 |  | Topic-Präfix | – | ✓ |
 | Shelly Cloud | Verbindung an/aus | ✓ | ✓ |
-| Zeit und Standort | SNTP-Server, Zeitzone, Breiten-/Längengrad | ✓ | ✓ |
+| Zeit und Koordinaten | SNTP-Server, Zeitzone, Breiten-/Längengrad | ✓ | ✓ |
 | Eco-Modus und LED | Eco-Modus | – | ✓ |
 |  | LED-Statusanzeige aus | nur manche Modelle | – |
 | Bluetooth | Bluetooth an, BLE-RPC, Observer | – | ✓ (an/aus und Observer nur ältere Firmware) |
@@ -284,7 +289,7 @@ festlegen, ob das Gerät seine Adresse per **DHCP** bekommt oder eine **statisch
 Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer unverändert.
 
 - **Fortlaufende Vergabe:** Beim Anwenden verteilt die App die Adressen ab «IP ab» aufsteigend auf die ausgewählten
-  Geräte, sortiert nach Standort und Name. Belegte Adressen (andere Geräte im Inventar, Gateway, Netz- und
+  Geräte, sortiert nach Ort und Name. Belegte Adressen (andere Geräte im Inventar, Gateway, Netz- und
   Broadcast-Adresse) werden übersprungen. Geräte, die schon eine statische IP im Bereich haben, behalten sie; ein
   zweiter Durchlauf ändert also nichts.
 - **IP anpassen:** Die Spalte **Neue IP** zeigt die geplante Adresse pro Gerät und lässt sich ändern. Ändert sich die
@@ -349,7 +354,7 @@ Gerätepasswörter sind nie im Export, weil die App sie nicht speichert.
 ## 11. Ablauf beim Hausverkauf
 
 1. **Scannen**, wenn nötig mit Gerätepasswort, bis alle Geräte mit «Config gelesen» im Inventar sind.
-2. **Dokumentieren:** Standort und Notizen pro Gerät erfassen (wo es verbaut ist, was es schaltet, Sicherung …).
+2. **Dokumentieren:** Ort und Notizen pro Gerät erfassen (wo es verbaut ist, was es schaltet, Sicherung …).
 3. **Exportieren:** CSV und JSON herunterladen und **ausserhalb des Laptops** ablegen.
 4. **Zurücksetzen:** Gerät für Gerät über **Werkseinstellungen …**. Die App sichert vorher jeweils automatisch die
    Config.
@@ -379,3 +384,29 @@ Gerätepasswörter sind nie im Export, weil die App sie nicht speichert.
 | Kein Shelly | Unter der Adresse antwortet ein anderes Gerät (Router, Drucker …). |
 | Zugriff über diesen Hostnamen ist nicht erlaubt … | Die App wird über einen nicht freigegebenen Namen aufgerufen; siehe `ALLOWED_HOSTS` in [betrieb.md](betrieb.md#umgebungsvariablen). |
 | Server nicht erreichbar | Der Server der App läuft nicht oder ist nicht erreichbar. |
+| Gehört zu Standort «…», unverändert | Der Scan hat ein Gerät gefunden, das zu einem anderen Standort gehört. Es bleibt dort; bei Bedarf in der Detailansicht verschieben. |
+| Gerät und Template gehören zu verschiedenen Standorten | Templates gelten nur für Geräte ihres Standorts. |
+
+## 13. Standorte
+
+Mit Standorten verwaltest du mehrere Häuser, Wohnungen oder Kunden in einer Installation, sauber getrennt. Jeder
+Standort hat sein **eigenes Inventar, eigene Templates und ein eigenes Protokoll**.
+
+- **Wählen:** Oben rechts in der Kopfzeile wählst du, in welchem Standort du arbeitest. Scan, Inventar, Templates,
+  Protokoll und Export beziehen sich immer auf diesen Standort. Der Browser merkt sich die Wahl.
+- **Verwalten:** Unter **Standorte** legst du neue an und benennst sie um. Löschen geht nur bei leeren Standorten
+  (keine Geräte, keine Templates); der letzte Standort bleibt immer bestehen. Bestehende Daten liegen im Standort
+  «Standard».
+- **Scannen:** Ein Scan speichert die gefundenen Geräte im gewählten Standort. Gehört ein gefundenes Gerät schon zu
+  einem anderen Standort, wird es nur gemeldet («gehört zu Standort …, unverändert»): Es wird weder gelesen noch
+  geändert noch als vermisst markiert. Verschieben ist ein bewusster Schritt in der Detailansicht.
+- **IP-Adressen** dürfen sich zwischen Standorten überschneiden (getrennte Netze). Alle IP-Prüfungen, etwa für
+  statische IPs in Templates, gelten pro Standort.
+- **Templates** gelten nur für die Geräte ihres Standorts. Gleiche Template-Namen sind in verschiedenen Standorten
+  erlaubt.
+- **Protokoll:** Jeder Eintrag gehört zum Standort, in dem das Gerät zum Zeitpunkt der Aktion war.
+- **Export:** CSV und JSON enthalten die Geräte des gewählten Standorts mit dem Standortnamen; die CSV hat dafür eine
+  erste Spalte «Standort», das Gerätefeld heisst dort «Ort».
+
+> **Begriffe:** «Standort» ist das Haus oder der Kunde, «Ort» der Raum oder die Stelle im Haus (Keller, Garten …).
+

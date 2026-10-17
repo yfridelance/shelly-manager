@@ -45,7 +45,7 @@ export const TEMPLATE_GROUPS: TemplateGroup[] = [
   },
   {
     id: 'time',
-    title: 'Zeit und Standort',
+    title: 'Zeit und Koordinaten',
     gens: 'Gen1 und Gen2+',
     hint: 'Koordinaten werden für Sonnenauf- und -untergang verwendet. Gen1: feste Zeitzone schaltet die automatische Erkennung aus.',
     fields: [
