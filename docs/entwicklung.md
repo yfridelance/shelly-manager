@@ -155,9 +155,9 @@ npm run build
 ```
 
 Das Skript startet Mock-Fleet und einen Server auf Port 3100 mit einer temporären Datenbank (`setup.sh` legt
-Beispieldaten an: Scans, Namen, Orte, ein Template, ein zweiter Standort). Dann steuert es Chrome im Headless-Modus über das
+Beispieldaten an: Scans, Namen, Orte, ein Template, ein Netzwerk-Template nur zur Vorschau, ein zweiter Standort). Dann steuert es Chrome im Headless-Modus über das
 DevTools-Protokoll (`shots.mjs`, ohne zusätzliche Abhängigkeiten) und speichert die Bilder in 1280 px Breite.
-Voraussetzungen: Google Chrome (anderer Pfad über `CHROME=…`) sowie freie Ports 3100 und 18001–18008.
+Voraussetzungen: Google Chrome (anderer Pfad über `CHROME=…`) sowie freie Ports 3100 und 28001–28008 (eigene Mock-Fleet über `MOCK_BASE_PORT`, ein laufendes `npm run dev:mock` bleibt unberührt).
 Echte Geräte und `apps/server/data` werden nicht berührt. Nach UI-Änderungen das Skript erneut laufen lassen und die
 Bilder mitcommitten.
 

@@ -309,6 +309,8 @@ Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer 
   als DHCP-Reservierung hinterlegen. Der Knopf erzeugt dafür eine CSV mit Name, Geräte-ID, MAC und IP der
   ausgewählten Geräte. Das ist robuster, weil ein Tippfehler im Router kein Gerät aussperrt.
 
+![Netzwerk-Template: geplante statische IPs pro Gerät, fortlaufend nach Ort und Name](img/template-netzwerk.png)
+
 > **Wichtig:** Falsche Netzwerkwerte (z.B. eine falsche Netzmaske) machen Geräte unerreichbar; dann hilft nur der
 > Werksreset am Gerät. Ein Netzwerk-Template **immer zuerst an einem Gerät** testen.
 
@@ -407,6 +409,8 @@ Standort hat sein **eigenes Inventar, eigene Templates und ein eigenes Protokoll
 - **Protokoll:** Jeder Eintrag gehört zum Standort, in dem das Gerät zum Zeitpunkt der Aktion war.
 - **Export:** CSV und JSON enthalten die Geräte des gewählten Standorts mit dem Standortnamen; die CSV hat dafür eine
   erste Spalte «Standort», das Gerätefeld heisst dort «Ort».
+
+![Standorte verwalten: Geräte und Templates pro Standort](img/standorte.png)
 
 > **Begriffe:** «Standort» ist das Haus oder der Kunde, «Ort» der Raum oder die Stelle im Haus (Keller, Garten …).
 

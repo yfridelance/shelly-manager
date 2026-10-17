@@ -1,10 +1,11 @@
 // Starts the default mock fleet on fixed ports for manual testing:
 //   npm run mock -w apps/server
 // and run the server with SHELLY_HOST_MAP=10.99.0.0/24=127.0.0.1:18000 (see `npm run dev:mock`),
-// then scan 10.99.0.0/24 in the UI. 10.99.0.N maps to port 18000+N.
+// then scan 10.99.0.0/24 in the UI. 10.99.0.N maps to port 18000+N (base port: MOCK_BASE_PORT).
 import { DEFAULT_FLEET, startMockDevice, type MockDevice, type MockDeviceSpec } from './index.js';
 
-const BASE_PORT = 18000;
+// MOCK_BASE_PORT lets a second fleet run next to `npm run dev:mock` (e.g. for the docs screenshots).
+const BASE_PORT = Number(process.env['MOCK_BASE_PORT'] ?? 18000);
 const specs: MockDeviceSpec[] = [...DEFAULT_FLEET, { kind: 'hang' }, { kind: 'foreign' }];
 
 const devices: MockDevice[] = [];

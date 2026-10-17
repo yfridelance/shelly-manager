@@ -140,7 +140,18 @@ try {
   await js(`[...document.querySelectorAll('tbody tr')].find((r) => r.textContent.includes('Rollladen')).querySelector('button.preview').click()`);
   await shot('template-anwenden', { maxHeight: 1300 });
 
-  // 9. Log
+  // 9. Network template: planned static IPs per device (preview only)
+  await go('/templates/2/anwenden', `document.body.textContent.includes('Neue IP') && document.querySelectorAll('tbody tr').length >= 6`);
+  await js(`$btn('alle sichtbaren').click()`);
+  await waitFor(`[...document.querySelectorAll('tbody input')].some((i) => i.value === '10.99.0.50')`, 10000);
+  await sleep(300);
+  await shot('template-netzwerk', { maxHeight: 900 });
+
+  // 10. Sites
+  await go('/standorte', `document.body.textContent.includes('Ferienwohnung Lenk')`);
+  await shot('standorte', { maxHeight: 600 });
+
+  // 11. Log
   await go('/protokoll', `document.querySelectorAll('tbody tr').length > 5`);
   await shot('protokoll', { maxHeight: 820 });
 } finally {
