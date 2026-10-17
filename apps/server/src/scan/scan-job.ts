@@ -14,8 +14,12 @@ export interface ScanDeviceResult {
   authRequired: boolean;
   /** First time this MAC was seen. */
   created: boolean;
-  /** `auth_required`: protected device and no credentials given, so no config was read. */
-  snapshot: 'ok' | 'auth_required' | 'error';
+  /**
+   * `auth_required`: protected device and no credentials given, so no config was read.
+   * `foreign`: the device belongs to another site and was left untouched (see `foreignSite`).
+   */
+  snapshot: 'ok' | 'auth_required' | 'error' | 'foreign';
+  foreignSite?: { id: number; name: string } | undefined;
   errorCode: DeviceErrorCode | null;
   error: string | null;
 }
@@ -30,6 +34,7 @@ export interface ScanSummary {
   /** Hosts that failed for reasons other than "no Shelly there". */
   errors: number;
   withCredentials: boolean;
+  siteId: number;
   startedAt: string;
   finishedAt: string | null;
   error: string | null;
@@ -69,6 +74,7 @@ export class ScanJob {
     readonly ips: readonly string[],
     credentials: Credentials | undefined,
     readonly startedAt: string,
+    readonly siteId: number = 1,
   ) {
     this.#credentials = credentials;
     this.withCredentials = credentials !== undefined;
@@ -112,6 +118,7 @@ export class ScanJob {
       found: this.devices.length,
       errors: this.errors,
       withCredentials: this.withCredentials,
+      siteId: this.siteId,
       startedAt: this.startedAt,
       finishedAt: this.finishedAt,
       error: this.error,

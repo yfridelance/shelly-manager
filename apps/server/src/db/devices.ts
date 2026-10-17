@@ -13,6 +13,7 @@ export interface DeviceRow {
   name: string | null;
   device_name: string | null;
   device_id: string | null;
+  site_id: number;
   auth_required: number;
   location: string | null;
   notes: string | null;
@@ -26,6 +27,8 @@ export interface DeviceRow {
 
 export interface UpsertResult {
   created: boolean;
+  /** The MAC belongs to another site: nothing was changed (devices only move explicitly). */
+  foreignSiteId?: number;
 }
 
 /**
@@ -33,13 +36,15 @@ export interface UpsertResult {
  * Updates IP, firmware, identity and last_seen; never touches location or notes.
  * Another device that still claims the same IP loses it (the address moved on).
  */
-export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: string): UpsertResult {
+export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: string, siteId = 1): UpsertResult {
   return db.transaction((): UpsertResult => {
-    const exists = db.prepare('SELECT 1 FROM devices WHERE mac = ?').pluck().get(info.mac) !== undefined;
-    db.prepare('UPDATE devices SET ip = NULL WHERE ip = ? AND mac <> ?').run(ip, info.mac);
+    const existingSite = db.prepare('SELECT site_id FROM devices WHERE mac = ?').pluck().get(info.mac) as number | undefined;
+    if (existingSite !== undefined && existingSite !== siteId) return { created: false, foreignSiteId: existingSite };
+    // IPs are unique per site only: other sites are separate networks.
+    db.prepare('UPDATE devices SET ip = NULL WHERE ip = ? AND mac <> ? AND site_id = ?').run(ip, info.mac, siteId);
     db.prepare(
-      `INSERT INTO devices (mac, ip, gen, model, app, firmware, name, device_name, device_id, auth_required, state, first_seen, last_seen)
-       VALUES (@mac, @ip, @gen, @model, @app, @firmware, @name, @name, @deviceId, @authRequired, 'active', @now, @now)
+      `INSERT INTO devices (mac, ip, gen, model, app, firmware, name, device_name, device_id, auth_required, state, first_seen, last_seen, site_id)
+       VALUES (@mac, @ip, @gen, @model, @app, @firmware, @name, @name, @deviceId, @authRequired, 'active', @now, @now, @siteId)
        ON CONFLICT (mac) DO UPDATE SET
          ip = excluded.ip,
          gen = excluded.gen,
@@ -67,8 +72,9 @@ export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: stri
       deviceId: info.deviceId,
       authRequired: info.authRequired ? 1 : 0,
       now,
+      siteId,
     });
-    return { created: !exists };
+    return { created: existingSite === undefined };
   })();
 }
 
@@ -76,11 +82,11 @@ export function upsertSeenDevice(db: Db, info: DeviceInfo, ip: string, now: stri
  * After a complete scan: active devices whose last known IP was scanned but did not answer as
  * that device become `missing`. Devices marked `reset` stay `reset`. Returns the affected MACs.
  */
-export function markMissing(db: Db, scannedIps: ReadonlySet<string>, foundMacs: ReadonlySet<string>): string[] {
+export function markMissing(db: Db, scannedIps: ReadonlySet<string>, foundMacs: ReadonlySet<string>, siteId = 1): string[] {
   return db.transaction(() => {
     const candidates = db
-      .prepare("SELECT mac, ip FROM devices WHERE state = 'active' AND ip IS NOT NULL")
-      .all() as { mac: string; ip: string }[];
+      .prepare("SELECT mac, ip FROM devices WHERE state = 'active' AND ip IS NOT NULL AND site_id = ?")
+      .all(siteId) as { mac: string; ip: string }[];
     const missing = candidates.filter((d) => scannedIps.has(d.ip) && !foundMacs.has(d.mac)).map((d) => d.mac);
     const update = db.prepare("UPDATE devices SET state = 'missing' WHERE mac = ?");
     for (const mac of missing) update.run(mac);
@@ -100,8 +106,25 @@ export function getDevice(db: Db, mac: string): DeviceListRow | undefined {
   return db.prepare(`${SELECT_WITH_SNAPSHOT} WHERE d.mac = ?`).get(mac) as DeviceListRow | undefined;
 }
 
-export function listDevices(db: Db): DeviceListRow[] {
-  return db.prepare(`${SELECT_WITH_SNAPSHOT} ORDER BY COALESCE(d.name, d.device_name, d.mac)`).all() as DeviceListRow[];
+/** All devices, or those of one site. */
+export function listDevices(db: Db, siteId?: number): DeviceListRow[] {
+  const order = 'ORDER BY COALESCE(d.name, d.device_name, d.mac)';
+  return (
+    siteId === undefined
+      ? db.prepare(`${SELECT_WITH_SNAPSHOT} ${order}`).all()
+      : db.prepare(`${SELECT_WITH_SNAPSHOT} WHERE d.site_id = ? ${order}`).all(siteId)
+  ) as DeviceListRow[];
+}
+
+/** Moves a device to another site; its IP is dropped there if another device of that site holds it. */
+export function moveDevice(db: Db, mac: string, siteId: number): boolean {
+  return db.transaction(() => {
+    const d = db.prepare('SELECT ip FROM devices WHERE mac = ?').get(mac) as { ip: string | null } | undefined;
+    if (!d) return false;
+    const clash = d.ip && db.prepare('SELECT 1 FROM devices WHERE site_id = ? AND ip = ? AND mac <> ?').get(siteId, d.ip, mac);
+    db.prepare('UPDATE devices SET site_id = ?, ip = ? WHERE mac = ?').run(siteId, clash ? null : d.ip, mac);
+    return true;
+  })();
 }
 
 export interface LocalDeviceFields {
@@ -155,7 +178,9 @@ export function recordFirmwareUpdates(db: Db, mac: string, updates: FirmwareUpda
 /** New address of a device after a network change (null: unknown); another device loses the address. */
 export function updateDeviceIp(db: Db, mac: string, ip: string | null): void {
   db.transaction(() => {
-    if (ip) db.prepare('UPDATE devices SET ip = NULL WHERE ip = ? AND mac <> ?').run(ip, mac);
+    if (ip) {
+      db.prepare('UPDATE devices SET ip = NULL WHERE ip = ? AND mac <> ? AND site_id = (SELECT site_id FROM devices WHERE mac = ?)').run(ip, mac, mac);
+    }
     db.prepare('UPDATE devices SET ip = ? WHERE mac = ?').run(ip, mac);
   })();
 }

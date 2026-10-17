@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from 'fastify';
 import type { Db } from '../db/database.js';
-import { markMissing, recordFirmwareUpdates, upsertSeenDevice } from '../db/devices.js';
+import { getDevice, markMissing, recordFirmwareUpdates, upsertSeenDevice } from '../db/devices.js';
+import { getSite } from '../db/sites.js';
 import { insertSnapshot } from '../db/snapshots.js';
 import { DEFAULT_PROBE_TIMEOUT_MS, probeShelly } from '../shelly/detect.js';
 import { updatesFromStatus } from '../shelly/firmware.js';
@@ -51,11 +52,12 @@ export class ScanManager {
   }
 
   /** Validates the range (throws RangeParseError) and starts the job in the background. */
-  start(range: string, credentials?: Credentials): ScanJob {
+  /** Scans for one site: found devices are stored there; devices of other sites are only reported. */
+  start(range: string, credentials?: Credentials, siteId = 1): ScanJob {
     const running = this.running();
     if (running) throw new ScanBusyError(running.id);
     const ips = parseRange(range);
-    const job = new ScanJob(range.trim(), ips, credentials, this.options.now());
+    const job = new ScanJob(range.trim(), ips, credentials, this.options.now(), siteId);
     this.jobs.set(job.id, job);
     this.prune();
     void this.run(job);
@@ -98,7 +100,7 @@ export class ScanManager {
         job.finish('cancelled', this.options.now());
         return;
       }
-      job.missing = markMissing(this.db, new Set(job.ips), new Set(job.devices.map((d) => d.mac)));
+      job.missing = markMissing(this.db, new Set(job.ips), new Set(job.devices.map((d) => d.mac)), job.siteId);
       job.finish('done', this.options.now());
     } catch (err) {
       this.log.error({ err, scanId: job.id }, 'scan failed');
@@ -147,6 +149,14 @@ export class ScanManager {
       error: null,
     };
 
+    // A device of another site is reported, not read: no credentials of this site go to it.
+    const known = getDevice(this.db, info.mac);
+    if (known && known.site_id !== job.siteId) {
+      result.snapshot = 'foreign';
+      result.foreignSite = { id: known.site_id, name: getSite(this.db, known.site_id)?.name ?? String(known.site_id) };
+      return result;
+    }
+
     let snapshot: { config: unknown; status: unknown } | undefined;
     const credentials = info.authRequired ? job.credentials : undefined;
     if (!info.authRequired || credentials) {
@@ -168,7 +178,7 @@ export class ScanManager {
     try {
       const now = this.options.now();
       this.db.transaction(() => {
-        result.created = upsertSeenDevice(this.db, { ...info, name: result.name, deviceId: result.deviceId }, ip, now).created;
+        result.created = upsertSeenDevice(this.db, { ...info, name: result.name, deviceId: result.deviceId }, ip, now, job.siteId).created;
         if (snapshot) {
           insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, ...snapshot });
           const updates = updatesFromStatus(info.gen, snapshot.status);

@@ -13,6 +13,7 @@ export interface ActionRow {
   error: string | null;
   error_code: string | null;
   details: string | null;
+  site_id: number | null;
 }
 
 export interface ActionListRow extends ActionRow {
@@ -20,9 +21,13 @@ export interface ActionListRow extends ActionRow {
 }
 
 export function startAction(db: Db, mac: string, action: ActionType, requestedAt: string, requestedBy?: string): number {
+  // The site at the time of the action; the device may move later.
   const res = db
-    .prepare('INSERT INTO action_log (mac, action, requested_at, requested_by) VALUES (?, ?, ?, ?)')
-    .run(mac, action, requestedAt, requestedBy ?? null);
+    .prepare(
+      `INSERT INTO action_log (mac, action, requested_at, requested_by, site_id)
+       VALUES (?, ?, ?, ?, (SELECT site_id FROM devices WHERE mac = ?))`,
+    )
+    .run(mac, action, requestedAt, requestedBy ?? null, mac);
   return Number(res.lastInsertRowid);
 }
 
@@ -47,14 +52,21 @@ export function finishAction(
  * Newest first by completion time: a factory reset starts before its automatic snapshot but finishes
  * after it, so the reset is listed above its snapshot. On ties the action that started first wins.
  */
-export function listActions(db: Db, filter: { mac?: string; limit?: number } = {}): ActionListRow[] {
+export function listActions(db: Db, filter: { mac?: string; siteId?: number; limit?: number } = {}): ActionListRow[] {
   const limit = filter.limit ?? 500;
   const order = 'ORDER BY COALESCE(a.finished_at, a.requested_at) DESC, a.requested_at ASC, a.id ASC';
-  const base = `SELECT a.*, COALESCE(d.name, d.device_name) AS device_name
-                FROM action_log a LEFT JOIN devices d ON d.mac = a.mac`;
-  return (
-    filter.mac
-      ? db.prepare(`${base} WHERE a.mac = ? ${order} LIMIT ?`).all(filter.mac, limit)
-      : db.prepare(`${base} ${order} LIMIT ?`).all(limit)
-  ) as ActionListRow[];
+  const where: string[] = [];
+  const args: unknown[] = [];
+  if (filter.mac) {
+    where.push('a.mac = ?');
+    args.push(filter.mac);
+  }
+  if (filter.siteId !== undefined) {
+    where.push('a.site_id = ?');
+    args.push(filter.siteId);
+  }
+  const sql = `SELECT a.*, COALESCE(d.name, d.device_name) AS device_name
+               FROM action_log a LEFT JOIN devices d ON d.mac = a.mac
+               ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ${order} LIMIT ?`;
+  return db.prepare(sql).all(...args, limit) as ActionListRow[];
 }

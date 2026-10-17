@@ -90,15 +90,16 @@ describe('export endpoints', () => {
     expect(res.headers['content-disposition']).toBe('attachment; filename="shelly-inventar-2026-10-14.csv"');
 
     const text = res.body;
-    expect(text.startsWith('﻿Name;Name auf Gerät;Geräte-ID;Modell;')).toBe(true);
+    expect(text.startsWith('﻿Standort;Name;Name auf Gerät;Geräte-ID;Modell;')).toBe(true);
+    expect(text.split('\r\n')[0]).toContain(';Firmware;Ort;Notizen;');
     const lines = text.slice(1).split('\r\n');
     expect(lines).toHaveLength(4); // header, 2 devices, trailing empty
     expect(lines[1]).toBe(
-      'Boiler;Boiler;shellyplus1pm-a8032ab12345;SNSW-001P16EU;Plus1PM;2;192.168.1.20;A8:03:2A:B1:23:45;20241011-114455/1.4.4-g6d2a586;Keller;' +
+      'Standard;Boiler;Boiler;shellyplus1pm-a8032ab12345;SNSW-001P16EU;Plus1PM;2;192.168.1.20;A8:03:2A:B1:23:45;20241011-114455/1.4.4-g6d2a586;Keller;' +
         '"Sicherung F3; links\n=Achtung";Zurückgesetzt;nein;2026-10-14T10:00:00.000Z;2026-10-14T10:00:00.000Z;2026-10-14T11:00:00.000Z;2026-10-14T12:00:01.000Z;',
     );
     expect(lines[2]).toContain(';SHSW-1;;1;192.168.1.21;E8:68:E7:A1:B2:C3;');
-    expect(lines[2]?.startsWith(';;;SHSW-1')).toBe(true); // no name, no device name, no id yet
+    expect(lines[2]?.startsWith('Standard;;;;SHSW-1')).toBe(true); // no name, no device name, no id yet
     expect(lines[2]).toContain(';Aktiv;ja;');
   });
 });

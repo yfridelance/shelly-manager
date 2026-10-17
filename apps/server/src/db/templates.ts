@@ -3,6 +3,7 @@ import type { Db } from './database.js';
 
 export interface TemplateRow {
   id: number;
+  site_id: number;
   name: string;
   description: string | null;
   settings_json: string;
@@ -12,6 +13,7 @@ export interface TemplateRow {
 
 export interface Template {
   id: number;
+  siteId: number;
   name: string;
   description: string | null;
   settings: TemplateSettings;
@@ -26,6 +28,7 @@ export class TemplateNameTakenError extends Error {
 function toTemplate(row: TemplateRow): Template {
   return {
     id: row.id,
+    siteId: row.site_id,
     name: row.name,
     description: row.description,
     settings: JSON.parse(row.settings_json) as TemplateSettings,
@@ -35,14 +38,20 @@ function toTemplate(row: TemplateRow): Template {
 }
 
 function rethrowUnique(err: unknown, name: string): never {
-  if (err instanceof Error && /UNIQUE constraint failed: templates.name/.test(err.message)) {
+  // Names are unique per site (site_id, name).
+  if (err instanceof Error && /UNIQUE constraint failed: templates\./.test(err.message)) {
     throw new TemplateNameTakenError(`Template name "${name}" is already used`);
   }
   throw err;
 }
 
-export function listTemplates(db: Db): Template[] {
-  return (db.prepare('SELECT * FROM templates ORDER BY name COLLATE NOCASE').all() as TemplateRow[]).map(toTemplate);
+/** All templates, or those of one site. */
+export function listTemplates(db: Db, siteId?: number): Template[] {
+  const rows =
+    siteId === undefined
+      ? db.prepare('SELECT * FROM templates ORDER BY name COLLATE NOCASE').all()
+      : db.prepare('SELECT * FROM templates WHERE site_id = ? ORDER BY name COLLATE NOCASE').all(siteId);
+  return (rows as TemplateRow[]).map(toTemplate);
 }
 
 export function getTemplate(db: Db, id: number): Template | undefined {
@@ -50,11 +59,15 @@ export function getTemplate(db: Db, id: number): Template | undefined {
   return row ? toTemplate(row) : undefined;
 }
 
-export function createTemplate(db: Db, t: { name: string; description: string | null; settings: TemplateSettings }, now: string): Template {
+export function createTemplate(
+  db: Db,
+  t: { name: string; description: string | null; settings: TemplateSettings; siteId?: number },
+  now: string,
+): Template {
   try {
     const res = db
-      .prepare('INSERT INTO templates (name, description, settings_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-      .run(t.name, t.description, JSON.stringify(t.settings), now, now);
+      .prepare('INSERT INTO templates (site_id, name, description, settings_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(t.siteId ?? 1, t.name, t.description, JSON.stringify(t.settings), now, now);
     return getTemplate(db, Number(res.lastInsertRowid)) as Template;
   } catch (err) {
     return rethrowUnique(err, t.name);

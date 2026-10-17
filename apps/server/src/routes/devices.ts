@@ -2,7 +2,9 @@ import { Type } from 'typebox';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import type { FastifyReply } from 'fastify';
 import type { Db } from '../db/database.js';
-import { getDevice, listDevices, updateLocalFields, type DeviceListRow } from '../db/devices.js';
+import { getDevice, listDevices, moveDevice, updateLocalFields, type DeviceListRow } from '../db/devices.js';
+import { getSite } from '../db/sites.js';
+import { SiteQuery } from './sites.js';
 import { getLatestSnapshot, getSnapshot, listSnapshotMeta, type SnapshotRow } from '../db/snapshots.js';
 import { DeviceActionError, type DeviceService } from '../devices/device-service.js';
 import { getTemplate } from '../db/templates.js';
@@ -23,6 +25,7 @@ export const DeviceSchema = Type.Object({
   deviceName: Nullable(Type.String()),
   /** Shelly device id (Gen2+ `id`, Gen1 hostname). */
   deviceId: Nullable(Type.String()),
+  siteId: Type.Integer(),
   authRequired: Type.Boolean(),
   location: Nullable(Type.String()),
   notes: Nullable(Type.String()),
@@ -65,7 +68,13 @@ const MacParams = Type.Object({ mac: Type.String({ maxLength: 32 }) });
 const LocalText = (maxLength: number) => Type.Optional(Nullable(Type.String({ maxLength })));
 
 const PatchBody = Type.Object(
-  { name: LocalText(200), location: LocalText(200), notes: LocalText(10_000) },
+  {
+    name: LocalText(200),
+    location: LocalText(200),
+    notes: LocalText(10_000),
+    /** Move the device to another site. */
+    siteId: Type.Optional(Type.Integer({ minimum: 1 })),
+  },
   { additionalProperties: false },
 );
 
@@ -101,6 +110,7 @@ export function toDeviceDto(row: DeviceListRow) {
     name: row.name ?? row.device_name,
     deviceName: row.device_name,
     deviceId: row.device_id,
+    siteId: row.site_id,
     authRequired: row.auth_required === 1,
     location: row.location,
     notes: row.notes,
@@ -143,7 +153,9 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
   const notFound = (reply: FastifyReply, mac: string) =>
     reply.code(404).send({ error: 'not_found', message: `Gerät ${mac} ist nicht im Inventar.` });
 
-  app.get('/devices', { schema: { response: { 200: Type.Array(DeviceSchema) } } }, async () => listDevices(db).map(toDeviceDto));
+  app.get('/devices', { schema: { querystring: SiteQuery, response: { 200: Type.Array(DeviceSchema) } } }, async (request) =>
+    listDevices(db, request.query.site).map(toDeviceDto),
+  );
 
   app.get(
     '/devices/:mac',
@@ -185,7 +197,12 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
     async (request, reply) => {
       const mac = macOf(request.params.mac, reply);
       if (!mac) return reply;
-      if (!updateLocalFields(db, mac, request.body)) return notFound(reply, mac);
+      const { siteId, ...local } = request.body;
+      if (siteId !== undefined && !getSite(db, siteId)) {
+        return reply.code(400).send({ error: 'site_not_found', message: 'Standort nicht gefunden.' });
+      }
+      if (!updateLocalFields(db, mac, local)) return notFound(reply, mac);
+      if (siteId !== undefined) moveDevice(db, mac, siteId);
       const device = getDevice(db, mac);
       return device ? toDeviceDto(device) : notFound(reply, mac);
     },
@@ -377,6 +394,10 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
       if (!mac) return reply;
       const template = getTemplate(db, request.body.templateId);
       if (!template) return reply.code(404).send({ error: 'template_not_found', message: 'Template nicht gefunden.' });
+      const device = getDevice(db, mac);
+      if (device && device.site_id !== template.siteId) {
+        return reply.code(409).send({ error: 'site_mismatch', message: 'Gerät und Template gehören zu verschiedenen Standorten.' });
+      }
       try {
         return await devices.applyTemplate(
           mac,

@@ -322,7 +322,9 @@ export class DeviceService {
       if (n?.mode !== 'static' || !n.ipFrom || !n.netmask) continue;
       const cfg = { ipFrom: n.ipFrom, netmask: n.netmask, gateway: n.gateway };
       const taken = new Map<string, string>(this.reservedIps);
-      for (const d of listDevices(this.db)) if (d.ip && !taken.has(d.ip)) taken.set(d.ip, d.mac);
+      // Addresses are only unique within a site.
+      const siteId = getDevice(this.db, mac)?.site_id;
+      for (const d of listDevices(this.db, siteId)) if (d.ip && !taken.has(d.ip)) taken.set(d.ip, d.mac);
       const current = currentStaticIp(live.gen, config, iface);
 
       let ip = requested?.[iface];
@@ -460,7 +462,7 @@ export class DeviceService {
       const status = await adapter.getStatus();
       const now = this.options.now();
       return this.db.transaction(() => {
-        upsertSeenDevice(this.db, { ...info, name, deviceId }, device.ip ?? '', now);
+        upsertSeenDevice(this.db, { ...info, name, deviceId }, device.ip ?? '', now, device.site_id);
         const updates = updatesFromStatus(info.gen, status);
         if (updates) recordFirmwareUpdates(this.db, info.mac, updates, now);
         return insertSnapshot(this.db, { mac: info.mac, takenAt: now, info: info.raw, config, status });

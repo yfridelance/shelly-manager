@@ -17,12 +17,15 @@ import { assignStaticIps, validateNetwork } from '../templates/ip-plan.js';
 import { currentStaticIp, planTemplate } from '../templates/planner.js';
 import { TemplateSettingsSchema, type TemplateSettings, type WifiInterface } from '../templates/settings.js';
 import type { DeviceListRow } from '../db/devices.js';
+import { getSite } from '../db/sites.js';
+import { SiteQuery } from './sites.js';
 import type { ShellyGen } from '../shelly/types.js';
 
 const Nullable = <T extends Parameters<typeof Type.Union>[0][number]>(t: T) => Type.Union([t, Type.Null()]);
 
 export const TemplateSchema = Type.Object({
   id: Type.Integer(),
+  siteId: Type.Integer(),
   name: Type.String(),
   description: Nullable(Type.String()),
   settings: TemplateSettingsSchema,
@@ -52,6 +55,8 @@ const TemplateBody = Type.Object(
     name: Type.String({ minLength: 1, maxLength: 100 }),
     description: Type.Optional(Nullable(Type.String({ maxLength: 2000 }))),
     settings: TemplateSettingsSchema,
+    /** Site of the template (only used when creating; default 1). Templates apply to devices of their site. */
+    siteId: Type.Optional(Type.Integer({ minimum: 1 })),
   },
   { additionalProperties: false },
 );
@@ -69,6 +74,7 @@ const PreviewSchema = Type.Object({
 });
 
 const ErrorBody = Type.Object({ error: Type.String(), message: Type.String() });
+// Template names are unique per site.
 const IdParams = Type.Object({ id: Type.Integer() });
 
 function hasSettings(settings: object): boolean {
@@ -104,7 +110,8 @@ export function planIpAssignments(
       collator.compare(a.name ?? a.device_name ?? `\uffff${a.mac}`, b.name ?? b.device_name ?? `\uffff${b.mac}`),
   );
   const taken = new Map<string, string>(reserved);
-  for (const d of listDevices(db)) if (d.ip && !taken.has(d.ip)) taken.set(d.ip, d.mac);
+  // Addresses are only unique within a site.
+  for (const d of listDevices(db, devices[0]?.site_id)) if (d.ip && !taken.has(d.ip)) taken.set(d.ip, d.mac);
   for (const iface of ['sta', 'sta1'] as const) {
     const n = settings.network?.[iface];
     if (n?.mode !== 'static' || !n.ipFrom || !n.netmask) continue;
@@ -123,7 +130,9 @@ export const templateRoutes: FastifyPluginAsyncTypebox<{ db: Db; now: () => stri
   const empty = { error: 'empty_template', message: 'Das Template enthält keine Einstellung.' };
   const taken = (name: string) => ({ error: 'name_taken', message: `Der Name «${name}» ist schon vergeben.` });
 
-  app.get('/templates', { schema: { response: { 200: Type.Array(TemplateSchema) } } }, async () => listTemplates(db));
+  app.get('/templates', { schema: { querystring: SiteQuery, response: { 200: Type.Array(TemplateSchema) } } }, async (request) =>
+    listTemplates(db, request.query.site),
+  );
 
   app.get('/templates/:id', { schema: { params: IdParams, response: { 200: TemplateSchema, 404: ErrorBody } } }, async (request, reply) => {
     return getTemplate(db, request.params.id) ?? reply.code(404).send(notFound);
@@ -137,8 +146,10 @@ export const templateRoutes: FastifyPluginAsyncTypebox<{ db: Db; now: () => stri
       if (!hasSettings(settings)) return reply.code(400).send(empty);
       const netProblem = networkProblem(settings);
       if (netProblem) return reply.code(400).send({ error: 'invalid_network', message: netProblem });
+      const siteId = request.body.siteId ?? 1;
+      if (!getSite(db, siteId)) return reply.code(400).send({ error: 'site_not_found', message: 'Standort nicht gefunden.' });
       try {
-        return reply.code(201).send(createTemplate(db, { name: name.trim(), description: description?.trim() || null, settings }, now()));
+        return reply.code(201).send(createTemplate(db, { name: name.trim(), description: description?.trim() || null, settings, siteId }, now()));
       } catch (err) {
         if (err instanceof TemplateNameTakenError) return reply.code(409).send(taken(name));
         throw err;
@@ -190,9 +201,9 @@ export const templateRoutes: FastifyPluginAsyncTypebox<{ db: Db; now: () => stri
         devices = request.body.macs
           ? request.body.macs.flatMap((m) => {
               const d = getDevice(db, normalizeMac(m));
-              return d ? [d] : [];
+              return d && d.site_id === template.siteId ? [d] : [];
             })
-          : listDevices(db).filter((d) => d.state === 'active');
+          : listDevices(db, template.siteId).filter((d) => d.state === 'active');
       } catch {
         return reply.code(400).send({ error: 'invalid_mac', message: 'Ungültige MAC-Adresse in der Auswahl.' });
       }

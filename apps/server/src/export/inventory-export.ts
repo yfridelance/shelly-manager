@@ -1,5 +1,6 @@
 import type { Db } from '../db/database.js';
 import { listDevices, type DeviceListRow } from '../db/devices.js';
+import { listSites } from '../db/sites.js';
 import { toCsv } from './csv.js';
 
 interface SnapshotJsonRow {
@@ -62,7 +63,8 @@ function deviceJson(d: DeviceListRow, resetAt: string | undefined) {
  * Full inventory as JSON, including the raw device answers (info/config/status) of the newest
  * snapshot, or of every snapshot with `allSnapshots`. Credentials are never stored, so none are exported.
  */
-export function buildJsonExport(db: Db, options: { allSnapshots: boolean; now: string }) {
+export function buildJsonExport(db: Db, options: { allSnapshots: boolean; now: string; siteId?: number | undefined }) {
+  const sites = new Map(listSites(db).map((s) => [s.id, s.name]));
   const snapshots = db
     .prepare(
       options.allSnapshots
@@ -80,7 +82,9 @@ export function buildJsonExport(db: Db, options: { allSnapshots: boolean; now: s
     version: 1,
     exportedAt: options.now,
     snapshots: options.allSnapshots ? 'all' : 'latest',
-    devices: listDevices(db).map((d) => ({
+    site: options.siteId === undefined ? null : { id: options.siteId, name: sites.get(options.siteId) ?? null },
+    devices: listDevices(db, options.siteId).map((d) => ({
+      site: { id: d.site_id, name: sites.get(d.site_id) ?? null },
       ...deviceJson(d, resets.get(d.mac)),
       snapshots: (byMac.get(d.mac) ?? []).map((s) => ({
         id: s.id,
@@ -97,10 +101,12 @@ export function buildJsonExport(db: Db, options: { allSnapshots: boolean; now: s
 const STATE_TEXT: Record<string, string> = { active: 'Aktiv', missing: 'Vermisst', reset: 'Zurückgesetzt' };
 
 /** Overview as CSV with German headers (opened in Excel by humans). Times stay ISO 8601 UTC. */
-export function buildCsvExport(db: Db): string {
+export function buildCsvExport(db: Db, siteId?: number): string {
   const resets = resetTimes(db);
+  const sites = new Map(listSites(db).map((s) => [s.id, s.name]));
   return toCsv(
     [
+      'Standort',
       'Name',
       'Name auf Gerät',
       'Geräte-ID',
@@ -110,7 +116,7 @@ export function buildCsvExport(db: Db): string {
       'IP',
       'MAC',
       'Firmware',
-      'Standort',
+      'Ort',
       'Notizen',
       'Status',
       'Passwortgeschützt',
@@ -120,7 +126,8 @@ export function buildCsvExport(db: Db): string {
       'Werksreset (UTC)',
       'Firmware-Update verfügbar',
     ],
-    listDevices(db).map((d) => [
+    listDevices(db, siteId).map((d) => [
+      sites.get(d.site_id) ?? String(d.site_id),
       d.name ?? d.device_name,
       d.device_name,
       d.device_id,

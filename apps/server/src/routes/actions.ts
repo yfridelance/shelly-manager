@@ -41,7 +41,11 @@ export const actionRoutes: FastifyPluginAsyncTypebox<{ db: Db }> = async (app, {
     '/actions',
     {
       schema: {
-        querystring: Type.Object({ mac: Type.Optional(Type.String({ maxLength: 32 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 5000 })) }),
+        querystring: Type.Object({
+          mac: Type.Optional(Type.String({ maxLength: 32 })),
+          site: Type.Optional(Type.Integer({ minimum: 1 })),
+          limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 5000 })),
+        }),
         response: { 200: Type.Array(ActionSchema), 400: Type.Object({ error: Type.String(), message: Type.String() }) },
       },
     },
@@ -54,7 +58,7 @@ export const actionRoutes: FastifyPluginAsyncTypebox<{ db: Db }> = async (app, {
           return reply.code(400).send({ error: 'invalid_mac', message: `Ungültige MAC-Adresse: ${request.query.mac}` });
         }
       }
-      return listActions(db, { mac, limit: request.query.limit }).map(toActionDto);
+      return listActions(db, { mac, siteId: request.query.site, limit: request.query.limit }).map(toActionDto);
     },
   );
 };

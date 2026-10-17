@@ -3,6 +3,9 @@ import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { RangeParseError } from '../scan/ip-range.js';
 import { ScanBusyError, type ScanManager } from '../scan/scan-manager.js';
 import type { ScanEvent } from '../scan/scan-job.js';
+import type { Db } from '../db/database.js';
+import { getSite } from '../db/sites.js';
+import { SiteQuery } from './sites.js';
 
 const Nullable = <T extends Parameters<typeof Type.Union>[0][number]>(t: T) => Type.Union([t, Type.Null()]);
 
@@ -17,6 +20,7 @@ export const ScanSummarySchema = Type.Object({
   found: Type.Integer(),
   errors: Type.Integer(),
   withCredentials: Type.Boolean(),
+  siteId: Type.Integer(),
   startedAt: Type.String(),
   finishedAt: Nullable(Type.String()),
   error: Nullable(Type.String()),
@@ -32,7 +36,8 @@ export const ScanDeviceResultSchema = Type.Object({
   deviceId: Nullable(Type.String()),
   authRequired: Type.Boolean(),
   created: Type.Boolean(),
-  snapshot: Type.Union([Type.Literal('ok'), Type.Literal('auth_required'), Type.Literal('error')]),
+  snapshot: Type.Union([Type.Literal('ok'), Type.Literal('auth_required'), Type.Literal('error'), Type.Literal('foreign')]),
+  foreignSite: Type.Optional(Type.Object({ id: Type.Integer(), name: Type.String() })),
   errorCode: Nullable(Type.String()),
   error: Nullable(Type.String()),
 });
@@ -42,6 +47,8 @@ export const ScanDetailsSchema = Type.Intersect([ScanSummarySchema, Type.Object(
 const StartScanBody = Type.Object(
   {
     range: Type.String({ minLength: 1, maxLength: 100 }),
+    /** Site the found devices belong to (default 1). */
+    siteId: Type.Optional(Type.Integer({ minimum: 1 })),
     // Held in memory for the duration of the scan only; never stored or logged.
     credentials: Type.Optional(
       Type.Object(
@@ -57,14 +64,15 @@ export type StartScanBody = Static<typeof StartScanBody>;
 const ErrorBody = Type.Object({ error: Type.String(), message: Type.String(), runningId: Type.Optional(Type.String()) });
 const IdParams = Type.Object({ id: Type.String() });
 
-export const scanRoutes: FastifyPluginAsyncTypebox<{ scans: ScanManager }> = async (app, { scans }) => {
+export const scanRoutes: FastifyPluginAsyncTypebox<{ scans: ScanManager; db: Db }> = async (app, { scans, db }) => {
   app.post(
     '/scans',
     { schema: { body: StartScanBody, response: { 202: ScanSummarySchema, 400: ErrorBody, 409: ErrorBody } } },
     async (request, reply) => {
-      const { range, credentials } = request.body;
+      const { range, credentials, siteId = 1 } = request.body;
+      if (!getSite(db, siteId)) return reply.code(400).send({ error: 'site_not_found', message: 'Standort nicht gefunden.' });
       try {
-        const job = scans.start(range, credentials ? { username: credentials.username, password: credentials.password } : undefined);
+        const job = scans.start(range, credentials ? { username: credentials.username, password: credentials.password } : undefined, siteId);
         return reply.code(202).send(job.summary());
       } catch (err) {
         if (err instanceof RangeParseError) return reply.code(400).send({ error: 'invalid_range', message: err.message });
@@ -76,8 +84,11 @@ export const scanRoutes: FastifyPluginAsyncTypebox<{ scans: ScanManager }> = asy
     },
   );
 
-  app.get('/scans', { schema: { response: { 200: Type.Array(ScanSummarySchema) } } }, async () =>
-    scans.list().map((j) => j.summary()),
+  app.get('/scans', { schema: { querystring: SiteQuery, response: { 200: Type.Array(ScanSummarySchema) } } }, async (request) =>
+    scans
+      .list()
+      .filter((j) => request.query.site === undefined || j.siteId === request.query.site)
+      .map((j) => j.summary()),
   );
 
   app.get(
