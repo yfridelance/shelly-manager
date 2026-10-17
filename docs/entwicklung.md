@@ -51,12 +51,14 @@ apps/
       devices/device-service.ts  Aktionen pro Gerät: Snapshot, Reboot, Reset, Firmware, Template
       templates/              Settings-Schema und Planer (Settings → Gerätebefehle)
       db/                     Zugriff auf devices, config_snapshots, action_log, templates
-      export/                 CSV/JSON-Export
+      export/                 CSV/JSON-Export, Texte aus den Locale-Dateien des UI (locale.ts)
       routes/                 HTTP-Routen mit TypeBox-Schemas
     test/                     Vitest; mock-shelly/ ist die Mock-Fleet
   web/                        Angular 22, Standalone Components, Signals, SCSS
+    src/locale/               Übersetzungen: de.json (Quelle), weitere Sprachen
     src/app/
-      core/                   API-Typen, API-Clients, deutsche Texte, Template-Feldliste
+      core/                   API-Typen, API-Clients, Texte, Template-Feldliste
+      core/i18n/              Übersetzung: t(), Pipes, Sprachliste, Umschalter-Service
       features/               scan, inventory, device, templates, log, sites
       shared/                 JSON-Baum, JSON-Diff, Inline-Edit
 docs/                         diese Dokumentation (Bilder in docs/img)
@@ -98,12 +100,44 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
 ### Web
 
 - Standalone Components mit Signals, `httpResource` für Lesezugriffe, Lazy Loading pro Ansicht,
-  zoneless Change Detection, Locale `de-CH`.
-- Alle UI-Texte deutsch; Fehlercodes vom Server werden in `core/texts.ts` übersetzt, Aktionstexte in
-  `core/action-text.ts`, Template-Felder und Labels in `core/template-fields.ts`.
+  zoneless Change Detection.
+- Alle UI-Texte stehen in `src/locale/<sprache>.json` (siehe [Übersetzungen](#übersetzungen-i18n)); im Code nur
+  Keys. Fehlercodes vom Server werden in `core/texts.ts` übersetzt, Aktionstexte in `core/action-text.ts`,
+  Template-Felder und Labels in `core/template-fields.ts`.
 - Sammelabläufe («Alle auf Updates prüfen», Template anwenden) laufen im Browser mit begrenzter Parallelität über die
   Einzel-Endpunkte; so gibt es Fortschritt pro Gerät ohne Job-Verwaltung im Server.
 - Passwörter liegen nur in Formular-Signals und werden beim Absenden geleert.
+
+## Übersetzungen (i18n)
+
+**Entscheidung:** eigene kleine Lösung statt `@angular/localize` (Option A in Issue #2) oder Transloco (Option B).
+`@angular/localize` mit Laufzeit-Übersetzungen braucht für jeden Sprachwechsel einen Reload und eine eigene
+Extraktions-Pipeline; Transloco wäre eine zusätzliche Abhängigkeit für etwas, das mit Signals in rund 150 Zeilen geht.
+Die eigene Lösung wechselt die Sprache ohne Reload, lädt jede Sprache als eigenen Chunk erst bei Bedarf und prüft
+Keys beim Build.
+
+- **Dateien:** `apps/web/src/locale/<code>.json`, verschachteltes JSON im Format «i18next JSON v4» (Weblate kennt es):
+  Platzhalter `{{name}}`, Pluralformen als `key_one` / `key_other` (Kategorien von `Intl.PluralRules`, gewählt über den
+  Parameter `count`). Hervorhebung im Satz mit `**Text**` (Pipe `emphasis`, alles andere wird escaped).
+- **Quelle und Fallback:** `de.json` (de-CH). Fehlt ein Key in einer Sprache, erscheint der deutsche Text.
+- **Im Code:** `{{ 'scan.title' | t }}`, `{{ 'scan.found' | t: { count: n } }}` in Templates, `t('key', params)` in
+  TypeScript (`core/i18n/i18n.ts`). Der Typ `TranslationKey` entsteht aus `de.json`; ein Tippfehler im Key bricht den
+  Build. Keys aus Laufzeitwerten (Fehlercodes vom Server) gehen über `translate()` / `translateOptional()`.
+- **Formate:** Datum/Zeit über die Pipe `dateTime` (`'date'`, `'minutes'`, `'seconds'`, `'compact'`), Zahlen über
+  `formatNumber`, Sortierung über `compareText`, jeweils mit der Locale der aktiven Sprache.
+- **Sprachwahl:** `I18nService` lädt beim Start (App-Initializer) die gemerkte Sprache (`localStorage`
+  `shelly-manager.lang`), sonst die erste passende Browsersprache, sonst Deutsch, und setzt `<html lang>`. Der
+  Umschalter in der Kopfzeile erscheint ab zwei Sprachen. Seitentitel der Routen sind ebenfalls Keys
+  (`core/i18n/title-strategy.ts`).
+- **Server:** Das UI zeigt nie die `message` des Servers (nur Deutsch), sondern übersetzt den Fehlercode
+  (`errors.<code>`); unbekannte Codes erscheinen als «Fehler (code)». Die CSV-Export-Texte (`export.csv.*`, Funktionen,
+  Status) liest der Server aus denselben Dateien (`apps/server/src/export/locale.ts`, `?lang=` an `/api/export.csv`);
+  das Dockerfile kopiert `apps/web/src/locale` deshalb ins Image.
+- **Neue Sprache:** Datei `src/locale/<code>.json` anlegen (gleiche Keys wie `de.json`, nicht übersetzte Keys einfach
+  weglassen) und eine Zeile in `LANGUAGES` (`core/i18n/languages.ts`) ergänzen. Ein Test prüft, dass jede Datei nur
+  Keys und Platzhalter aus `de.json` verwendet.
+- **Neuer Text:** Key in `de.json` ergänzen und im Code verwenden; andere Sprachen zeigen bis zur Übersetzung Deutsch.
+  Specs prüfen die deutschen Texte (Tests laufen ohne App-Initializer, also immer auf Deutsch).
 
 ## Datenbank und Migrationen
 
@@ -172,18 +206,21 @@ Bilder mitcommitten.
 3. Mock nachziehen (Gen1: `SETTINGS_PARAMS` in `test/mock-shelly/gen1.ts`; Gen2+: Feld in der Basis-Config von
    `test/mock-shelly/rpc.ts`). Der strikte Mock meldet sonst einen Fehler.
 4. Tests im Planer und in `test/templates/templates-api.test.ts`.
-5. UI: Feld in `apps/web/src/app/core/template-fields.ts` (gleicher Key wie im Planer), Typ in `core/api.types.ts`.
+5. UI: Feld in `apps/web/src/app/core/template-fields.ts` (gleicher Key wie im Planer), Label unter
+   `templateFields.<key>` (Hinweis: `templateHints.<key>`) in `apps/web/src/locale/de.json`, Typ in `core/api.types.ts`.
 6. Tabelle in CLAUDE.md Abschnitt 14 und im [Benutzerhandbuch](benutzerhandbuch.md#7-templates) ergänzen.
 
 **Neue Geräteaktion**
 
 Methode im `DeviceService` mit `exclusive` und `logged` (MAC-Prüfung über `connect`), Aktionstyp in
-`src/db/actions.ts`, Route in `src/routes/devices.ts`, Text in `apps/web/src/app/core/texts.ts` (`ACTION_TEXT`) und
-gegebenenfalls in `core/action-text.ts`.
+`src/db/actions.ts`, Route in `src/routes/devices.ts`, Typ in `ACTION_TYPES` (`apps/web/src/app/core/texts.ts`), Text
+unter `actionType.<typ>` in `apps/web/src/locale/de.json` und gegebenenfalls in `core/action-text.ts`. Neue Fehlercodes
+brauchen einen Text unter `errors.<code>`.
 
 ## Konventionen
 
-- Code und Bezeichner Englisch, UI-Texte Deutsch in Schweizer Schreibweise (kein ß).
+- Code und Bezeichner Englisch; UI-Texte nur in `apps/web/src/locale/*.json`, Quelle Deutsch in Schweizer
+  Schreibweise (kein ß).
 - TypeScript strict, keine `any` ohne Kommentar.
 - Rohe Geräteantworten unverändert speichern, Normalisierung nur in eigenen Feldern.
 - Bei unklarem Shelly-Verhalten die offizielle Doku (shelly-api-docs.shelly.cloud) prüfen und die Annahme im Code

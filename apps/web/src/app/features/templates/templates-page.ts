@@ -1,40 +1,38 @@
 import { Component, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { Template } from '../../core/api.types';
 import type { DeviceApiError } from '../../core/devices-api';
+import { t } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { groupTitles } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
 
 @Component({
   selector: 'app-templates-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DateTimePipe, TranslatePipe, RouterLink],
   template: `
     <div class="head">
-      <h1>Templates</h1>
+      <h1>{{ 'nav.templates' | t }}</h1>
       <span class="spacer"></span>
-      <a class="button" routerLink="/templates/neu">Neues Template</a>
+      <a class="button" routerLink="/templates/neu">{{ 'titles.newTemplate' | t }}</a>
     </div>
-    <p class="muted intro">
-      Ein Template fasst Einstellungen zusammen, die auf mehrere Geräte des aktuellen Standorts angewendet werden, für Gen1 und Gen2+ übersetzt.
-      Vor dem Anwenden siehst du pro Gerät, was sich ändert.
-    </p>
+    <p class="muted intro">{{ 'templates.intro' | t }}</p>
 
     @if (message(); as m) {
       <p class="message error" role="alert">{{ m }}</p>
     }
 
     @if (templates.value().length === 0 && !templates.isLoading()) {
-      <p class="muted">Noch keine Templates.</p>
+      <p class="muted">{{ 'templates.empty' | t }}</p>
     } @else {
       <table class="data-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Einstellungen</th>
-            <th>Geändert</th>
+            <th>{{ 'common.name' | t }}</th>
+            <th>{{ 'templates.settings' | t }}</th>
+            <th>{{ 'templates.changed' | t }}</th>
             <th></th>
           </tr>
         </thead>
@@ -48,15 +46,15 @@ import { SiteService } from '../../core/site.service';
                 }
               </td>
               <td class="wrap">{{ groupTitles(t.settings).join(', ') }}</td>
-              <td>{{ t.updatedAt | date: 'dd.MM.yyyy HH:mm' }}</td>
+              <td>{{ t.updatedAt | dateTime }}</td>
               <td class="actions">
-                <a class="button" [routerLink]="['/templates', t.id, 'anwenden']">Anwenden</a>
+                <a class="button" [routerLink]="['/templates', t.id, 'anwenden']">{{ 'templates.apply' | t }}</a>
                 @if (confirmDelete() === t.id) {
-                  <span>Löschen?</span>
-                  <button type="button" class="danger" (click)="remove(t)">Ja</button>
-                  <button type="button" class="secondary" (click)="confirmDelete.set(null)">Nein</button>
+                  <span>{{ 'common.deleteQuestion' | t }}</span>
+                  <button type="button" class="danger" (click)="remove(t)">{{ 'common.yes' | t }}</button>
+                  <button type="button" class="secondary" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</button>
                 } @else {
-                  <button type="button" class="link" (click)="confirmDelete.set(t.id)">Löschen</button>
+                  <button type="button" class="link" (click)="confirmDelete.set(t.id)">{{ 'common.delete' | t }}</button>
                 }
               </td>
             </tr>
@@ -82,13 +80,13 @@ export class TemplatesPage {
   protected readonly message = signal<string | null>(null);
   protected readonly groupTitles = groupTitles;
 
-  protected async remove(t: Template): Promise<void> {
+  protected async remove(template: Template): Promise<void> {
     this.confirmDelete.set(null);
     try {
-      await this.api.delete(t.id);
+      await this.api.delete(template.id);
       this.templates.reload();
     } catch (err) {
-      this.message.set(`Löschen fehlgeschlagen: ${(err as DeviceApiError).message}`);
+      this.message.set(t('templates.deleteFailed', { error: (err as DeviceApiError).message }));
     }
   }
 }

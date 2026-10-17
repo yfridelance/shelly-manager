@@ -3,7 +3,19 @@ import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import type { NetworkSettings, Template, TemplateSettings, WifiInterface } from '../../core/api.types';
 import type { DeviceApiError } from '../../core/devices-api';
-import { SCRIPT_FIELDS, TEMPLATE_GROUPS, WIFI_LABEL, type TemplateField } from '../../core/template-fields';
+import { t } from '../../core/i18n/i18n';
+import { TranslatePipe } from '../../core/i18n/pipes';
+import {
+  SCRIPT_FIELDS,
+  TEMPLATE_GROUPS,
+  fieldHint,
+  fieldText,
+  groupGens,
+  groupHint,
+  groupTitle,
+  wifiLabel,
+  type TemplateField,
+} from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
 
@@ -30,7 +42,7 @@ function stateFromSettings(settings: TemplateSettings): FieldState {
 
 @Component({
   selector: 'app-template-editor',
-  imports: [RouterLink],
+  imports: [RouterLink, TranslatePipe],
   templateUrl: './template-editor.html',
   styleUrl: './template-editor.scss',
 })
@@ -43,6 +55,11 @@ export class TemplateEditor {
   readonly id = input<string>();
   protected readonly groups = TEMPLATE_GROUPS;
   protected readonly scriptFields = SCRIPT_FIELDS;
+  protected readonly groupTitle = groupTitle;
+  protected readonly groupGens = groupGens;
+  protected readonly groupHint = groupHint;
+  protected readonly fieldText = fieldText;
+  protected readonly fieldHint = fieldHint;
 
   protected readonly existing = httpResource<Template>(() => (this.id() ? `/api/templates/${this.id()}` : undefined));
   protected readonly name = signal('');
@@ -50,7 +67,7 @@ export class TemplateEditor {
   protected readonly fields = signal<FieldState>(emptyState());
   protected readonly scriptOn = signal(false);
   protected readonly ifaces: WifiInterface[] = ['sta', 'sta1'];
-  protected readonly wifiLabel = WIFI_LABEL;
+  protected readonly wifiLabel = wifiLabel;
   protected readonly netOn = signal<Record<WifiInterface, boolean>>({ sta: false, sta1: false });
   protected readonly net = signal<Record<WifiInterface, NetworkSettings>>({ sta: { mode: 'dhcp' }, sta1: { mode: 'dhcp' } });
   protected readonly saving = signal(false);
@@ -144,7 +161,7 @@ export class TemplateEditor {
       const saved = id ? await this.api.update(Number(id), input) : await this.api.create({ ...input, siteId: this.site.siteId() });
       void this.router.navigate(['/templates', saved.id, 'anwenden']);
     } catch (err) {
-      this.error.set(`Speichern fehlgeschlagen: ${(err as DeviceApiError).message}`);
+      this.error.set(t('device.saveFailed', { error: (err as DeviceApiError).message }));
     } finally {
       this.saving.set(false);
     }

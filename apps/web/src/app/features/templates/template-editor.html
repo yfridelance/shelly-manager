@@ -1,38 +1,35 @@
-<p class="back"><a routerLink="/templates">← Templates</a></p>
-<h1>{{ id() ? 'Template bearbeiten' : 'Neues Template' }}</h1>
+<p class="back"><a routerLink="/templates">← {{ 'nav.templates' | t }}</a></p>
+<h1>{{ (id() ? 'templateEditor.editTitle' : 'titles.newTemplate') | t }}</h1>
 
 <form (submit)="save($event)">
   <div class="basics">
     <label class="field">
-      <span>Name</span>
+      <span>{{ 'common.name' | t }}</span>
       <input name="name" required maxlength="100" [value]="name()" (input)="name.set(value($event))" />
     </label>
     <label class="field grow">
-      <span>Beschreibung (optional)</span>
+      <span>{{ 'common.descriptionOptional' | t }}</span>
       <input name="description" maxlength="2000" [value]="description()" (input)="description.set(value($event))" />
     </label>
   </div>
-  <p class="muted">
-    Nur angehakte Einstellungen gehören zum Template; eine Eingabe hakt die Einstellung automatisch an. Alles andere
-    bleibt auf den Geräten unverändert.
-  </p>
+  <p class="muted">{{ 'templateEditor.intro' | t }}</p>
 
   @for (g of groups; track g.id) {
     <fieldset>
-      <legend>{{ g.title }} <span class="muted">({{ g.gens }})</span></legend>
-      @if (g.hint) {
-        <p class="hint">{{ g.hint }}</p>
+      <legend>{{ groupTitle(g.id) }} <span class="muted">({{ groupGens(g.id) }})</span></legend>
+      @if (groupHint(g); as hint) {
+        <p class="hint">{{ hint }}</p>
       }
       @for (f of g.fields; track f.key) {
         <div class="row" [class.off]="!fields()[f.key]?.on">
           <label class="include">
             <input type="checkbox" [attr.name]="'on:' + f.key" [checked]="fields()[f.key]?.on" (change)="toggle(f.key, checked($event))" />
-            {{ f.label }}
+            {{ fieldText(f.key) }}
           </label>
           @if (f.type === 'bool') {
-            <select [attr.name]="f.key" [attr.aria-label]="f.label" (change)="setValue(f.key, value($event))">
-              <option value="true" [selected]="fields()[f.key]?.value === 'true'">Ein</option>
-              <option value="false" [selected]="fields()[f.key]?.value === 'false'">Aus</option>
+            <select [attr.name]="f.key" [attr.aria-label]="fieldText(f.key)" (change)="setValue(f.key, value($event))">
+              <option value="true" [selected]="fields()[f.key]?.value === 'true'">{{ 'common.on' | t }}</option>
+              <option value="false" [selected]="fields()[f.key]?.value === 'false'">{{ 'common.off' | t }}</option>
             </select>
           } @else {
             <input
@@ -42,13 +39,13 @@
               [attr.max]="f.max ?? null"
               [attr.step]="f.step ?? null"
               [placeholder]="f.placeholder ?? ''"
-              [attr.aria-label]="f.label"
+              [attr.aria-label]="fieldText(f.key)"
               [value]="fields()[f.key]?.value ?? ''"
               (input)="setValue(f.key, value($event))"
             />
           }
-          @if (f.hint) {
-            <span class="muted small">{{ f.hint }}</span>
+          @if (fieldHint(f); as hint) {
+            <span class="muted small">{{ hint }}</span>
           }
         </div>
       }
@@ -56,45 +53,39 @@
   }
 
   <fieldset class="network">
-    <legend>Netzwerk (WLAN) <span class="muted">(Gen1 und Gen2+)</span></legend>
-    <p class="message warn">
-      Achtung: Falsche Netzwerkwerte machen Geräte unerreichbar; dann hilft nur der Werksreset am Gerät. Zuerst an einem
-      Gerät testen. SSID und WLAN-Passwort werden nie verändert.
-    </p>
-    <p class="hint">
-      Bei «Statisch» verteilt die App die Adressen ab «IP ab» aufsteigend (nach Ort und Name) und überspringt belegte.
-      Geräte, die schon eine statische IP im Bereich haben, behalten sie. Beim Anwenden lässt sich die IP pro Gerät ändern.
-    </p>
+    <legend>{{ 'templateEditor.networkLegend' | t }} <span class="muted">({{ groupGens('network') }})</span></legend>
+    <p class="message warn">{{ 'templateEditor.networkWarning' | t }}</p>
+    <p class="hint">{{ 'templateEditor.networkHint' | t }}</p>
     @for (iface of ifaces; track iface) {
       <div class="row" [class.off]="!netOn()[iface]">
         <label class="include">
           <input type="checkbox" [attr.name]="'on:network.' + iface" [checked]="netOn()[iface]" (change)="toggleNet(iface, checked($event))" />
-          {{ wifiLabel[iface] }}
+          {{ wifiLabel(iface) }}
         </label>
-        <select [attr.name]="'network.' + iface + '.mode'" [attr.aria-label]="wifiLabel[iface] + ' Adressvergabe'" (change)="setNet(iface, 'mode', value($event))">
+        <select [attr.name]="'network.' + iface + '.mode'" [attr.aria-label]="wifiLabel(iface) + ': ' + ('network.field.mode' | t)" (change)="setNet(iface, 'mode', value($event))">
           <option value="dhcp" [selected]="net()[iface].mode === 'dhcp'">DHCP</option>
-          <option value="static" [selected]="net()[iface].mode === 'static'">Statisch</option>
+          <option value="static" [selected]="net()[iface].mode === 'static'">{{ 'templateEditor.static' | t }}</option>
         </select>
         @if (iface === 'sta1') {
-          <span class="muted small">Nur Geräte mit eingerichtetem zweitem WLAN.</span>
+          <span class="muted small">{{ 'templateEditor.sta1Hint' | t }}</span>
         }
       </div>
       @if (net()[iface].mode === 'static') {
         <div class="netgrid" [class.off]="!netOn()[iface]">
           <label class="field">
-            <span>IP ab</span>
+            <span>{{ 'templateEditor.ipFrom' | t }}</span>
             <input [attr.name]="'network.' + iface + '.ipFrom'" placeholder="192.168.10.50" [value]="net()[iface].ipFrom ?? ''" (input)="setNet(iface, 'ipFrom', value($event))" />
           </label>
           <label class="field">
-            <span>Netzmaske</span>
+            <span>{{ 'network.field.netmask' | t }}</span>
             <input [attr.name]="'network.' + iface + '.netmask'" placeholder="255.255.255.0" [value]="net()[iface].netmask ?? ''" (input)="setNet(iface, 'netmask', value($event))" />
           </label>
           <label class="field">
-            <span>Gateway (optional)</span>
+            <span>{{ 'templateEditor.gatewayOptional' | t }}</span>
             <input [attr.name]="'network.' + iface + '.gateway'" placeholder="192.168.10.1" [value]="net()[iface].gateway ?? ''" (input)="setNet(iface, 'gateway', value($event))" />
           </label>
           <label class="field">
-            <span>DNS (optional)</span>
+            <span>{{ 'templateEditor.dnsOptional' | t }}</span>
             <input [attr.name]="'network.' + iface + '.dns'" placeholder="192.168.10.1" [value]="net()[iface].dns ?? ''" (input)="setNet(iface, 'dns', value($event))" />
           </label>
         </div>
@@ -106,31 +97,31 @@
     <legend>
       <label class="include">
         <input type="checkbox" name="on:script" [checked]="scriptOn()" (change)="scriptOn.set(checked($event))" />
-        Script verteilen <span class="muted">(Gen2+)</span>
+        {{ 'templateEditor.distributeScript' | t }} <span class="muted">({{ groupGens('script') }})</span>
       </label>
     </legend>
-    <p class="hint">Wird per Name angelegt oder aktualisiert. Ist der Code auf dem Gerät gleich, bleibt das Script unberührt.</p>
+    <p class="hint">{{ 'templateGroups.script.hint' | t }}</p>
     @if (scriptOn()) {
       <div class="row">
-        <label class="include">Name</label>
+        <label class="include">{{ fieldText('script.name') }}</label>
         <input name="script.name" maxlength="64" placeholder="heizung" [value]="fields()['script.name']?.value ?? ''" (input)="setValue('script.name', value($event))" />
       </div>
       <label class="field">
-        <span>Code</span>
+        <span>{{ fieldText('script.code') }}</span>
         <textarea name="script.code" rows="10" spellcheck="false" class="mono" [value]="fields()['script.code']?.value ?? ''" (input)="setValue('script.code', value($event))"></textarea>
       </label>
       <div class="row">
-        <label class="include">Beim Start ausführen</label>
+        <label class="include">{{ fieldText('script.enable') }}</label>
         <select name="script.enable" (change)="setValue('script.enable', value($event))">
-          <option value="true" [selected]="fields()['script.enable']?.value === 'true'">Ein</option>
-          <option value="false" [selected]="fields()['script.enable']?.value === 'false'">Aus</option>
+          <option value="true" [selected]="fields()['script.enable']?.value === 'true'">{{ 'common.on' | t }}</option>
+          <option value="false" [selected]="fields()['script.enable']?.value === 'false'">{{ 'common.off' | t }}</option>
         </select>
       </div>
       <div class="row">
-        <label class="include">Nach dem Verteilen (neu) starten</label>
+        <label class="include">{{ fieldText('script.start') }}</label>
         <select name="script.start" (change)="setValue('script.start', value($event))">
-          <option value="true" [selected]="fields()['script.start']?.value === 'true'">Ja</option>
-          <option value="false" [selected]="fields()['script.start']?.value === 'false'">Nein</option>
+          <option value="true" [selected]="fields()['script.start']?.value === 'true'">{{ 'common.yes' | t }}</option>
+          <option value="false" [selected]="fields()['script.start']?.value === 'false'">{{ 'common.no' | t }}</option>
         </select>
       </div>
     }
@@ -140,7 +131,7 @@
     <p class="message error" role="alert">{{ e }}</p>
   }
   <div class="buttons">
-    <button type="submit" [disabled]="!canSave() || saving()">Speichern und Vorschau</button>
-    <a class="button secondary" routerLink="/templates">Abbrechen</a>
+    <button type="submit" [disabled]="!canSave() || saving()">{{ 'templateEditor.saveAndPreview' | t }}</button>
+    <a class="button secondary" routerLink="/templates">{{ 'common.cancel' | t }}</a>
   </div>
 </form>

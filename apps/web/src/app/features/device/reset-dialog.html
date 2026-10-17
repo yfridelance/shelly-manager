@@ -1,30 +1,21 @@
 <div class="backdrop" (click)="close()"></div>
 <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title">
-  <h2 id="reset-title">Werkseinstellungen: {{ device().name ?? formatMac(device().mac) }}</h2>
+  <h2 id="reset-title">{{ 'reset.title' | t: { device: device().name ?? formatMac(device().mac) } }}</h2>
 
   <div class="warning">
-    <p>
-      <strong>Achtung:</strong> Das Gerät wird auf Werkseinstellungen zurückgesetzt. WLAN-Zugang, Passwort, Name,
-      Zeitpläne und alle weiteren Einstellungen gehen verloren.
-    </p>
-    <p>
-      Danach startet das Gerät im <strong>AP-Modus</strong> (eigenes WLAN «shelly…») und ist aus diesem Netz
-      verschwunden. Es ist hier nicht mehr erreichbar.
-    </p>
+    <p [innerHTML]="'reset.warning' | t | emphasis"></p>
+    <p [innerHTML]="'reset.apMode' | t | emphasis"></p>
   </div>
-  <p class="muted">
-    Vorher wird automatisch ein Snapshot der aktuellen Config gespeichert. Der Eintrag im Inventar bleibt mit Status
-    «Zurückgesetzt» erhalten.
-  </p>
+  <p class="muted">{{ 'reset.snapshotHint' | t }}</p>
 
   <form (submit)="submit($event)">
     <label class="field">
       <span>
-        Zur Bestätigung MAC <code>{{ formatMac(device().mac) }}</code>
+        {{ 'reset.confirmMac' | t }} <code>{{ formatMac(device().mac) }}</code>
         @if (device().name) {
-          oder Gerätenamen <code>{{ device().name }}</code>
+          {{ 'reset.confirmOrName' | t }} <code>{{ device().name }}</code>
         }
-        eintippen
+        {{ 'reset.confirmType' | t }}
       </span>
       <input #confirmInput name="confirm" autocomplete="off" spellcheck="false" [value]="confirmation()" (input)="confirmation.set(value($event))" />
     </label>
@@ -33,12 +24,12 @@
       <div class="credentials">
         @if (device().gen === 1) {
           <label class="field">
-            <span>Benutzer</span>
+            <span>{{ 'common.user' | t }}</span>
             <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
           </label>
         }
         <label class="field">
-          <span>Gerätepasswort</span>
+          <span>{{ 'common.devicePassword' | t }}</span>
           <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
         </label>
       </div>
@@ -46,12 +37,10 @@
 
     @if (snapshotFailure(); as reason) {
       <div class="message error" role="alert">
-        <p>
-          Der Snapshot vor dem Reset ist fehlgeschlagen ({{ reason }}). Der Reset wurde <strong>nicht</strong> ausgeführt.
-        </p>
+        <p [innerHTML]="'reset.snapshotFailed' | t: { reason } | emphasis"></p>
         <label class="override">
           <input type="checkbox" name="override" [checked]="override()" (change)="override.set($any($event.target).checked)" />
-          Trotzdem ohne Snapshot zurücksetzen. Die aktuelle Config ist danach nicht dokumentiert.
+          {{ 'reset.override' | t }}
         </label>
       </div>
     }
@@ -60,9 +49,9 @@
     }
 
     <div class="buttons">
-      <button type="button" class="secondary" [disabled]="busy()" (click)="close()">Abbrechen</button>
+      <button type="button" class="secondary" [disabled]="busy()" (click)="close()">{{ 'common.cancel' | t }}</button>
       <button type="submit" class="danger" [disabled]="!canSubmit()">
-        {{ busy() ? 'Setzt zurück …' : 'Endgültig zurücksetzen' }}
+        {{ (busy() ? 'reset.resetting' : 'reset.submit') | t }}
       </button>
     </div>
   </form>

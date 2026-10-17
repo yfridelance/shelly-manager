@@ -1,21 +1,22 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { SiteService } from '../../core/site.service';
-import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry } from '../../core/api.types';
 import { actionDetail, actionLabel } from '../../core/action-text';
-import { ACTION_TEXT, errorText, formatMac } from '../../core/texts';
+import { formatNumber } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
+import { ACTION_TYPES, actionTypeText, errorText, formatMac } from '../../core/texts';
 
 @Component({
   selector: 'app-log-page',
-  imports: [DatePipe, RouterLink],
+  imports: [DateTimePipe, TranslatePipe, RouterLink],
   templateUrl: './log-page.html',
   styleUrl: './log-page.scss',
 })
 export class LogPage {
-  protected readonly actionText = ACTION_TEXT;
-  protected readonly actionTypes = Object.keys(ACTION_TEXT);
+  protected readonly actionText = actionTypeText;
+  protected readonly actionTypes = ACTION_TYPES;
   protected readonly formatMac = formatMac;
   protected readonly errorText = errorText;
 
@@ -40,7 +41,7 @@ export class LogPage {
   protected duration(e: ActionEntry): string {
     if (!e.finishedAt) return '';
     const ms = Date.parse(e.finishedAt) - Date.parse(e.requestedAt);
-    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+    return ms < 1000 ? `${ms} ms` : `${formatNumber(ms / 1000, 1)} s`;
   }
 
   protected readonly actionLabel = actionLabel;

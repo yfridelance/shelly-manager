@@ -1,20 +1,21 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { SiteService } from '../../core/site.service';
-import { DatePipe } from '@angular/common';
 import type { ScanDeviceResult } from '../../core/api.types';
-import { DEVICE_ERROR_TEXT, SCAN_STATUS_TEXT, formatMac, ipSortKey } from '../../core/texts';
+import { t } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
+import { errorText, formatMac, ipSortKey, scanStatusText } from '../../core/texts';
 import { ScanService } from './scan.service';
 
 @Component({
   selector: 'app-scan-page',
-  imports: [DatePipe],
+  imports: [DateTimePipe, TranslatePipe],
   templateUrl: './scan-page.html',
   styleUrl: './scan-page.scss',
 })
 export class ScanPage {
   protected readonly scans = inject(ScanService);
   protected readonly site = inject(SiteService);
-  protected readonly statusText = SCAN_STATUS_TEXT;
+  protected readonly statusText = scanStatusText;
   protected readonly formatMac = formatMac;
 
   protected readonly range = signal('');
@@ -35,7 +36,6 @@ export class ScanPage {
     });
   }
 
-
   protected async start(event: Event): Promise<void> {
     event.preventDefault();
     const password = this.password();
@@ -49,10 +49,10 @@ export class ScanPage {
   }
 
   protected snapshotText(d: ScanDeviceResult): string {
-    if (d.snapshot === 'ok') return 'Config gelesen';
-    if (d.snapshot === 'auth_required') return 'Zugangsdaten nötig';
-    if (d.snapshot === 'foreign') return `gehört zu Standort «${d.foreignSite?.name ?? '?'}», unverändert`;
-    return d.errorCode ? DEVICE_ERROR_TEXT[d.errorCode] : 'Fehler';
+    if (d.snapshot === 'ok') return t('scan.configRead');
+    if (d.snapshot === 'auth_required') return t('scan.credentialsNeeded');
+    if (d.snapshot === 'foreign') return t('scan.foreign', { site: d.foreignSite?.name ?? '?' });
+    return errorText(d.errorCode);
   }
 
   protected value(event: Event): string {

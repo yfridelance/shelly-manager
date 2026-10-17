@@ -1,8 +1,10 @@
 import { Component, ElementRef, input, output, signal, viewChild } from '@angular/core';
+import { TranslatePipe } from '../core/i18n/pipes';
 
-/** Shows a value; click "Bearbeiten" to edit inline. Enter (Ctrl+Enter for multiline) saves, Escape cancels. */
+/** Shows a value; click «Bearbeiten» to edit inline. Enter (Ctrl+Enter for multiline) saves, Escape cancels. */
 @Component({
   selector: 'app-editable-field',
+  imports: [TranslatePipe],
   template: `
     @if (editing()) {
       <form class="edit" (submit)="save($event)">
@@ -12,14 +14,14 @@ import { Component, ElementRef, input, output, signal, viewChild } from '@angula
           <input #box [value]="draft()" [attr.list]="listId()" (input)="draft.set(text($event))" (keydown)="onKey($event)" />
         }
         <div class="actions">
-          <button type="submit" [disabled]="saving()">Speichern</button>
-          <button type="button" class="secondary" (click)="cancel()">Abbrechen</button>
+          <button type="submit" [disabled]="saving()">{{ 'common.save' | t }}</button>
+          <button type="button" class="secondary" (click)="cancel()">{{ 'common.cancel' | t }}</button>
         </div>
       </form>
     } @else {
       <div class="view">
-        <span class="value" [class.empty]="!value()">{{ value() || placeholder() }}</span>
-        <button type="button" class="link" [attr.aria-label]="label() + ' bearbeiten'" (click)="start()">Bearbeiten</button>
+        <span class="value" [class.empty]="!value()">{{ value() || (placeholder() ?? ('common.notRecorded' | t)) }}</span>
+        <button type="button" class="link" [attr.aria-label]="'common.editLabel' | t: { label: label() }" (click)="start()">{{ 'common.edit' | t }}</button>
       </div>
     }
   `,
@@ -34,7 +36,8 @@ import { Component, ElementRef, input, output, signal, viewChild } from '@angula
 export class EditableField {
   readonly label = input.required<string>();
   readonly value = input<string | null>(null);
-  readonly placeholder = input('nicht erfasst');
+  /** Default: «nicht erfasst» in the current language. */
+  readonly placeholder = input<string | null>(null);
   readonly multiline = input(false);
   /** id of a <datalist> with suggestions. */
   readonly listId = input<string | null>(null);

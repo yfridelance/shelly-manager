@@ -41,8 +41,9 @@ docker compose up -d --build
 
 Open **http://localhost:8080**, go to «Scan» and enter your network range, e.g. `192.168.1.0/24`.
 
-> The user interface and the detailed documentation are currently in **German**. Translations are very welcome,
-> see [Contributing](CONTRIBUTING.md).
+> The user interface and the detailed documentation are currently in **German**. The UI is ready for translation
+> (one JSON file per language, switchable at runtime); translations are very welcome, see
+> [How to translate](CONTRIBUTING.md#how-to-translate).
 
 ## Documentation
 

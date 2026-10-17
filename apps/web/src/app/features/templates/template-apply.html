@@ -1,11 +1,11 @@
-<p class="back"><a routerLink="/templates">← Templates</a></p>
+<p class="back"><a routerLink="/templates">← {{ 'nav.templates' | t }}</a></p>
 
 @if (template.error()) {
-  <p class="message error" role="alert">Template nicht gefunden.</p>
+  <p class="message error" role="alert">{{ 'errors.template_not_found' | t }}</p>
 } @else if (template.value(); as t) {
   <div class="head">
-    <h1>Template anwenden: {{ t.name }}</h1>
-    <a [routerLink]="['/templates', t.id]">Bearbeiten</a>
+    <h1>{{ 'templateApply.title' | t: { name: t.name } }}</h1>
+    <a [routerLink]="['/templates', t.id]">{{ 'common.edit' | t }}</a>
   </div>
   @if (t.description) {
     <p class="muted">{{ t.description }}</p>
@@ -18,27 +18,27 @@
 
   <section class="card">
     <div class="toolbar">
-      <h2>Geräte</h2>
-      <input type="search" placeholder="Suchen …" [value]="search()" (input)="search.set(value($event))" />
-      <button type="button" class="link" (click)="selectAll(true)" [disabled]="running()">alle sichtbaren</button>
-      <button type="button" class="link" (click)="selectChanging()" [disabled]="running()">nur mit Änderungen</button>
-      <button type="button" class="link" (click)="selectAll(false)" [disabled]="running()">keine</button>
-      <span class="muted">{{ selectedDevices().length }} ausgewählt</span>
+      <h2>{{ 'sites.devices' | t }}</h2>
+      <input type="search" [placeholder]="'templateApply.search' | t" [value]="search()" (input)="search.set(value($event))" />
+      <button type="button" class="link" (click)="selectAll(true)" [disabled]="running()">{{ 'templateApply.selectVisible' | t }}</button>
+      <button type="button" class="link" (click)="selectChanging()" [disabled]="running()">{{ 'templateApply.selectChanging' | t }}</button>
+      <button type="button" class="link" (click)="selectAll(false)" [disabled]="running()">{{ 'templateApply.selectNone' | t }}</button>
+      <span class="muted">{{ 'templateApply.selected' | t: { count: selectedDevices().length } }}</span>
     </div>
-    <p class="muted small">Vorschau auf Basis des neusten Snapshots je Gerät; beim Anwenden wird jedes Gerät frisch gelesen.</p>
+    <p class="muted small">{{ 'templateApply.previewHint' | t }}</p>
     <table class="data-table">
       <thead>
         <tr>
           <th></th>
-          <th>Name</th>
-          <th>Modell</th>
-          <th>Gen</th>
-          <th>IP</th>
-          <th>Vorschau</th>
+          <th>{{ 'columns.name' | t }}</th>
+          <th>{{ 'columns.model' | t }}</th>
+          <th>{{ 'columns.gen' | t }}</th>
+          <th>{{ 'columns.ip' | t }}</th>
+          <th>{{ 'templateApply.preview' | t }}</th>
           @for (iface of staticIfaces(); track iface) {
-            <th>Neue IP{{ staticIfaces().length > 1 ? ' (' + wifiLabel[iface] + ')' : '' }}</th>
+            <th>{{ 'templateApply.newIp' | t }}{{ staticIfaces().length > 1 ? ' (' + wifiLabel(iface) + ')' : '' }}</th>
           }
-          <th>Ergebnis</th>
+          <th>{{ 'log.result' | t }}</th>
         </tr>
       </thead>
       <tbody>
@@ -47,7 +47,7 @@
             <td>
               <input
                 type="checkbox"
-                [attr.aria-label]="(d.name ?? d.mac) + ' auswählen'"
+                [attr.aria-label]="'templateApply.selectDevice' | t: { name: d.name ?? d.mac }"
                 [checked]="selected().has(d.mac)"
                 [disabled]="running()"
                 (change)="toggle(d.mac, checked($event))"
@@ -56,7 +56,7 @@
             <td>
               <a [routerLink]="['/inventar', d.mac]">{{ d.name ?? formatMac(d.mac) }}</a>
               @if (d.authRequired) {
-                <span title="Passwortgeschützt"> 🔒</span>
+                <span [title]="'common.passwordProtected' | t"> 🔒</span>
               }
             </td>
             <td>{{ d.model ?? '–' }}</td>
@@ -73,10 +73,10 @@
                   <input
                     class="ip mono"
                     [attr.name]="'ip:' + d.mac + ':' + iface"
-                    [attr.aria-label]="'Neue IP für ' + (d.name ?? d.mac)"
+                    [attr.aria-label]="'templateApply.newIpFor' | t: { name: d.name ?? d.mac }"
                     [value]="plannedIp(d.mac, iface)"
                     [disabled]="running()"
-                    placeholder="keine frei"
+                    [placeholder]="'templateApply.noneFree' | t"
                     (change)="setIp(d.mac, iface, value($event))"
                   />
                 }
@@ -86,7 +86,7 @@
               @if (results()[d.mac]; as r) {
                 <span [class.error-text]="!r.ok" [class.ok-text]="r.ok">{{ r.ok ? '✓' : '✗' }} {{ r.text }}</span>
               } @else if (running() && selected().has(d.mac)) {
-                <span class="muted">wartet …</span>
+                <span class="muted">{{ 'templateApply.waiting' | t }}</span>
               }
             </td>
           </tr>
@@ -95,7 +95,7 @@
               <td></td>
               <td [attr.colspan]="6 + staticIfaces().length">
                 @if (results()[d.mac]?.result; as r) {
-                  <strong>Ergebnis:</strong>
+                  <strong>{{ 'templateApply.resultLabel' | t }}</strong>
                   <ul>
                     @for (i of r.items; track i.key) {
                       <li [class]="i.status">{{ itemText(i) }}</li>
@@ -103,13 +103,13 @@
                   </ul>
                 } @else if (previews()[d.mac]; as p) {
                   @if (p.basedOn) {
-                    <span class="muted small">Stand Snapshot {{ p.basedOn | date: 'dd.MM.yyyy HH:mm' }}</span>
+                    <span class="muted small">{{ 'templateApply.basedOn' | t: { time: (p.basedOn | dateTime) } }}</span>
                   }
                   <ul>
                     @for (i of p.items; track i.key) {
                       <li [class]="i.status">{{ itemText(i) }}</li>
                     } @empty {
-                      <li class="muted">Noch kein Snapshot mit Config. Die Änderungen werden beim Anwenden ermittelt.</li>
+                      <li class="muted">{{ 'templateApply.noConfigSnapshot' | t }}</li>
                     }
                   </ul>
                 }
@@ -118,7 +118,7 @@
           }
         } @empty {
           <tr>
-            <td [attr.colspan]="7 + staticIfaces().length" class="muted">Keine aktiven Geräte mit IP.</td>
+            <td [attr.colspan]="7 + staticIfaces().length" class="muted">{{ 'templateApply.noDevices' | t }}</td>
           </tr>
         }
       </tbody>
@@ -126,84 +126,73 @@
   </section>
 
   <section class="card">
-    <h2>Anwenden</h2>
+    <h2>{{ 'templates.apply' | t }}</h2>
     <div class="options">
       @if (selectedProtected().length > 0) {
         <label class="field">
-          <span>Benutzer (nur Gen1)</span>
+          <span>{{ 'common.userGen1' | t }}</span>
           <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
         </label>
         <label class="field">
-          <span>Gerätepasswort ({{ selectedProtected().length }} geschützt)</span>
+          <span>{{ 'templateApply.devicePassword' | t: { count: selectedProtected().length } }}</span>
           <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
         </label>
       }
       @if (needsMqttPassword()) {
         <label class="field">
-          <span>MQTT-Passwort setzen (optional)</span>
+          <span>{{ 'templateApply.mqttPassword' | t }}</span>
           <input name="mqttPassword" type="password" autocomplete="off" [value]="mqttPassword()" (input)="mqttPassword.set(value($event))" />
         </label>
       }
       @if (needsApPassword()) {
         <label class="field">
-          <span>AP-Passwort (optional, min. 8 Zeichen)</span>
+          <span>{{ 'templateApply.apPassword' | t }}</span>
           <input name="apPassword" type="password" autocomplete="off" [value]="apPassword()" (input)="apPassword.set(value($event))" />
         </label>
       }
       <label class="check">
         <input type="checkbox" name="reboot" [checked]="reboot()" (change)="reboot.set(checked($event))" />
-        Bei Bedarf automatisch neu starten
+        {{ 'templateApply.rebootIfRequired' | t }}
       </label>
     </div>
     @if (hasNetwork()) {
-      <p class="message warn">
-        Dieses Template ändert Netzwerkeinstellungen. Die App prüft vorher, dass jede geplante IP im Netz liegt, frei ist und
-        keinem anderen Gerät gehört, und sucht das Gerät danach unter der neuen Adresse. Geräte ohne Webserver (Handys,
-        Drucker …) erkennt die Prüfung nicht: Den Bereich am besten ausserhalb des DHCP-Pools wählen. Zuerst an einem Gerät
-        testen.
-      </p>
+      <p class="message warn">{{ 'templateApply.networkWarning' | t }}</p>
     }
     @if (needsApPassword() && !apPassword()) {
-      <p class="message warn">
-        Ohne AP-Passwort wird der Access-Point auf Geräten, bei denen er aus ist, nicht eingeschaltet: Die Firmware
-        verlangt dafür ein Passwort. Die übrigen Einstellungen werden trotzdem angewendet.
-      </p>
+      <p class="message warn">{{ 'templateApply.apWarning' | t }}</p>
     }
-    <p class="muted small">
-      Vor jeder Änderung wird pro Gerät automatisch ein Snapshot gespeichert. Schlägt er fehl, bleibt das Gerät
-      unverändert. Passwörter werden nicht gespeichert.
-    </p>
+    <p class="muted small">{{ 'templateApply.snapshotHint' | t }}</p>
 
     <div class="buttons">
       @if (running()) {
         <progress [max]="total()" [value]="doneCount()"></progress>
-        <span>{{ doneCount() }} von {{ total() }}</span>
-        <button type="button" class="secondary" (click)="cancel()">Abbrechen</button>
+        <span>{{ 'common.progress' | t: { done: doneCount(), total: total() } }}</span>
+        <button type="button" class="secondary" (click)="cancel()">{{ 'common.cancel' | t }}</button>
       } @else if (confirming()) {
-        <span>Template «{{ t.name }}» auf {{ selectedDevices().length }} {{ selectedDevices().length === 1 ? 'Gerät' : 'Geräte' }} anwenden?</span>
-        <button type="button" (click)="run()">Ja, anwenden</button>
-        <button type="button" class="secondary" (click)="confirming.set(false)">Abbrechen</button>
+        <span>{{ 'templateApply.confirm' | t: { name: t.name, count: selectedDevices().length } }}</span>
+        <button type="button" (click)="run()">{{ 'templateApply.confirmYes' | t }}</button>
+        <button type="button" class="secondary" (click)="confirming.set(false)">{{ 'common.cancel' | t }}</button>
       } @else {
         @if (staticIfaces().length > 0) {
           <button type="button" class="secondary" [disabled]="selectedDevices().length === 0" (click)="exportReservations()">
-            Export für DHCP-Reservierung
+            {{ 'templateApply.exportReservations' | t }}
           </button>
         }
         <button type="button" [disabled]="selectedDevices().length === 0" (click)="confirming.set(true)">
-          Auf {{ selectedDevices().length }} {{ selectedDevices().length === 1 ? 'Gerät' : 'Geräte' }} anwenden
+          {{ 'templateApply.applyTo' | t: { count: selectedDevices().length } }}
         </button>
       }
     </div>
     @if (!running() && doneCount() > 0) {
       <p class="summary" role="status">
-        {{ okCount() }} von {{ total() }} erfolgreich
+        {{ 'templateApply.succeeded' | t: { ok: okCount(), total: total() } }}
         @if (okCount() < doneCount()) {
-          · <span class="error-text">{{ doneCount() - okCount() }} mit Fehler</span>
+          · <span class="error-text">{{ 'templateApply.failedCount' | t: { count: doneCount() - okCount() } }}</span>
         }
-        · Details im <a routerLink="/protokoll">Protokoll</a>
+        · {{ 'templateApply.detailsIn' | t }} <a routerLink="/protokoll">{{ 'nav.log' | t }}</a>
       </p>
     }
   </section>
 } @else {
-  <p class="muted">Lädt …</p>
+  <p class="muted">{{ 'common.loading' | t }}</p>
 }

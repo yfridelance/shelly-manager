@@ -4,7 +4,12 @@ import { buildApp } from '../../src/app.js';
 import { openDatabase, type Db } from '../../src/db/database.js';
 import { upsertSeenDevice } from '../../src/db/devices.js';
 import { insertSnapshot } from '../../src/db/snapshots.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { toCsv } from '../../src/export/csv.js';
+import { translator } from '../../src/export/locale.js';
+import { describeFunctions } from '../../src/devices/functions.js';
 import type { DeviceInfo } from '../../src/shelly/types.js';
 
 const info = (over: Partial<DeviceInfo>): DeviceInfo => ({
@@ -101,5 +106,26 @@ describe('export endpoints', () => {
     expect(lines[2]).toContain(';SHSW-1;;;1;192.168.1.21;E8:68:E7:A1:B2:C3;');
     expect(lines[2]?.startsWith('Standard;;;;SHSW-1')).toBe(true); // no name, no device name, no id yet
     expect(lines[2]).toContain(';Aktiv;ja;');
+  });
+
+  it('takes headers and labels from the web locale files, German for unknown languages', async () => {
+    const a = await setup();
+    const de = (await a.inject({ method: 'GET', url: '/api/export.csv' })).body;
+    expect((await a.inject({ method: 'GET', url: '/api/export.csv?lang=fr' })).body).toBe(de);
+    expect((await a.inject({ method: 'GET', url: '/api/export.csv?lang=../../etc' })).statusCode).toBe(400);
+  });
+});
+
+describe('export texts', () => {
+  it('falls back per key to German and fills placeholders', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'locale-'));
+    fs.copyFileSync(new URL('../../../web/src/locale/de.json', import.meta.url), path.join(dir, 'de.json'));
+    fs.writeFileSync(path.join(dir, 'en.json'), JSON.stringify({ functions: { switch: 'Switch', count: '{{count}} × {{label}}' } }));
+    const t = translator('en-GB', dir);
+    expect(t('functions.switch')).toBe('Switch');
+    expect(t('functions.cover')).toBe('Rollladen');
+    expect(t('no.such.key')).toBe('no.such.key');
+    expect(describeFunctions({ switch: 2, cover: 0, light: 0, meter: 0, input: 2, sensor: 0, metering: true }, t)).toBe('2 × Switch · Messung');
+    fs.rmSync(dir, { recursive: true });
   });
 });

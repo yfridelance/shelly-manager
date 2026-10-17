@@ -1,12 +1,12 @@
-<h1>Netzwerk-Scan</h1>
+<h1>{{ 'scan.title' | t }}</h1>
 
 <form class="scan-form" (submit)="start($event)">
   <label class="field range">
-    <span>IP-Bereich</span>
+    <span>{{ 'scan.range' | t }}</span>
     <input
       name="range"
       required
-      placeholder="192.168.1.0/24 oder 192.168.1.10-192.168.1.80"
+      [placeholder]="'scan.rangePlaceholder' | t"
       autocomplete="off"
       [value]="range()"
       (input)="range.set(value($event))"
@@ -14,22 +14,22 @@
     />
   </label>
   <fieldset class="credentials" [disabled]="running()">
-    <legend>Zugangsdaten (optional, nur für geschützte Geräte)</legend>
+    <legend>{{ 'scan.credentials' | t }}</legend>
     <label class="field">
-      <span>Benutzer</span>
+      <span>{{ 'common.user' | t }}</span>
       <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
     </label>
     <label class="field">
-      <span>Passwort</span>
+      <span>{{ 'common.password' | t }}</span>
       <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
     </label>
-    <p class="hint">Gen2+ verwendet immer den Benutzer «admin». Die Zugangsdaten werden nicht gespeichert.</p>
+    <p class="hint">{{ 'scan.credentialsHint' | t }}</p>
   </fieldset>
   <div class="buttons">
     @if (running()) {
-      <button type="button" class="secondary" (click)="scans.cancel()">Abbrechen</button>
+      <button type="button" class="secondary" (click)="scans.cancel()">{{ 'common.cancel' | t }}</button>
     } @else {
-      <button type="submit" [disabled]="!range().trim() || scans.busy()">Scan starten</button>
+      <button type="submit" [disabled]="!range().trim() || scans.busy()">{{ 'scan.start' | t }}</button>
     }
   </div>
 </form>
@@ -42,25 +42,22 @@
   <section class="progress" aria-live="polite">
     <div class="progress-head">
       <strong>{{ s.range }}</strong>
-      <span class="status" [class]="'status ' + s.status">{{ statusText[s.status] }}</span>
-      <span class="muted">gestartet {{ s.startedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</span>
+      <span class="status" [class]="'status ' + s.status">{{ statusText(s.status) }}</span>
+      <span class="muted">{{ 'scan.started' | t: { time: (s.startedAt | dateTime: 'seconds') } }}</span>
     </div>
     <progress [max]="s.total" [value]="s.scanned"></progress>
     <p>
-      {{ s.scanned }} von {{ s.total }} Adressen geprüft · <strong>{{ s.found }}</strong>
-      {{ s.found === 1 ? 'Shelly' : 'Shellys' }} gefunden
+      {{ 'scan.checked' | t: { scanned: s.scanned, total: s.total } }} · <strong>{{ s.found }}</strong>
+      {{ 'scan.found' | t: { count: s.found } }}
       @if (s.errors > 0) {
-        · <span class="error-text">{{ s.errors }} mit Fehlern</span>
+        · <span class="error-text">{{ 'scan.withErrors' | t: { count: s.errors } }}</span>
       }
     </p>
     @if (s.status === 'failed' && s.error) {
-      <p class="message error">Scan fehlgeschlagen: {{ s.error }}</p>
+      <p class="message error">{{ 'scan.failed' | t: { error: s.error } }}</p>
     }
     @if (s.missing.length > 0) {
-      <p class="message warn">
-        {{ s.missing.length }} bekannte {{ s.missing.length === 1 ? 'Gerät wurde' : 'Geräte wurden' }} im Bereich
-        nicht mehr gefunden und als vermisst markiert.
-      </p>
+      <p class="message warn">{{ 'scan.missing' | t: { count: s.missing.length } }}</p>
     }
   </section>
 
@@ -68,14 +65,14 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>IP</th>
-          <th>Name</th>
-          <th>Geräte-ID</th>
-          <th>Modell</th>
-          <th>Gen</th>
-          <th>MAC</th>
-          <th>Schutz</th>
-          <th>Config</th>
+          <th>{{ 'columns.ip' | t }}</th>
+          <th>{{ 'columns.name' | t }}</th>
+          <th>{{ 'columns.deviceId' | t }}</th>
+          <th>{{ 'columns.model' | t }}</th>
+          <th>{{ 'columns.gen' | t }}</th>
+          <th>{{ 'columns.mac' | t }}</th>
+          <th>{{ 'scan.protection' | t }}</th>
+          <th>{{ 'scan.config' | t }}</th>
           <th></th>
         </tr>
       </thead>
@@ -88,11 +85,11 @@
             <td>{{ d.model ?? '–' }}</td>
             <td>{{ d.gen }}</td>
             <td class="mono">{{ formatMac(d.mac) }}</td>
-            <td>{{ d.authRequired ? 'Passwort' : 'offen' }}</td>
+            <td>{{ (d.authRequired ? 'scan.protected' : 'scan.open') | t }}</td>
             <td [class.error-text]="d.snapshot === 'error'" [title]="d.error ?? ''">{{ snapshotText(d) }}</td>
             <td>
               @if (d.created) {
-                <span class="badge">neu</span>
+                <span class="badge">{{ 'scan.new' | t }}</span>
               }
             </td>
           </tr>

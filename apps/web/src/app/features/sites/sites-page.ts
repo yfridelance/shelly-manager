@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import type { Site } from '../../core/api.types';
+import { t } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import type { DeviceApiError } from '../../core/devices-api';
 import { SiteService, SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
@@ -9,15 +10,10 @@ import { EditableField } from '../../shared/editable-field';
 /** Sites (houses, customers): each has its own inventory, templates and log. */
 @Component({
   selector: 'app-sites-page',
-  imports: [DatePipe, EditableField],
+  imports: [DateTimePipe, TranslatePipe, EditableField],
   template: `
-    <h1>Standorte</h1>
-    <p class="muted intro">
-      Jeder Standort (Haus, Kunde, Ferienwohnung …) hat sein eigenes Inventar, eigene Templates und ein eigenes Protokoll.
-      Oben rechts wählst du, in welchem Standort du arbeitest. Ein Scan speichert die gefundenen Geräte im gewählten
-      Standort; ein Gerät, das schon zu einem anderen Standort gehört, wird nur gemeldet und lässt sich in der Detailansicht
-      verschieben.
-    </p>
+    <h1>{{ 'nav.sites' | t }}</h1>
+    <p class="muted intro">{{ 'sites.intro' | t }}</p>
 
     @if (message(); as m) {
       <p [class]="'message ' + m.kind" role="status">{{ m.text }}</p>
@@ -26,37 +22,37 @@ import { EditableField } from '../../shared/editable-field';
     <table class="data-table">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Beschreibung</th>
-          <th>Geräte</th>
-          <th>Templates</th>
-          <th>Angelegt</th>
+          <th>{{ 'common.name' | t }}</th>
+          <th>{{ 'common.description' | t }}</th>
+          <th>{{ 'sites.devices' | t }}</th>
+          <th>{{ 'nav.templates' | t }}</th>
+          <th>{{ 'sites.created' | t }}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         @for (s of sites.list.value(); track s.id) {
           <tr [class.current]="s.id === site.siteId()">
-            <td><app-editable-field label="Name" [value]="s.name" (saved)="rename(s, $event, s.description)" /></td>
+            <td><app-editable-field [label]="'common.name' | t" [value]="s.name" (saved)="rename(s, $event, s.description)" /></td>
             <td>
-              <app-editable-field label="Beschreibung" [value]="s.description" placeholder="–" (saved)="rename(s, s.name, $event)" />
+              <app-editable-field [label]="'common.description' | t" [value]="s.description" placeholder="–" (saved)="rename(s, s.name, $event)" />
             </td>
             <td>{{ s.deviceCount }}</td>
             <td>{{ s.templateCount }}</td>
-            <td>{{ s.createdAt | date: 'dd.MM.yyyy' }}</td>
+            <td>{{ s.createdAt | dateTime: 'date' }}</td>
             <td class="actions">
               @if (s.id === site.siteId()) {
-                <span class="muted">aktuell</span>
+                <span class="muted">{{ 'sites.current' | t }}</span>
               } @else {
-                <button type="button" class="link" (click)="site.select(s.id)">Wechseln</button>
+                <button type="button" class="link" (click)="site.select(s.id)">{{ 'sites.switch' | t }}</button>
               }
               @if (s.deviceCount === 0 && s.templateCount === 0 && sites.list.value().length > 1) {
                 @if (confirmDelete() === s.id) {
-                  <span>Löschen?</span>
-                  <button type="button" class="danger" (click)="remove(s)">Ja</button>
-                  <button type="button" class="secondary" (click)="confirmDelete.set(null)">Nein</button>
+                  <span>{{ 'common.deleteQuestion' | t }}</span>
+                  <button type="button" class="danger" (click)="remove(s)">{{ 'common.yes' | t }}</button>
+                  <button type="button" class="secondary" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</button>
                 } @else {
-                  <button type="button" class="link" (click)="confirmDelete.set(s.id)">Löschen</button>
+                  <button type="button" class="link" (click)="confirmDelete.set(s.id)">{{ 'common.delete' | t }}</button>
                 }
               }
             </td>
@@ -66,16 +62,16 @@ import { EditableField } from '../../shared/editable-field';
     </table>
 
     <form class="create" (submit)="create($event)">
-      <h2>Neuer Standort</h2>
+      <h2>{{ 'sites.new' | t }}</h2>
       <label class="field">
-        <span>Name</span>
+        <span>{{ 'common.name' | t }}</span>
         <input name="siteName" maxlength="100" [value]="newName()" (input)="newName.set(value($event))" />
       </label>
       <label class="field grow">
-        <span>Beschreibung (optional)</span>
+        <span>{{ 'common.descriptionOptional' | t }}</span>
         <input name="siteDescription" maxlength="2000" [value]="newDescription()" (input)="newDescription.set(value($event))" />
       </label>
-      <button type="submit" [disabled]="!newName().trim()">Anlegen</button>
+      <button type="submit" [disabled]="!newName().trim()">{{ 'common.create' | t }}</button>
     </form>
   `,
   styles: `
@@ -103,7 +99,7 @@ export class SitesPage {
       this.newName.set('');
       this.newDescription.set('');
       this.sites.list.reload();
-      this.message.set({ kind: 'ok', text: `Standort «${created.name}» angelegt.` });
+      this.message.set({ kind: 'ok', text: t('sites.createdMessage', { name: created.name }) });
     } catch (err) {
       this.message.set({ kind: 'error', text: (err as DeviceApiError).message });
     }
@@ -124,7 +120,7 @@ export class SitesPage {
     try {
       await this.api.delete(s.id);
       this.sites.list.reload();
-      this.message.set({ kind: 'ok', text: `Standort «${s.name}» gelöscht.` });
+      this.message.set({ kind: 'ok', text: t('sites.deleted', { name: s.name }) });
     } catch (err) {
       this.message.set({ kind: 'error', text: (err as DeviceApiError).message });
     }

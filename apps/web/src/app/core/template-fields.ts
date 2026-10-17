@@ -1,150 +1,154 @@
 import type { NetworkSettings, PlanItem, TemplateSettings, WifiInterface } from './api.types';
+import { t, translate, type TranslationKey } from './i18n/i18n';
 
 export type FieldType = 'bool' | 'text' | 'number' | 'code';
 
+/** Keys with a label in the locale files (`templateFields.<key>`), e.g. "mqtt.server". */
+export type FieldKey = TranslationKey extends infer K ? (K extends `templateFields.${infer F}` ? F : never) : never;
+
 export interface TemplateField {
-  /** Same keys as the server planner, e.g. "mqtt.server". */
-  key: string;
-  label: string;
+  /** Same keys as the server planner, e.g. "mqtt.server". Label: `templateFields.<key>`. */
+  key: FieldKey;
   type: FieldType;
   placeholder?: string;
-  hint?: string;
+  /** Has a hint text `templateHints.<key>`. */
+  hint?: true;
   min?: number;
   max?: number;
   step?: number;
 }
 
+export type GroupId = keyof TemplateSettings;
+
 export interface TemplateGroup {
-  id: keyof TemplateSettings;
-  title: string;
-  /** Which generations the group applies to. */
-  gens: string;
-  hint?: string;
+  /** Title, generations and hint: `templateGroups.<id>.title|gens|hint`. */
+  id: GroupId;
+  hint?: true;
   fields: TemplateField[];
 }
 
 export const TEMPLATE_GROUPS: TemplateGroup[] = [
   {
     id: 'mqtt',
-    title: 'MQTT',
-    gens: 'Gen1 und Gen2+',
-    hint: 'Das MQTT-Passwort wird nicht gespeichert, sondern beim Anwenden eingegeben. Gen2+ braucht nach MQTT-Änderungen einen Neustart.',
+    hint: true,
     fields: [
-      { key: 'mqtt.enable', label: 'MQTT aktiv', type: 'bool' },
-      { key: 'mqtt.server', label: 'Server', type: 'text', placeholder: 'mqtt.home:1883' },
-      { key: 'mqtt.user', label: 'Benutzer', type: 'text' },
-      { key: 'mqtt.clientId', label: 'Client-ID', type: 'text', placeholder: '{id}', hint: 'Gen1: auch Topic-ID («shellies/<id>/…»). Platzhalter {id}, {mac}.' },
-      { key: 'mqtt.topicPrefix', label: 'Topic-Präfix', type: 'text', placeholder: 'haus/{id}', hint: 'Nur Gen2+. Platzhalter {id}, {mac}.' },
+      { key: 'mqtt.enable', type: 'bool' },
+      { key: 'mqtt.server', type: 'text', placeholder: 'mqtt.home:1883' },
+      { key: 'mqtt.user', type: 'text' },
+      { key: 'mqtt.clientId', type: 'text', placeholder: '{id}', hint: true },
+      { key: 'mqtt.topicPrefix', type: 'text', placeholder: 'haus/{id}', hint: true },
     ],
   },
   {
     id: 'cloud',
-    title: 'Shelly Cloud',
-    gens: 'Gen1 und Gen2+',
-    fields: [{ key: 'cloud.enable', label: 'Cloud-Verbindung', type: 'bool' }],
+    fields: [{ key: 'cloud.enable', type: 'bool' }],
   },
   {
     id: 'time',
-    title: 'Zeit und Koordinaten',
-    gens: 'Gen1 und Gen2+',
-    hint: 'Koordinaten werden für Sonnenauf- und -untergang verwendet. Gen1: feste Zeitzone schaltet die automatische Erkennung aus.',
+    hint: true,
     fields: [
-      { key: 'time.sntpServer', label: 'SNTP-Server', type: 'text', placeholder: 'ch.pool.ntp.org' },
-      { key: 'time.timezone', label: 'Zeitzone', type: 'text', placeholder: 'Europe/Zurich' },
-      { key: 'time.lat', label: 'Breitengrad', type: 'number', min: -90, max: 90, step: 0.0001 },
-      { key: 'time.lon', label: 'Längengrad', type: 'number', min: -180, max: 180, step: 0.0001 },
+      { key: 'time.sntpServer', type: 'text', placeholder: 'ch.pool.ntp.org' },
+      { key: 'time.timezone', type: 'text', placeholder: 'Europe/Zurich' },
+      { key: 'time.lat', type: 'number', min: -90, max: 90, step: 0.0001 },
+      { key: 'time.lon', type: 'number', min: -180, max: 180, step: 0.0001 },
     ],
   },
   {
     id: 'eco',
-    title: 'Eco-Modus und LED',
-    gens: 'Eco: Gen2+, LED: Gen1',
-    hint: 'Für Gen1 ist der Eco-Modus nicht offiziell dokumentiert und wird deshalb nicht gesetzt. Die LED-Option gibt es nur bei einigen Gen1-Modellen.',
+    hint: true,
     fields: [
-      { key: 'eco.ecoMode', label: 'Eco-Modus', type: 'bool' },
-      { key: 'eco.ledStatusDisable', label: 'LED-Statusanzeige ausschalten', type: 'bool' },
+      { key: 'eco.ecoMode', type: 'bool' },
+      { key: 'eco.ledStatusDisable', type: 'bool' },
     ],
   },
   {
     id: 'bluetooth',
-    title: 'Bluetooth',
-    gens: 'Gen2+',
-    hint: '«Bluetooth an/aus» und «Observer» gibt es nur bei älterer Firmware; neuere steuert das automatisch.',
+    hint: true,
     fields: [
-      { key: 'bluetooth.enable', label: 'Bluetooth an', type: 'bool' },
-      { key: 'bluetooth.rpc', label: 'RPC über Bluetooth (BLE-RPC)', type: 'bool' },
-      { key: 'bluetooth.observer', label: 'BLE-Observer', type: 'bool' },
+      { key: 'bluetooth.enable', type: 'bool' },
+      { key: 'bluetooth.rpc', type: 'bool' },
+      { key: 'bluetooth.observer', type: 'bool' },
     ],
   },
   {
     id: 'wifiAp',
-    title: 'WLAN-Access-Point des Geräts',
-    gens: 'Gen2+',
-    hint: 'Nicht für Gen1: Dort schliessen sich AP und WLAN-Client aus. Zum Einschalten verlangt die Firmware (ab 2.0) ein AP-Passwort; es wird beim Anwenden eingegeben.',
-    fields: [{ key: 'wifiAp.enable', label: 'Access-Point an', type: 'bool' }],
+    hint: true,
+    fields: [{ key: 'wifiAp.enable', type: 'bool' }],
   },
   {
     id: 'apRoaming',
-    title: 'AP-Roaming',
-    gens: 'Gen1 und Gen2+',
     fields: [
-      { key: 'apRoaming.enable', label: 'Roaming an', type: 'bool' },
-      { key: 'apRoaming.threshold', label: 'Schwelle (dBm)', type: 'number', min: -100, max: -30, step: 1, placeholder: '-70' },
+      { key: 'apRoaming.enable', type: 'bool' },
+      { key: 'apRoaming.threshold', type: 'number', min: -100, max: -30, step: 1, placeholder: '-70' },
     ],
   },
   {
     id: 'coiot',
-    title: 'CoIoT',
-    gens: 'Gen1',
     fields: [
-      { key: 'coiot.enable', label: 'CoIoT an', type: 'bool' },
-      { key: 'coiot.updatePeriod', label: 'Update-Intervall (s)', type: 'number', min: 1, max: 3600, step: 1 },
-      { key: 'coiot.peer', label: 'Peer (Unicast)', type: 'text', placeholder: '192.168.1.10:5683' },
+      { key: 'coiot.enable', type: 'bool' },
+      { key: 'coiot.updatePeriod', type: 'number', min: 1, max: 3600, step: 1 },
+      { key: 'coiot.peer', type: 'text', placeholder: '192.168.1.10:5683' },
     ],
   },
 ];
 
 /** Script is edited as one unit (name and code are required together). */
 export const SCRIPT_FIELDS: TemplateField[] = [
-  { key: 'script.name', label: 'Name', type: 'text', placeholder: 'heizung' },
-  { key: 'script.code', label: 'Code', type: 'code' },
-  { key: 'script.enable', label: 'Beim Start ausführen', type: 'bool' },
-  { key: 'script.start', label: 'Nach dem Verteilen (neu) starten', type: 'bool' },
+  { key: 'script.name', type: 'text', placeholder: 'heizung' },
+  { key: 'script.code', type: 'code' },
+  { key: 'script.enable', type: 'bool' },
+  { key: 'script.start', type: 'bool' },
 ];
 
-const EXTRA_LABELS: Record<string, string> = {
-  'mqtt.password': 'MQTT-Passwort',
-  'wifiAp.password': 'AP-Passwort',
-  script: 'Script',
-};
+export function groupTitle(id: GroupId): string {
+  return t(`templateGroups.${id}.title`);
+}
 
-export const WIFI_LABEL: Record<WifiInterface, string> = { sta: 'Haupt-WLAN', sta1: 'Zweites WLAN' };
+export function groupGens(id: GroupId): string {
+  return t(`templateGroups.${id}.gens`);
+}
 
-const NETWORK_FIELD_LABEL: Record<string, string> = {
-  mode: 'Adressvergabe',
-  ip: 'IP',
-  netmask: 'Netzmaske',
-  gateway: 'Gateway',
-  dns: 'DNS',
-};
+export function groupHint(g: TemplateGroup): string | null {
+  return g.hint ? translate(`templateGroups.${g.id}.hint`) : null;
+}
+
+export function fieldText(key: FieldKey): string {
+  return t(`templateFields.${key}`);
+}
+
+export function fieldHint(f: TemplateField): string | null {
+  return f.hint ? translate(`templateHints.${f.key}`) : null;
+}
+
+export function wifiLabel(iface: WifiInterface): string {
+  return t(`wifi.${iface}`);
+}
 
 /** "Haupt-WLAN: statisch ab 192.168.10.50/255.255.255.0, Gateway 192.168.10.1" */
 export function describeNetwork(iface: WifiInterface, n: NetworkSettings): string {
-  if (n.mode === 'dhcp') return `${WIFI_LABEL[iface]}: DHCP`;
-  const parts = [`${WIFI_LABEL[iface]}: statisch ab ${n.ipFrom}/${n.netmask}`];
-  if (n.gateway) parts.push(`Gateway ${n.gateway}`);
-  if (n.dns) parts.push(`DNS ${n.dns}`);
+  if (n.mode === 'dhcp') return t('network.describeDhcp', { iface: wifiLabel(iface) });
+  const parts = [t('network.describeStatic', { iface: wifiLabel(iface), ip: n.ipFrom, netmask: n.netmask })];
+  if (n.gateway) parts.push(t('network.describeGateway', { gateway: n.gateway }));
+  if (n.dns) parts.push(t('network.describeDns', { dns: n.dns }));
   return parts.join(', ');
 }
 
+const NETWORK_FIELDS = ['mode', 'ip', 'netmask', 'gateway', 'dns'] as const;
+
 export function fieldLabel(key: string): string {
   const net = /^network\.(sta1?)\.(\w+)$/.exec(key);
-  if (net) return `${WIFI_LABEL[net[1] as WifiInterface]}: ${NETWORK_FIELD_LABEL[net[2] ?? ''] ?? net[2]}`;
+  if (net) {
+    const field = NETWORK_FIELDS.find((f) => f === net[2]);
+    return `${wifiLabel(net[1] as WifiInterface)}: ${field ? t(`network.field.${field}`) : net[2]}`;
+  }
   for (const g of TEMPLATE_GROUPS) {
     const f = g.fields.find((x) => x.key === key);
-    if (f) return `${g.title}: ${f.label}`;
+    if (f) return `${groupTitle(g.id)}: ${fieldText(f.key)}`;
   }
-  return EXTRA_LABELS[key] ?? key;
+  if (key === 'mqtt.password') return t('templateFields.mqtt.password');
+  if (key === 'wifiAp.password') return t('templateFields.wifiAp.password');
+  if (key === 'script') return groupTitle('script');
+  return key;
 }
 
 function getPath(obj: unknown, key: string): unknown {
@@ -157,35 +161,35 @@ export function describeSettings(settings: TemplateSettings): string[] {
   for (const g of TEMPLATE_GROUPS) {
     for (const f of g.fields) {
       const v = getPath(settings, f.key);
-      if (v !== undefined) lines.push(`${g.title}: ${f.label} = ${formatValue(v)}`);
+      if (v !== undefined) lines.push(`${groupTitle(g.id)}: ${fieldText(f.key)} = ${formatValue(v)}`);
     }
   }
-  if (settings.script) lines.push(`Script «${settings.script.name}» verteilen`);
+  if (settings.script) lines.push(t('templateValue.distributeScript', { name: settings.script.name }));
   for (const iface of ['sta', 'sta1'] as const) {
     const n = settings.network?.[iface];
-    if (n) lines.push(`Netzwerk: ${describeNetwork(iface, n)}`);
+    if (n) lines.push(`${groupTitle('network')}: ${describeNetwork(iface, n)}`);
   }
   return lines;
 }
 
 export function groupTitles(settings: TemplateSettings): string[] {
-  const titles = TEMPLATE_GROUPS.filter((g) => settings[g.id] && Object.keys(settings[g.id] as object).length > 0).map((g) => g.title);
-  const extra = [...(settings.script ? ['Script'] : []), ...(settings.network ? ['Netzwerk'] : [])];
+  const titles = TEMPLATE_GROUPS.filter((g) => settings[g.id] && Object.keys(settings[g.id] as object).length > 0).map((g) => groupTitle(g.id));
+  const extra = [...(settings.script ? [groupTitle('script')] : []), ...(settings.network ? [groupTitle('network')] : [])];
   return [...titles, ...extra];
 }
 
 export function formatValue(v: unknown): string {
   if (v === 'dhcp') return 'DHCP';
-  if (v === 'static') return 'statisch';
-  if (v === true) return 'Ein';
-  if (v === false) return 'Aus';
+  if (v === 'static') return t('templateValue.static');
+  if (v === true) return t('templateValue.on');
+  if (v === false) return t('templateValue.off');
   if (v === null || v === undefined || v === '') return '–';
   if (typeof v === 'object') {
     const s = v as { name?: string; enable?: boolean; start?: boolean };
     if (s.name !== undefined) {
       const parts = [`«${s.name}»`];
-      if (s.enable !== undefined) parts.push(`Autostart ${s.enable ? 'an' : 'aus'}`);
-      if (s.start) parts.push('starten');
+      if (s.enable !== undefined) parts.push(s.enable ? t('templateValue.autostartOn') : t('templateValue.autostartOff'));
+      if (s.start) parts.push(t('templateValue.start'));
       return parts.join(', ');
     }
     return JSON.stringify(v);
@@ -196,18 +200,10 @@ export function formatValue(v: unknown): string {
 /** One line per plan item for previews and results. */
 export function itemText(item: PlanItem): string {
   const label = fieldLabel(item.key);
-  if (item.status === 'unsupported') {
-    const why: string = {
-      generation: 'für diese Generation nicht verfügbar',
-      password: 'AP-Passwort nötig, wird nicht eingeschaltet',
-      inactive: 'auf dem Gerät nicht eingerichtet',
-      no_ip: 'keine freie IP im Bereich',
-      gateway_cloud: 'ohne Gateway muss bei Gen1 zuerst die Cloud aus sein',
-      firmware: 'von Modell/Firmware nicht unterstützt',
-    }[item.reason ?? 'firmware'];
-    return `${label}: ${why}`;
+  if (item.status === 'unsupported') return `${label}: ${t(`unsupported.${item.reason ?? 'firmware'}`)}`;
+  if (item.status === 'same') return t('plan.same', { label, value: formatValue(item.target) });
+  if (item.key === 'script') {
+    return t(item.current ? 'plan.scriptUpdate' : 'plan.scriptCreate', { label, value: formatValue(item.target) });
   }
-  if (item.status === 'same') return `${label}: bereits ${formatValue(item.target)}`;
-  if (item.key === 'script') return `${label}: ${item.current ? 'aktualisieren' : 'anlegen'} ${formatValue(item.target)}`;
   return `${label}: ${formatValue(item.current)} → ${formatValue(item.target)}`;
 }

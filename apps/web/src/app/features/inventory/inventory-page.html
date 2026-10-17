@@ -1,18 +1,18 @@
 <div class="head">
-  <h1>Inventar</h1>
+  <h1>{{ 'nav.inventory' | t }}</h1>
   <span class="muted">
     @if (hasFilter()) {
-      {{ filtered().length }} von {{ devices.value().length }} Geräten
+      {{ 'inventory.countFiltered' | t: { shown: filtered().length, count: devices.value().length } }}
     } @else {
-      {{ devices.value().length }} Geräte
+      {{ 'inventory.count' | t: { count: devices.value().length } }}
     }
   </span>
   <span class="spacer"></span>
   @if (devices.value().length > 0) {
-    <nav class="export" aria-label="Export">
-      <a class="button secondary" [href]="'/api/export.csv?site=' + site.siteId()" download>Export CSV</a>
-      <a class="button secondary" [href]="'/api/export.json?site=' + site.siteId()" download title="Inkl. neuster Config pro Gerät">Export JSON</a>
-      <a [href]="'/api/export.json?snapshots=all&site=' + site.siteId()" download>JSON mit allen Snapshots</a>
+    <nav class="export" [attr.aria-label]="'inventory.export' | t">
+      <a class="button secondary" [href]="'/api/export.csv?site=' + site.siteId() + '&lang=' + language()" download>{{ 'inventory.exportCsv' | t }}</a>
+      <a class="button secondary" [href]="'/api/export.json?site=' + site.siteId()" download [title]="'inventory.exportJsonHint' | t">{{ 'inventory.exportJson' | t }}</a>
+      <a [href]="'/api/export.json?snapshots=all&site=' + site.siteId()" download>{{ 'inventory.exportAllSnapshots' | t }}</a>
     </nav>
     <app-firmware-check-panel [devices]="devices.value()" (checked)="applyCheck($event)" (showUpdates)="showOnlyUpdates()" />
   }
@@ -20,61 +20,61 @@
 
 <div class="filters" role="search">
   <label class="field search">
-    <span>Suche</span>
-    <input type="search" placeholder="Name, Geräte-ID, MAC, IP, Modell, Typ, Notizen …" [value]="f.search()" (input)="f.search.set(value($event))" />
+    <span>{{ 'inventory.search' | t }}</span>
+    <input type="search" [placeholder]="'inventory.searchPlaceholder' | t" [value]="f.search()" (input)="f.search.set(value($event))" />
   </label>
   <label class="field">
-    <span>Generation</span>
+    <span>{{ 'inventory.generation' | t }}</span>
     <select (change)="setGen(value($event))">
-      <option value="" [selected]="f.gen() === null">Alle</option>
+      <option value="" [selected]="f.gen() === null">{{ 'common.all' | t }}</option>
       @for (g of gens(); track g) {
         <option [value]="g" [selected]="f.gen() === g">Gen{{ g }}</option>
       }
     </select>
   </label>
   <label class="field">
-    <span>Ort</span>
+    <span>{{ 'columns.location' | t }}</span>
     <select (change)="setLocation(value($event))">
-      <option value="*" [selected]="f.location() === null">Alle</option>
-      <option value="" [selected]="f.location() === ''">(ohne Ort)</option>
+      <option value="*" [selected]="f.location() === null">{{ 'common.all' | t }}</option>
+      <option value="" [selected]="f.location() === ''">{{ 'inventory.noLocation' | t }}</option>
       @for (l of locations(); track l) {
         <option [value]="l" [selected]="f.location() === l">{{ l }}</option>
       }
     </select>
   </label>
   <label class="field">
-    <span>Funktion</span>
+    <span>{{ 'inventory.function' | t }}</span>
     <select name="function" (change)="setFunction(value($event))">
-      <option value="" [selected]="f.function() === null">Alle</option>
+      <option value="" [selected]="f.function() === null">{{ 'common.all' | t }}</option>
       @for (fn of functionFilters; track fn) {
-        <option [value]="fn" [selected]="f.function() === fn">{{ functionFilterText[fn] }}</option>
+        <option [value]="fn" [selected]="f.function() === fn">{{ functionFilterText(fn) }}</option>
       }
     </select>
   </label>
   <label class="field">
-    <span>Status</span>
+    <span>{{ 'columns.state' | t }}</span>
     <select (change)="setState(value($event))">
-      <option value="" [selected]="f.state() === null">Alle</option>
+      <option value="" [selected]="f.state() === null">{{ 'common.all' | t }}</option>
       @for (s of states; track s) {
-        <option [value]="s" [selected]="f.state() === s">{{ stateText[s] }}</option>
+        <option [value]="s" [selected]="f.state() === s">{{ stateText(s) }}</option>
       }
     </select>
   </label>
   @if (updateCount() > 0 || f.onlyUpdates()) {
     <label class="check">
       <input type="checkbox" [checked]="f.onlyUpdates()" (change)="f.onlyUpdates.set($any($event.target).checked)" />
-      nur mit Firmware-Update ({{ updateCount() }})
+      {{ 'inventory.onlyUpdates' | t: { count: updateCount() } }}
     </label>
   }
   @if (hasFilter()) {
-    <button type="button" class="secondary" (click)="f.reset()">Filter zurücksetzen</button>
+    <button type="button" class="secondary" (click)="f.reset()">{{ 'inventory.resetFilter' | t }}</button>
   }
 </div>
 
 @if (devices.error()) {
-  <p class="message error" role="alert">Inventar konnte nicht geladen werden.</p>
+  <p class="message error" role="alert">{{ 'inventory.loadError' | t }}</p>
 } @else if (!devices.isLoading() && devices.value().length === 0) {
-  <p class="muted">Noch keine Geräte erfasst. <a routerLink="/scan">Netzwerk scannen</a></p>
+  <p class="muted">{{ 'inventory.empty' | t }} <a routerLink="/scan">{{ 'inventory.scanNetwork' | t }}</a></p>
 } @else {
   <div class="table-wrap">
     <table class="data-table">
@@ -83,7 +83,7 @@
           @for (col of columns; track col.key) {
             <th [attr.aria-sort]="ariaSort(col.key)">
               <button type="button" class="sort" (click)="f.sortBy(col.key)">
-                {{ col.label }}
+                {{ col.label | t }}
                 @if (f.sortKey() === col.key) {
                   <span aria-hidden="true">{{ f.sortAsc() ? '▲' : '▼' }}</span>
                 }
@@ -96,9 +96,9 @@
         @for (d of filtered(); track d.mac) {
           <tr class="clickable" [class.inactive]="d.state !== 'active'" (click)="open(d)">
             <td>
-              <a [routerLink]="['/inventar', d.mac]" (click)="$event.stopPropagation()">{{ d.name ?? '(ohne Namen)' }}</a>
+              <a [routerLink]="['/inventar', d.mac]" (click)="$event.stopPropagation()">{{ d.name ?? ('common.unnamed' | t) }}</a>
               @if (d.authRequired) {
-                <span class="lock" title="Passwortgeschützt" aria-label="Passwortgeschützt">🔒</span>
+                <span class="lock" [title]="'common.passwordProtected' | t" [attr.aria-label]="'common.passwordProtected' | t">🔒</span>
               }
             </td>
             <td class="mono">{{ d.deviceId ?? '–' }}</td>
@@ -109,7 +109,7 @@
             <td [title]="d.firmware ?? ''">
               {{ shortFirmware(d.firmware) }}
               @if (d.updateStable) {
-                <span class="badge" [title]="'Update auf ' + shortFirmware(d.updateStable) + ' verfügbar'">Update</span>
+                <span class="badge" [title]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">{{ 'inventory.update' | t }}</span>
               }
             </td>
             <td class="kind">
@@ -119,16 +119,16 @@
               @if (d.functions) {
                 <span class="muted fn">{{ functionsText(d.functions) }}</span>
               } @else if (!d.kind) {
-                <span class="muted" title="Config noch nicht gelesen (bei geschützten Geräten nur mit Passwort)">–</span>
+                <span class="muted" [title]="'inventory.functionUnknown' | t">–</span>
               }
             </td>
             <td>{{ d.location ?? '' }}</td>
-            <td><span [class]="'state ' + d.state">{{ stateText[d.state] }}</span></td>
-            <td [title]="d.lastSeen | date: 'dd.MM.yyyy HH:mm:ss'">{{ d.lastSeen | date: 'dd.MM.yy HH:mm' }}</td>
+            <td><span [class]="'state ' + d.state">{{ stateText(d.state) }}</span></td>
+            <td [title]="d.lastSeen | dateTime: 'seconds'">{{ d.lastSeen | dateTime: 'compact' }}</td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="11" class="muted">Keine Geräte passen zum Filter.</td>
+            <td colspan="11" class="muted">{{ 'inventory.noMatch' | t }}</td>
           </tr>
         }
       </tbody>

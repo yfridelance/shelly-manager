@@ -1,58 +1,53 @@
 <button type="button" class="secondary" [disabled]="running()" (click)="toggle()" [attr.aria-expanded]="open()">
-  Alle auf Updates prüfen
+  {{ 'firmwareCheck.button' | t }}
 </button>
 
 @if (open()) {
-  <section class="panel" aria-label="Firmware-Prüfung">
+  <section class="panel" [attr.aria-label]="'firmwareCheck.label' | t">
     @if (!running() && !finished()) {
       <form (submit)="start($event)">
-        <p>
-          {{ candidates().length }} aktive {{ candidates().length === 1 ? 'Gerät' : 'Geräte' }} werden gefragt, ob neuere Firmware
-          verfügbar ist. Dabei wird nichts installiert.
-        </p>
+        <p>{{ 'firmwareCheck.intro' | t: { count: candidates().length } }}</p>
         @if (protectedCount() > 0) {
-          <p class="muted">
-            {{ protectedCount() }} davon {{ protectedCount() === 1 ? 'ist' : 'sind' }} passwortgeschützt. Ohne Passwort
-            {{ protectedCount() === 1 ? 'wird es' : 'werden sie' }} übersprungen.
-          </p>
+          <p class="muted">{{ 'firmwareCheck.protected' | t: { count: protectedCount() } }}</p>
           <div class="credentials">
             <label class="field">
-              <span>Benutzer (nur Gen1)</span>
+              <span>{{ 'common.userGen1' | t }}</span>
               <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
             </label>
             <label class="field">
-              <span>Gerätepasswort (optional)</span>
+              <span>{{ 'firmwareCheck.passwordOptional' | t }}</span>
               <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
             </label>
           </div>
         }
         <div class="buttons">
-          <button type="submit" [disabled]="candidates().length === 0">Prüfung starten</button>
-          <button type="button" class="secondary" (click)="close()">Schliessen</button>
+          <button type="submit" [disabled]="candidates().length === 0">{{ 'firmwareCheck.start' | t }}</button>
+          <button type="button" class="secondary" (click)="close()">{{ 'common.close' | t }}</button>
         </div>
       </form>
     } @else {
       <div class="progress" aria-live="polite">
         <progress [max]="total()" [value]="done()"></progress>
-        <span>{{ done() }} von {{ total() }} geprüft</span>
+        <span>{{ 'firmwareCheck.progress' | t: { done: done(), total: total() } }}</span>
         @if (running()) {
-          <button type="button" class="secondary" (click)="cancel()">Abbrechen</button>
+          <button type="button" class="secondary" (click)="cancel()">{{ 'common.cancel' | t }}</button>
         }
       </div>
       @if (finished()) {
         <p class="summary">
-          <strong>{{ count('update') }}</strong> mit Update, {{ count('current') }} aktuell
+          <strong>{{ count('update') }}</strong> {{ 'firmwareCheck.withUpdate' | t }},
+          {{ 'firmwareCheck.current' | t: { count: count('current') } }}
           @if (betaCount() > 0) {
-            · {{ betaCount() }} mit Beta
+            · {{ 'firmwareCheck.withBeta' | t: { count: betaCount() } }}
           }
           @if (count('error') > 0) {
-            · <span class="error-text">{{ count('error') }} Fehler</span>
+            · <span class="error-text">{{ 'firmwareCheck.errors' | t: { count: count('error') } }}</span>
           }
           @if (count('skipped') > 0) {
-            · {{ count('skipped') }} übersprungen
+            · {{ 'firmwareCheck.skipped' | t: { count: count('skipped') } }}
           }
           @if (done() < total()) {
-            · <span class="muted">abgebrochen</span>
+            · <span class="muted">{{ 'firmwareCheck.cancelled' | t }}</span>
           }
         </p>
         @if (problems().length > 0) {
@@ -67,9 +62,9 @@
         }
         <div class="buttons">
           @if (count('update') > 0) {
-            <button type="button" (click)="showUpdates.emit()">Nur Geräte mit Update anzeigen</button>
+            <button type="button" (click)="showUpdates.emit()">{{ 'firmwareCheck.showUpdates' | t }}</button>
           }
-          <button type="button" class="secondary" (click)="close()">Schliessen</button>
+          <button type="button" class="secondary" (click)="close()">{{ 'common.close' | t }}</button>
         </div>
       }
     }

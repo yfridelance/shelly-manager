@@ -27,7 +27,7 @@ Die App ist danach unter **http://localhost:8080** erreichbar.
 Eigenschaften des Images:
 
 - Mehrstufiger Build auf `node:24-bookworm-slim`; im Image steckt nur der Server mit seinen Produktionsabhängigkeiten
-  und das gebaute Web-Frontend.
+  und das gebaute Web-Frontend, dazu die Übersetzungsdateien (`apps/web/src/locale`) für die Texte des CSV-Exports.
 - Läuft als Benutzer `node`, nicht als root.
 - Die SQLite-Datenbank liegt in `/data`, gemountet als benanntes Volume `shelly-data`
   (Docker-Name: `shelly-manager_shelly-data`).

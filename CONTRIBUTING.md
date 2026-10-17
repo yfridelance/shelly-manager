@@ -13,7 +13,8 @@ bugs and device reports in [Issues](https://github.com/yfridelance/shelly-manage
   valuable contribution right now, especially for models, firmware versions and template settings (static IP,
   Wi-Fi AP, scripts) that have not been tried yet. Use the «Device report» issue template.
 - **Report bugs** with the bug report template.
-- **Translate.** The UI and the documentation are currently in German. An English UI is the next big step.
+- **Translate.** The UI is in German; translations are plain JSON files (see [How to translate](#how-to-translate)).
+  The documentation is in German too.
 - **Code**: see the open issues. Issues labelled `good first issue` are a good start.
 
 ## Development setup
@@ -30,6 +31,25 @@ Scan `10.99.0.0/24` in the UI to find the mock devices. Details on architecture,
 [docs/entwicklung.md](docs/entwicklung.md) (German). [CLAUDE.md](CLAUDE.md) is the binding reference for rules,
 the data model, the REST API and the Shelly API notes.
 
+## How to translate
+
+All UI texts live in one JSON file per language in [`apps/web/src/locale/`](apps/web/src/locale/). No code needs
+to be touched except one line to register a new language.
+
+1. Copy `de.json` (the source language, Swiss German spelling) to `<code>.json`, e.g. `en.json`, and translate the
+   values. Keep the keys. Keys you leave out show the German text.
+2. Keep placeholders such as `{{count}}` or `{{name}}` unchanged; you may reorder them. Words in `**…**` are shown
+   in bold.
+3. Plural forms: keys ending in `_one` / `_other` are chosen by `{{count}}`. Use the
+   [plural categories](https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html) of your
+   language (`_few`, `_many` …) where needed.
+4. New language: add one line to `LANGUAGES` in
+   [`apps/web/src/app/core/i18n/languages.ts`](apps/web/src/app/core/i18n/languages.ts) (code, locale for dates and
+   numbers, name in the language itself). The language switcher in the header appears as soon as there are two.
+5. Run `npm test -w apps/web`: a test checks that your file only uses keys and placeholders that exist in `de.json`.
+
+The CSV export uses the same files (`export.csv.*`), so it follows the language chosen in the UI.
+
 ## Pull requests
 
 1. Open an issue first for larger changes, so we can agree on the approach.
@@ -43,7 +63,8 @@ the data model, the REST API and the Shelly API notes.
 ### Conventions
 
 - TypeScript `strict`, no `any` without a comment explaining why.
-- Code, identifiers and comments in English. UI texts are currently in German with Swiss spelling (no «ß»).
+- Code, identifiers and comments in English. UI texts only in `apps/web/src/locale/*.json` (keys in the code); the
+  source language is German with Swiss spelling (no «ß»).
 - Small, focused modules; device adapters, scan, database and HTTP routes stay separate.
 - Store raw device answers unchanged; normalise only into separate fields.
 - New database changes go into a new numbered migration in `apps/server/migrations/`; never edit an existing one.

@@ -1,3 +1,5 @@
+import { translator, type Translate } from '../export/locale.js';
+
 /**
  * What a device does, derived from its raw config and status (newest snapshot): outputs by kind,
  * energy meters, inputs and sensors, and whether it measures power. Never asks the device itself.
@@ -77,20 +79,23 @@ export function deriveFunctions(gen: number, config: unknown, status: unknown): 
   return gen === 1 ? gen1Functions(config, status) : rpcFunctions(config, status);
 }
 
-/** German summary for exports, e.g. "2× Schalter · Messung" (the web UI has its own copy in core/texts). */
-export function describeFunctions(f: DeviceFunctions | null): string {
+/** Summary for exports, e.g. "2× Schalter · Messung"; same keys as the web UI (core/texts.ts). Default German. */
+export function describeFunctions(f: DeviceFunctions | null, t: Translate = translator(undefined)): string {
   if (!f) return '';
-  const n = (count: number, label: string): string[] => (count === 0 ? [] : [count > 1 ? `${count}× ${label}` : label]);
+  const n = (count: number, key: string): string[] => {
+    const label = t(`functions.${key}`);
+    return count === 0 ? [] : [count > 1 ? t('functions.count', { count, label }) : label];
+  };
   const outputs = f.switch + f.cover + f.light;
   const parts = [
-    ...n(f.cover, 'Rollladen'),
-    ...n(f.switch, 'Schalter'),
-    ...n(f.light, 'Licht'),
-    ...(f.meter > 0 ? ['Energiezähler'] : []),
-    ...n(f.sensor, 'Sensor'),
+    ...n(f.cover, 'cover'),
+    ...n(f.switch, 'switch'),
+    ...n(f.light, 'light'),
+    ...(f.meter > 0 ? [t('functions.meter')] : []),
+    ...n(f.sensor, 'sensor'),
     // Inputs only describe the device when it has nothing else (i3, Plus i4).
-    ...(outputs + f.meter + f.sensor === 0 ? n(f.input, 'Eingang') : []),
+    ...(outputs + f.meter + f.sensor === 0 ? n(f.input, 'input') : []),
   ];
-  if (f.metering && f.meter === 0) parts.push('Messung');
+  if (f.metering && f.meter === 0) parts.push(t('functions.metering'));
   return parts.join(' · ');
 }
