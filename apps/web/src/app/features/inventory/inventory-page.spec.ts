@@ -8,13 +8,14 @@ import { InventoryFilters } from './inventory-filters';
 
 const device = (over: Partial<Device>): Device => ({
   mac: '000000000000', ip: null, gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null, siteId: 1,
-  authRequired: false, location: null, notes: null, state: 'active',
+  authRequired: false, location: null, notes: null, kind: null, functions: null, state: 'active',
   firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
   updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });
 
 const DEVICES: Device[] = [
-  device({ mac: 'A8032AB12345', name: 'Boiler', gen: 2, ip: '10.0.0.20', location: 'Keller', notes: 'Sicherung F3', deviceId: 'shellyplus1pm-a8032ab12345' }),
+  device({ mac: 'A8032AB12345', name: 'Boiler', gen: 2, ip: '10.0.0.20', location: 'Keller', notes: 'Sicherung F3', deviceId: 'shellyplus1pm-a8032ab12345',
+    kind: 'Boiler', functions: { switch: 1, cover: 0, light: 0, meter: 0, input: 1, sensor: 0, metering: true } }),
   device({
     mac: 'E868E7A1B2C3', name: 'Licht Garten', gen: 1, ip: '10.0.0.3', firmware: '20230913-112003/v1.14.0-gcb84623',
     updateStable: '20240819-074343/v1.14.1-gcb84623',
@@ -70,6 +71,24 @@ describe('InventoryPage', () => {
     await fixture.whenStable();
     expect(names()).toEqual(['(ohne Namen)', 'Boiler', 'Licht Garten']);
     filters.sortBy('name');
+  });
+
+  it('shows type and function and filters by function', async () => {
+    const { fixture, el, names } = await render();
+    const kindCell = [...el.querySelectorAll('tbody tr')].find((r) => r.textContent?.includes('Boiler'))?.querySelector('td.kind');
+    expect([...(kindCell?.querySelectorAll('span') ?? [])].map((sp) => sp.textContent?.trim())).toEqual(['Boiler', 'Schalter · Messung']);
+    const filters = TestBed.inject(InventoryFilters);
+    filters.function.set('metering');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Boiler']);
+    filters.function.set('unknown');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Licht Garten', '(ohne Namen)']);
+    filters.reset();
+    filters.search.set('messung');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Boiler']);
+    filters.reset();
   });
 
   it('shows the device id and finds devices by it', async () => {

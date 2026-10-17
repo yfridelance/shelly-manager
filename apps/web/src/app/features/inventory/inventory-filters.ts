@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import type { DeviceState } from '../../core/api.types';
+import type { FunctionFilter } from '../../core/texts';
 
-export type SortKey = 'name' | 'deviceId' | 'model' | 'gen' | 'ip' | 'mac' | 'firmware' | 'location' | 'state' | 'lastSeen';
+export type SortKey = 'name' | 'deviceId' | 'model' | 'gen' | 'ip' | 'mac' | 'firmware' | 'kind' | 'location' | 'state' | 'lastSeen';
 
 /** Filter and sort state, kept across navigation (list -> detail -> back). */
 @Injectable({ providedIn: 'root' })
@@ -11,6 +12,7 @@ export class InventoryFilters {
   /** null: all, '': without location. */
   readonly location = signal<string | null>(null);
   readonly state = signal<DeviceState | null>(null);
+  readonly function = signal<FunctionFilter | null>(null);
   readonly onlyUpdates = signal(false);
   readonly sortKey = signal<SortKey>('name');
   readonly sortAsc = signal(true);
@@ -28,6 +30,7 @@ export class InventoryFilters {
     this.gen.set(null);
     this.location.set(null);
     this.state.set(null);
+    this.function.set(null);
     this.onlyUpdates.set(false);
   }
 }

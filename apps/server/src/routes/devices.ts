@@ -10,6 +10,7 @@ import { DeviceActionError, type DeviceService } from '../devices/device-service
 import { getTemplate } from '../db/templates.js';
 import { PlanItemSchema } from './templates.js';
 import { normalizeMac } from '../shelly/mac.js';
+import type { DeviceFunctions } from '../devices/functions.js';
 
 const Nullable = <T extends Parameters<typeof Type.Union>[0][number]>(t: T) => Type.Union([t, Type.Null()]);
 
@@ -29,6 +30,20 @@ export const DeviceSchema = Type.Object({
   authRequired: Type.Boolean(),
   location: Nullable(Type.String()),
   notes: Nullable(Type.String()),
+  /** What is connected (local, free text, «Typ» in the UI). */
+  kind: Nullable(Type.String()),
+  /** Derived from the newest snapshot; null while the config is unknown. */
+  functions: Nullable(
+    Type.Object({
+      switch: Type.Integer(),
+      cover: Type.Integer(),
+      light: Type.Integer(),
+      meter: Type.Integer(),
+      input: Type.Integer(),
+      sensor: Type.Integer(),
+      metering: Type.Boolean(),
+    }),
+  ),
   state: Type.Union([Type.Literal('active'), Type.Literal('reset'), Type.Literal('missing')]),
   firstSeen: Type.String(),
   lastSeen: Type.String(),
@@ -72,6 +87,7 @@ const PatchBody = Type.Object(
     name: LocalText(200),
     location: LocalText(200),
     notes: LocalText(10_000),
+    kind: LocalText(100),
     /** Move the device to another site. */
     siteId: Type.Optional(Type.Integer({ minimum: 1 })),
   },
@@ -114,6 +130,8 @@ export function toDeviceDto(row: DeviceListRow) {
     authRequired: row.auth_required === 1,
     location: row.location,
     notes: row.notes,
+    kind: row.kind,
+    functions: row.functions === null ? null : (JSON.parse(row.functions) as DeviceFunctions),
     state: row.state,
     firstSeen: row.first_seen,
     lastSeen: row.last_seen,

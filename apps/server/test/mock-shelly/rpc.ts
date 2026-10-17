@@ -322,7 +322,7 @@ export class RpcDevice implements DeviceHandler {
       'input:0': { id: 0, name: null, type: 'switch', enable: true, invert: false, factory_reset: true },
       knx: { enable: false, ia: '15.15.255', routing: { addr: '224.0.23.12:3671' } },
       mqtt: { enable: false, server: null, client_id: this.id, user: null, ssl_ca: null, topic_prefix: this.id, rpc_ntf: true, status_ntf: false, use_client_cert: false, enable_rpc: true, enable_control: true },
-      'switch:0': { id: 0, name: null, in_mode: 'follow', initial_state: 'match_input', auto_on: false, auto_on_delay: 60, auto_off: false, auto_off_delay: 60, power_limit: 4480, voltage_limit: 280, autorecover_voltage_errors: false, current_limit: 16 },
+      ...this.outputConfig(),
       sys: {
         device: { name: this.name, mac: this.spec.mac, fw_id: this.fwId(), discoverable: true, eco_mode: false },
         location: { tz: 'Europe/Zurich', lat: 47.3769, lon: 8.5417 },
@@ -342,13 +342,38 @@ export class RpcDevice implements DeviceHandler {
     };
   }
 
+  /** Switch or cover components (device profile), like the real models. */
+  private outputConfig(): Record<string, unknown> {
+    if (this.spec.profile === 'cover') {
+      return { 'cover:0': { id: 0, name: null, motor: { idle_power_thr: 2 }, maxtime_open: 60, maxtime_close: 60, initial_state: 'stopped', invert_directions: false, in_mode: 'dual', swap_inputs: false, power_limit: 4480, voltage_limit: 280, current_limit: 10 } };
+    }
+    return Object.fromEntries(
+      Array.from({ length: this.spec.switches ?? 1 }, (_, id) => [
+        `switch:${id}`,
+        { id, name: null, in_mode: 'follow', initial_state: 'match_input', auto_on: false, auto_on_delay: 60, auto_off: false, auto_off_delay: 60, power_limit: 4480, voltage_limit: 280, autorecover_voltage_errors: false, current_limit: 16 },
+      ]),
+    );
+  }
+
+  /** Only metering models report apower/aenergy (official Gen2 docs). */
+  private outputStatus(): Record<string, unknown> {
+    const metering = this.spec.metering !== false;
+    const power = metering ? { apower: 0, voltage: 231.4, freq: 50, current: 0, aenergy: { total: 1234.567, by_minute: [0, 0, 0], minute_ts: 1760445240 } } : {};
+    if (this.spec.profile === 'cover') {
+      return { 'cover:0': { id: 0, source: 'init', state: 'stopped', ...power, pos_control: true, current_pos: 100, temperature: { tC: 41.2, tF: 106.2 } } };
+    }
+    return Object.fromEntries(
+      Array.from({ length: this.spec.switches ?? 1 }, (_, id) => [`switch:${id}`, { id, source: 'init', output: false, ...power, temperature: { tC: 41.2, tF: 106.2 } }]),
+    );
+  }
+
   private status(): Record<string, unknown> {
     return {
       ble: {},
       cloud: { connected: false },
       'input:0': { id: 0, state: false },
       mqtt: { connected: false },
-      'switch:0': { id: 0, source: 'init', output: false, apower: 0, voltage: 231.4, freq: 50, current: 0, aenergy: { total: 1234.567, by_minute: [0, 0, 0], minute_ts: 1760445240 }, temperature: { tC: 41.2, tF: 106.2 } },
+      ...this.outputStatus(),
       sys: { mac: this.spec.mac, restart_required: false, time: '12:34', unixtime: 1760445240, uptime: this.uptime, ram_size: 260000, ram_free: 140000, fs_size: 458752, fs_free: 135168, cfg_rev: 12, kvs_rev: 0, schedule_rev: 0, webhook_rev: 0, available_updates: this.availableUpdates(false), reset_reason: 3 },
       wifi: { sta_ip: this.wifiConfigured ? '127.0.0.1' : null, status: this.wifiConfigured ? 'got ip' : 'disconnected', ssid: this.wifiConfigured ? 'Haus' : null, rssi: -58 },
       ws: { connected: false },

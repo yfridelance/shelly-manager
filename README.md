@@ -6,7 +6,8 @@ Selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) im lokalen Netz fin
 
 - **Scan** eines IP-Bereichs mit Erkennung von Generation, Modell, Geräte-ID, MAC, Firmware und Name
 - **Standorte**: mehrere Häuser oder Kunden mit getrenntem Inventar, eigenen Templates und eigenem Protokoll
-- **Inventar** mit Suche, Filtern, Ort und Notizen pro Gerät, Export als CSV und JSON
+- **Inventar** mit Suche, Filtern, Ort, Typ und Notizen pro Gerät, automatisch erkannter Funktion (Schalter,
+  Rollladen, Licht, Energiezähler, Messung), Export als CSV und JSON
 - **Config-Snapshots** mit Historie und Vergleich zweier Stände
 - **Neustart, Firmware-Updates** und **Werksreset pro Gerät** mit Schutzmechanismen
   (Bestätigung per MAC, automatischer Snapshot vorher, kein Sammel-Reset)

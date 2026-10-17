@@ -90,15 +90,33 @@ letzten (siehe [Gerätedetail](#konfiguration-und-snapshots)).
 
 ## 3. Inventar
 
-Die Tabelle zeigt alle Geräte des gewählten [Standorts](#13-standorte): Name, Geräte-ID, Modell, Generation, IP, MAC, Firmware, Ort, Status
-und «zuletzt gesehen». Ein Klick auf eine Zeile öffnet die [Detailansicht](#4-gerätedetail). Ein 🔒 hinter dem
+Die Tabelle zeigt alle Geräte des gewählten [Standorts](#13-standorte): Name, Geräte-ID, Modell, Generation, IP, MAC, Firmware,
+Typ / Funktion, Ort, Status und «zuletzt gesehen». Ein Klick auf eine Zeile öffnet die [Detailansicht](#4-gerätedetail). Ein 🔒 hinter dem
 Namen bedeutet: passwortgeschützt.
 
 ![Inventar mit Geräte-ID, Ort und Update-Hinweisen](img/inventar.png)
 
-- **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Ort, Notizen und Firmware.
-- **Filter:** Generation, Ort (auch «ohne Ort»), Status (Aktiv, Vermisst, Zurückgesetzt) und
+- **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Typ, Funktion, Ort, Notizen
+  und Firmware.
+- **Filter:** Generation, Ort (auch «ohne Ort»), Funktion, Status (Aktiv, Vermisst, Zurückgesetzt) und
   «nur mit Firmware-Update».
+- **Typ / Funktion:** oben der **Typ**, den du in der Detailansicht festlegst (was angeschlossen ist: Licht,
+  Storen, Boiler …), darunter grau die **Funktion**, die die App aus der Config des Geräts ableitet:
+
+  | Funktion | erkannt an (Gen1 / Gen2+) |
+  |---|---|
+  | Schalter | Relais (`relays`) / Komponenten `switch:N` |
+  | Rollladen | Shelly 2/2.5 im Modus `roller` / `cover:N` (z.B. Plus 2PM im Cover-Profil) |
+  | Licht | `lights` (Dimmer, RGBW, Bulb) / `light`, `rgb`, `rgbw`, `cct` |
+  | Energiezähler | `emeters` (Shelly EM, 3EM) / `em`, `em1`, `pm1` (Pro 3EM, PM Mini) |
+  | Sensor | H&T, Flood, Smoke, Tür/Fenster / `temperature`, `humidity`, `illuminance` … |
+  | Eingang | nur Eingänge, keine Ausgänge (i3, Plus i4) |
+  | Messung | Ausgang mit Leistungsmessung: Energiezähler `total` (1PM, 2.5) / `apower` im Status (PM-Modelle) |
+
+  Ein Shelly 1 ohne PM meldet zwar einen Leistungswert, aber nur einen fest eingestellten; er zählt nicht als
+  Messung. Die Funktion folgt jedem neuen Snapshot: Stellt jemand am Gerät das Profil um (z.B. Plus 2PM von
+  Schalter auf Rollladen), zeigt der nächste Scan die neue Funktion. «–» heisst: Config noch nicht gelesen (bei
+  geschützten Geräten nur mit Passwort, siehe [Scan](#2-netzwerk-scannen)).
 - **Sortieren:** Klick auf eine Spaltenüberschrift, nochmals klicken kehrt die Reihenfolge um.
   Filter und Sortierung bleiben erhalten, wenn du ins Detail und zurück wechselst.
 - **Geräte-ID:** Gen2+ zum Beispiel `shellyplus1pm-a8032ab12345`, Gen1 der Hostname wie `shelly1-A1B2C3`.
@@ -122,14 +140,15 @@ Status:
 
 ### Gerät
 
-Geräte-ID, MAC, IP (als Link zur Weboberfläche des Geräts), Modell, Generation, Firmware, Schutz, der Name auf dem
+Geräte-ID, MAC, IP (als Link zur Weboberfläche des Geräts), Modell, Funktion, Generation, Firmware, Schutz, der Name auf dem
 Gerät sowie «erstmals» und «zuletzt gesehen».
 
 ### Dokumentation
 
-**Name, Ort und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät**. Klick auf «Bearbeiten»,
+**Name, Ort, Typ und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät**. Klick auf «Bearbeiten»,
 ändern, mit Enter (bei Notizen Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Ort (Raum, z.B.
-«Keller») schlägt die App bereits verwendete Orte des Standorts vor.
+«Keller») schlägt die App bereits verwendete Orte des Standorts vor, beim Typ (was angeschlossen ist, z.B.
+«Storen» oder «Boiler») die bereits verwendeten Typen plus Licht, Storen und Steckdose.
 
 Unter **Gerät → Standort** lässt sich das Gerät nach einer Rückfrage in einen anderen [Standort](#13-standorte)
 verschieben.
@@ -334,7 +353,7 @@ nachher. Passwörter erscheinen nie im Klartext; dass ein Template ein Passwort 
 
 Im Inventar oben rechts:
 
-- **Export CSV:** Übersicht für Excel mit allen Spalten des Inventars plus Name auf Gerät, Notizen,
+- **Export CSV:** Übersicht für Excel mit allen Spalten des Inventars (Typ und Funktion getrennt) plus Name auf Gerät, Notizen,
   passwortgeschützt, erstmals/zuletzt gesehen, letzter Snapshot, Zeitpunkt des Werksresets und verfügbares
   Firmware-Update. Format: Semikolon, UTF-8 mit BOM (Umlaute bleiben in Excel korrekt), Zeiten in UTC.
 - **Export JSON:** alle Geräte mit der neusten Config, dem Status und der Geräteinfo, unverändert wie vom Gerät.

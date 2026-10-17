@@ -56,6 +56,17 @@ export interface ApiError {
 
 export type DeviceState = 'active' | 'reset' | 'missing';
 
+/** Outputs, meters, inputs and sensors from the device's config (server: src/devices/functions.ts). */
+export interface DeviceFunctions {
+  switch: number;
+  cover: number;
+  light: number;
+  meter: number;
+  input: number;
+  sensor: number;
+  metering: boolean;
+}
+
 export interface Device {
   mac: string;
   ip: string | null;
@@ -72,6 +83,10 @@ export interface Device {
   authRequired: boolean;
   location: string | null;
   notes: string | null;
+  /** What is connected (local, free text, «Typ»). */
+  kind: string | null;
+  /** Derived from the newest snapshot; null while the config is unknown. */
+  functions: DeviceFunctions | null;
   state: DeviceState;
   firstSeen: string;
   lastSeen: string;
@@ -107,7 +122,7 @@ export interface DeviceDetails {
   snapshots: SnapshotMeta[];
 }
 
-export type LocalDeviceFields = Partial<Pick<Device, 'name' | 'location' | 'notes'>>;
+export type LocalDeviceFields = Partial<Pick<Device, 'name' | 'location' | 'notes' | 'kind'>>;
 
 export type ActionType = 'snapshot' | 'reboot' | 'factory_reset';
 

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { runMigrations } from './migrate.js';
+import { backfillFunctions } from './snapshots.js';
 
 export type Db = Database.Database;
 
@@ -14,5 +15,6 @@ export function openDatabase(file: string): Db {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   runMigrations(db);
+  backfillFunctions(db);
   return db;
 }

@@ -102,12 +102,12 @@ export async function startMockFleet(specs: MockDeviceSpec[]): Promise<MockFleet
 /** A small mixed fleet: Gen1 with/without Basic auth, Gen2/3/4 with/without Digest auth. */
 export const DEFAULT_FLEET: MockDeviceSpec[] = [
   { kind: 'gen1', mac: 'E868E7A1B2C3', type: 'SHSW-1', name: 'Licht Keller', updates: { stable: '20240819-074343/v1.14.1-gcb84623' } },
-  { kind: 'gen1', mac: 'E868E7D4E5F6', type: 'SHSW-25', name: 'Storen Wohnzimmer', auth: { username: 'admin', password: 'gen1-secret' } },
+  { kind: 'gen1', mac: 'E868E7D4E5F6', type: 'SHSW-25', name: 'Storen Wohnzimmer', mode: 'roller', metering: true, auth: { username: 'admin', password: 'gen1-secret' } },
   {
     kind: 'rpc', gen: 2, mac: 'A8032AB12345', model: 'SNSW-001P16EU', app: 'Plus1PM', name: 'Boiler',
     updates: { stable: { version: '1.5.0', buildId: '20250120-090000/1.5.0-g1a2b3c4' }, beta: { version: '1.6.0-beta1', buildId: '20250301-120000/1.6.0-beta1-g5d6e7f8' } },
   },
-  { kind: 'rpc', gen: 2, mac: 'A8032AB67890', model: 'SNSW-102P16EU', app: 'Plus2PM', name: 'Rollladen Büro', password: 'gen2-secret' },
-  { kind: 'rpc', gen: 3, mac: '34CDB0A1A1A1', model: 'S3SW-001X16EU', app: 'Mini1G3', name: null, legacyShellyEndpoint: true },
+  { kind: 'rpc', gen: 2, mac: 'A8032AB67890', model: 'SNSW-102P16EU', app: 'Plus2PM', name: 'Rollladen Büro', profile: 'cover', password: 'gen2-secret' },
+  { kind: 'rpc', gen: 3, mac: '34CDB0A1A1A1', model: 'S3SW-001X16EU', app: 'Mini1G3', name: null, metering: false, legacyShellyEndpoint: true },
   { kind: 'rpc', gen: 4, mac: '7C2C67B2B2B2', model: 'S4SW-001P16EU', app: 'S1PMG4', name: 'Garage', password: 'gen4-secret' },
 ];

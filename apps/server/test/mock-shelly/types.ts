@@ -42,6 +42,10 @@ export interface Gen1Spec extends BaseSpec {
   auth?: { username: string; password: string };
   /** Newer firmware ids offered via /ota and status.update. */
   updates?: { stable?: string; beta?: string };
+  /** Shelly 2/2.5: two relays or one roller (`mode` in /settings). Default: one relay, no mode. */
+  mode?: 'relay' | 'roller';
+  /** Power metering with energy counter (`meters[].total`), like 1PM/2.5. */
+  metering?: boolean;
 }
 
 export interface RpcSpec extends BaseSpec {
@@ -58,6 +62,12 @@ export interface RpcSpec extends BaseSpec {
   password?: string;
   /** Older firmware does not include `name` in /shelly. */
   legacyShellyEndpoint?: boolean;
+  /** Cover profile (Plus2PM): `cover:0` instead of switches. Default: switch. */
+  profile?: 'switch' | 'cover';
+  /** Number of switches in the switch profile. Default 1. */
+  switches?: number;
+  /** Power metering (`apower` in the status), like the PM models. Default true. */
+  metering?: boolean;
   /** Newer firmware offered via Shelly.CheckForUpdate and sys.available_updates. */
   updates?: { stable?: { version: string; buildId: string }; beta?: { version: string; buildId: string } };
 }

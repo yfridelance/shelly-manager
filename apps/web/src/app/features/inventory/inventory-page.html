@@ -21,7 +21,7 @@
 <div class="filters" role="search">
   <label class="field search">
     <span>Suche</span>
-    <input type="search" placeholder="Name, Geräte-ID, MAC, IP, Modell, Notizen …" [value]="f.search()" (input)="f.search.set(value($event))" />
+    <input type="search" placeholder="Name, Geräte-ID, MAC, IP, Modell, Typ, Notizen …" [value]="f.search()" (input)="f.search.set(value($event))" />
   </label>
   <label class="field">
     <span>Generation</span>
@@ -39,6 +39,15 @@
       <option value="" [selected]="f.location() === ''">(ohne Ort)</option>
       @for (l of locations(); track l) {
         <option [value]="l" [selected]="f.location() === l">{{ l }}</option>
+      }
+    </select>
+  </label>
+  <label class="field">
+    <span>Funktion</span>
+    <select name="function" (change)="setFunction(value($event))">
+      <option value="" [selected]="f.function() === null">Alle</option>
+      @for (fn of functionFilters; track fn) {
+        <option [value]="fn" [selected]="f.function() === fn">{{ functionFilterText[fn] }}</option>
       }
     </select>
   </label>
@@ -103,13 +112,23 @@
                 <span class="badge" [title]="'Update auf ' + shortFirmware(d.updateStable) + ' verfügbar'">Update</span>
               }
             </td>
+            <td class="kind">
+              @if (d.kind) {
+                <span>{{ d.kind }}</span>
+              }
+              @if (d.functions) {
+                <span class="muted fn">{{ functionsText(d.functions) }}</span>
+              } @else if (!d.kind) {
+                <span class="muted" title="Config noch nicht gelesen (bei geschützten Geräten nur mit Passwort)">–</span>
+              }
+            </td>
             <td>{{ d.location ?? '' }}</td>
             <td><span [class]="'state ' + d.state">{{ stateText[d.state] }}</span></td>
-            <td>{{ d.lastSeen | date: 'dd.MM.yyyy HH:mm' }}</td>
+            <td [title]="d.lastSeen | date: 'dd.MM.yyyy HH:mm:ss'">{{ d.lastSeen | date: 'dd.MM.yy HH:mm' }}</td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="10" class="muted">Keine Geräte passen zum Filter.</td>
+            <td colspan="11" class="muted">Keine Geräte passen zum Filter.</td>
           </tr>
         }
       </tbody>

@@ -2,6 +2,7 @@ import type { Db } from '../db/database.js';
 import { listDevices, type DeviceListRow } from '../db/devices.js';
 import { listSites } from '../db/sites.js';
 import { toCsv } from './csv.js';
+import { describeFunctions, type DeviceFunctions } from '../devices/functions.js';
 
 interface SnapshotJsonRow {
   id: number;
@@ -34,6 +35,8 @@ function resetTimes(db: Db): Map<string, string> {
   return new Map(rows.map((r) => [r.mac, r.finished_at]));
 }
 
+const functionsOf = (d: DeviceListRow): DeviceFunctions | null => (d.functions === null ? null : (JSON.parse(d.functions) as DeviceFunctions));
+
 function deviceJson(d: DeviceListRow, resetAt: string | undefined) {
   return {
     mac: d.mac,
@@ -49,6 +52,8 @@ function deviceJson(d: DeviceListRow, resetAt: string | undefined) {
     authRequired: d.auth_required === 1,
     location: d.location,
     notes: d.notes,
+    kind: d.kind,
+    functions: functionsOf(d),
     state: d.state,
     firstSeen: d.first_seen,
     lastSeen: d.last_seen,
@@ -112,11 +117,13 @@ export function buildCsvExport(db: Db, siteId?: number): string {
       'Geräte-ID',
       'Modell',
       'App',
+      'Funktion',
       'Generation',
       'IP',
       'MAC',
       'Firmware',
       'Ort',
+      'Typ',
       'Notizen',
       'Status',
       'Passwortgeschützt',
@@ -133,11 +140,13 @@ export function buildCsvExport(db: Db, siteId?: number): string {
       d.device_id,
       d.model,
       d.app,
+      describeFunctions(functionsOf(d)),
       d.gen,
       d.ip,
       formatMac(d.mac),
       d.firmware,
       d.location,
+      d.kind,
       d.notes,
       STATE_TEXT[d.state] ?? d.state,
       d.auth_required === 1 ? 'ja' : 'nein',

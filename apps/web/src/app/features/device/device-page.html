@@ -52,6 +52,14 @@
         </dd>
         <dt>Modell</dt>
         <dd>{{ d.model ?? '–' }} @if (d.app) { <span class="muted">({{ d.app }})</span> }</dd>
+        <dt>Funktion</dt>
+        <dd>
+          @if (d.functions) {
+            {{ functionsText(d.functions) || '–' }}
+          } @else {
+            <span class="muted" title="Wird aus der Config abgeleitet; bei geschützten Geräten erst nach «Config neu einlesen» mit Passwort.">noch unbekannt</span>
+          }
+        </dd>
         <dt>Generation</dt>
         <dd>Gen{{ d.gen }}</dd>
         <dt>Firmware</dt>
@@ -75,6 +83,11 @@
           <option [value]="l"></option>
         }
       </datalist>
+      <datalist id="kind-suggestions">
+        @for (k of kindSuggestions(); track k) {
+          <option [value]="k"></option>
+        }
+      </datalist>
       <div class="doc-field">
         <h3>Name</h3>
         <app-editable-field label="Name" [value]="d.name" [saving]="saving()" (saved)="saveField('name', $event)" />
@@ -88,6 +101,10 @@
           [saving]="saving()"
           (saved)="saveField('location', $event)"
         />
+      </div>
+      <div class="doc-field">
+        <h3 title="Was angeschlossen ist, z.B. Licht, Storen, Boiler, Steckdose">Typ</h3>
+        <app-editable-field label="Typ" listId="kind-suggestions" [value]="d.kind" [saving]="saving()" (saved)="saveField('kind', $event)" />
       </div>
       <div class="doc-field">
         <h3>Notizen</h3>

@@ -240,9 +240,12 @@ export class Gen1Device implements DeviceHandler {
       led_status_disable: false,
       debug_enable: false,
       allow_cross_origin: false,
-      relays: [
-        { name: null, appliance_type: 'General', ison: false, has_timer: false, default_state: 'off', btn_type: 'toggle', btn_reverse: 0, auto_on: 0, auto_off: 0, power: 0, schedule: false, schedule_rules: [] },
-      ],
+      ...(this.spec.mode ? { mode: this.spec.mode } : {}),
+      relays: Array.from({ length: this.spec.mode ? 2 : 1 }, () => (
+        { name: null, appliance_type: 'General', ison: false, has_timer: false, default_state: 'off', btn_type: 'toggle', btn_reverse: 0, auto_on: 0, auto_off: 0, power: 0, schedule: false, schedule_rules: [] }
+      )),
+      // Shelly 2/2.5 list relays and rollers in /settings in both modes (Gen1 docs).
+      ...(this.spec.mode ? { rollers: [{ maxtime: 20, maxtime_open: 20, maxtime_close: 20, default_state: 'stop', swap: false, input_mode: 'openclose', positioning: true }] } : {}),
       eco_mode_enabled: true,
     };
   }
@@ -260,8 +263,14 @@ export class Gen1Device implements DeviceHandler {
       mac: this.spec.mac,
       cfg_changed_cnt: 0,
       actions_stats: { skipped: 0 },
-      relays: [{ ison: false, has_timer: false, timer_started: 0, timer_duration: 0, timer_remaining: 0, source: 'input' }],
-      meters: [{ power: 0, is_valid: true }],
+      // /status shows relays or rollers depending on the mode (Gen1 docs).
+      ...(this.spec.mode === 'roller'
+        ? { rollers: [{ state: 'stop', power: 0, is_valid: true, safety_switch: false, overtemperature: false, current_pos: 100, last_direction: 'open' }] }
+        : { relays: Array.from({ length: this.spec.mode ? 2 : 1 }, () => ({ ison: false, has_timer: false, timer_started: 0, timer_duration: 0, timer_remaining: 0, source: 'input' })) }),
+      // A plain Shelly 1 reports only power/is_valid; metering models add the energy counter.
+      meters: this.spec.metering
+        ? [{ power: 0, overpower: 0, is_valid: true, timestamp: 1760445240, counters: [0, 0, 0], total: 4711 }]
+        : [{ power: 0, is_valid: true }],
       inputs: [{ input: 0, event: '', event_cnt: 0 }],
       update: this.ota(),
       ram_total: 51688,

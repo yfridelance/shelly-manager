@@ -7,7 +7,7 @@ import { actionDetail, actionLabel, actionSummary } from '../../core/action-text
 import { SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
 import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
-import { DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, formatMac, shortFirmware } from '../../core/texts';
+import { DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, formatMac, functionsText, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { JsonTree } from '../../shared/json-tree';
 import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
@@ -33,10 +33,11 @@ export class DevicePage {
   protected readonly actionDetail = actionDetail;
   protected readonly formatMac = formatMac;
   protected readonly shortFirmware = shortFirmware;
+  protected readonly functionsText = functionsText;
 
   protected readonly details = httpResource<DeviceDetails>(() => `/api/devices/${encodeURIComponent(this.mac())}`);
   protected readonly device = computed(() => this.details.hasValue() ? this.details.value().device : null);
-  // Suggestions for «Ort» come from the devices of the same site.
+  // Suggestions for «Ort» and «Typ» come from the devices of the same site.
   protected readonly locations = httpResource<Device[]>(
     () => (this.device() ? `/api/devices?site=${this.device()?.siteId}` : undefined),
     { defaultValue: [] },
@@ -46,6 +47,9 @@ export class DevicePage {
   protected readonly moveTo = signal<number | null>(null);
   protected readonly locationSuggestions = computed(() =>
     [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(),
+  );
+  protected readonly kindSuggestions = computed(() =>
+    [...new Set(['Licht', 'Storen', 'Steckdose', ...this.locations.value().flatMap((d) => (d.kind ? [d.kind] : []))])].sort(),
   );
 
   // Snapshot history: null = latest.
@@ -118,7 +122,7 @@ export class DevicePage {
     try {
       const updated = await this.api.update(device.mac, { [field]: value });
       this.details.update((d) => (d ? { ...d, device: updated } : d));
-      if (field === 'location') this.locations.reload();
+      if (field === 'location' || field === 'kind') this.locations.reload();
     } catch (err) {
       this.message.set({ kind: 'error', text: `Speichern fehlgeschlagen: ${(err as DeviceApiError).message}` });
     } finally {

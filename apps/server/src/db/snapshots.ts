@@ -1,3 +1,4 @@
+import { deriveFunctions } from '../devices/functions.js';
 import type { Db } from './database.js';
 
 export interface SnapshotInput {
@@ -34,6 +35,7 @@ function comparableConfig(info: unknown, config: unknown): string | null {
  * record the id as "config saved before" stay correct, because the config is the same.
  */
 export function insertSnapshot(db: Db, s: SnapshotInput): number {
+  updateFunctions(db, s.mac, s.config, s.status);
   const infoJson = JSON.stringify(s.info);
   const statusJson = s.status === undefined ? null : JSON.stringify(s.status);
   const latest = getLatestSnapshot(db, s.mac);
@@ -52,6 +54,25 @@ export function insertSnapshot(db: Db, s: SnapshotInput): number {
     )
     .run(s.mac, s.takenAt, infoJson, s.config === undefined ? null : JSON.stringify(s.config), statusJson);
   return Number(result.lastInsertRowid);
+}
+
+/** Keeps `devices.functions` in line with the newest config; an unknown config keeps the old value. */
+function updateFunctions(db: Db, mac: string, config: unknown, status: unknown): void {
+  const gen = db.prepare('SELECT gen FROM devices WHERE mac = ?').pluck().get(mac) as number | undefined;
+  if (gen === undefined) return;
+  const functions = deriveFunctions(gen, config, status);
+  if (functions) db.prepare('UPDATE devices SET functions = ? WHERE mac = ?').run(JSON.stringify(functions), mac);
+}
+
+/** Devices without functions (older databases): derive them from their newest snapshot. */
+export function backfillFunctions(db: Db): void {
+  const macs = db.prepare('SELECT mac FROM devices WHERE functions IS NULL').pluck().all() as string[];
+  for (const mac of macs) {
+    const latest = getLatestSnapshot(db, mac);
+    if (!latest?.config_json) continue;
+    const parse = (json: string | null): unknown => (json === null ? undefined : JSON.parse(json));
+    updateFunctions(db, mac, parse(latest.config_json), parse(latest.status_json));
+  }
 }
 
 export interface SnapshotRow {

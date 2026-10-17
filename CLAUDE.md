@@ -133,7 +133,7 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
-Stand nach Migration 010 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+Stand nach Migration 011 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
 
 ```sql
 devices (
@@ -150,6 +150,8 @@ devices (
   auth_required INTEGER NOT NULL DEFAULT 0,
   location TEXT,
   notes TEXT,
+  kind TEXT,                     -- «Typ»: was angeschlossen ist (lokal, frei)
+  functions TEXT,                -- JSON DeviceFunctions, abgeleitet aus dem neusten Snapshot (src/devices/functions.ts)
   state TEXT NOT NULL DEFAULT 'active', -- active | reset | missing
   first_seen TEXT NOT NULL,
   last_seen TEXT NOT NULL,
@@ -195,6 +197,8 @@ templates (
 
 Snapshots werden nur bei Änderung neu angelegt (`insertSnapshot`, `src/db/snapshots.ts`): Sind `info_json` und `config_json` gleich wie beim neusten Snapshot des Geräts, werden in dieser Zeile nur `status_json` und `confirmed_at` aktualisiert, und ihre ID wird zurückgegeben (bleibt als «vorher gesichert» korrekt). Gen1-Configs werden ohne die Geräteuhr (`time`, `unixtime` in `/settings`) verglichen, gespeichert wird roh. Die Migrationen 008/009 haben ältere Duplikate zusammengefasst (ältestes `taken_at` bleibt, `confirmed_at`/`status_json` vom jüngsten); Zeilen, die in `action_log.details` (`snapshotId`, `snapshotAfterId`) referenziert sind, werden nie gelöscht.
 
+`functions` setzt `insertSnapshot` bei jeder gelesenen Config neu (Gen aus `devices.gen`; Gen1: `relays`/`rollers` je nach `mode`, `lights`, `emeters`, Messung nur mit `meters[].total`; Gen2+: Komponenten `switch`/`cover`/`light`/`em`/`em1`/`pm1`/`input`/Sensoren, Messung über `apower` im Status). Ohne Config bleibt der alte Wert; `openDatabase` füllt fehlende Werte aus dem neusten Snapshot nach.
+
 `missing`: Ein abgeschlossener Scan markiert aktive Geräte, deren IP im Bereich lag, die aber nicht mehr antworteten. Wird ein Gerät wieder gefunden, ist es wieder `active`.
 Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurden: `state = 'reset'` setzen, damit die Dokumentation erhalten bleibt.
 
@@ -213,7 +217,7 @@ Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurd
 | GET | `/api/devices` | Liste |
 | GET | `/api/devices/:mac` | Details inkl. neustem Snapshot und Snapshot-Liste |
 | GET | `/api/devices/:mac/snapshots/:id` | Einzelner Snapshot |
-| PATCH | `/api/devices/:mac` | `location`, `notes`, `name` (nur lokal, nicht aufs Gerät; leerer Name = Gerätename) |
+| PATCH | `/api/devices/:mac` | `location`, `notes`, `kind`, `name` (nur lokal, nicht aufs Gerät; leerer Name = Gerätename) |
 | POST | `/api/devices/:mac/snapshot` | Config neu einlesen (`{ credentials? }`) |
 | POST | `/api/devices/:mac/reboot` | Neustart |
 | POST | `/api/devices/:mac/factory-reset` | Reset, Body `{ confirmMac, credentials?, allowWithoutSnapshot? }`; Antwort `{ snapshotId, confirmed }` |
@@ -255,8 +259,8 @@ Zusätzlich umgesetzt (beibehalten):
 
 Ansichten:
 1. **Scan:** IP-Bereich, optionale Zugangsdaten, Start/Abbruch, Fortschritt, Liste der Treffer
-2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Ort, Status, zuletzt gesehen) des gewählten Standorts, Filter nach Gen/Ort/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
-3. **Gerätedetail:** Infos inkl. Standort (verschieben mit Rückfrage), Name/Ort/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
+2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Typ/Funktion, Ort, Status, zuletzt gesehen) des gewählten Standorts, Filter nach Gen/Ort/Funktion/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
+3. **Gerätedetail:** Infos inkl. Standort (verschieben mit Rückfrage) und Funktion, Name/Ort/Typ/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
 5. **Templates:** Liste, Editor (nur angehakte Einstellungen gehören zum Template, Eingabe hakt automatisch an), Anwenden mit Geräteauswahl, Vorschau pro Gerät, Passwortfeldern, «bei Bedarf neu starten», Fortschritt und Ergebnis pro Gerät
 6. **Standorte:** Auswahl in der Kopfzeile (im Browser gemerkt), Verwaltung unter «Standorte»; das Gerätefeld `location` heisst im UI «Ort»

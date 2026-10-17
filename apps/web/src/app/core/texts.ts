@@ -1,4 +1,4 @@
-import type { DeviceErrorCode, DeviceState, ScanStatus } from './api.types';
+import type { DeviceErrorCode, DeviceFunctions, DeviceState, ScanStatus } from './api.types';
 
 export const SCAN_STATUS_TEXT: Record<ScanStatus, string> = {
   running: 'Läuft',
@@ -56,6 +56,46 @@ export const DEVICE_ERROR_TEXT: Record<DeviceErrorCode, string> = {
 };
 
 /** "A8032AB12345" -> "A8:03:2A:B1:23:45" */
+/** "2× Schalter · Messung"; same wording as the CSV export (server: describeFunctions). */
+export function functionsText(f: DeviceFunctions | null): string {
+  if (!f) return '';
+  const n = (count: number, label: string): string[] => (count === 0 ? [] : [count > 1 ? `${count}× ${label}` : label]);
+  const outputs = f.switch + f.cover + f.light;
+  const parts = [
+    ...n(f.cover, 'Rollladen'),
+    ...n(f.switch, 'Schalter'),
+    ...n(f.light, 'Licht'),
+    ...(f.meter > 0 ? ['Energiezähler'] : []),
+    ...n(f.sensor, 'Sensor'),
+    // Inputs only describe the device when it has nothing else (i3, Plus i4).
+    ...(outputs + f.meter + f.sensor === 0 ? n(f.input, 'Eingang') : []),
+  ];
+  if (f.metering && f.meter === 0) parts.push('Messung');
+  return parts.join(' · ');
+}
+
+/** Inventory filter by function; "unknown" = config not read yet. */
+export type FunctionFilter = 'switch' | 'cover' | 'light' | 'meter' | 'sensor' | 'input' | 'metering' | 'unknown';
+
+export const FUNCTION_FILTER_TEXT: Record<FunctionFilter, string> = {
+  switch: 'Schalter',
+  cover: 'Rollladen',
+  light: 'Licht',
+  meter: 'Energiezähler',
+  sensor: 'Sensor',
+  input: 'nur Eingänge',
+  metering: 'mit Messung',
+  unknown: 'unbekannt',
+};
+
+export function matchesFunction(f: DeviceFunctions | null, filter: FunctionFilter): boolean {
+  if (filter === 'unknown') return f === null;
+  if (!f) return false;
+  if (filter === 'metering') return f.metering;
+  if (filter === 'input') return f.input > 0 && f.switch + f.cover + f.light + f.meter + f.sensor === 0;
+  return f[filter] > 0;
+}
+
 export function formatMac(mac: string): string {
   return mac.match(/.{2}/g)?.join(':') ?? mac;
 }

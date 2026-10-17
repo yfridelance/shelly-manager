@@ -8,7 +8,7 @@ import { DevicePage } from './device-page';
 const DETAILS: DeviceDetails = {
   device: {
     mac: 'A8032AB67890', ip: '10.0.0.4', gen: 2, model: 'SNSW-102P16EU', app: 'Plus2PM', firmware: '20241011-114455/1.4.4-g6d2a586',
-    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', siteId: 1, authRequired: true, location: null, notes: null, state: 'active',
+    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', siteId: 1, authRequired: true, location: null, notes: null, kind: null, functions: null, state: 'active',
     firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
     updateStable: null, updateBeta: null, updateCheckedAt: null,
   },
@@ -79,6 +79,22 @@ describe('DevicePage', () => {
     patch.flush({ ...DETAILS.device, location: 'Büro OG' });
     await settle(fixture);
     expect(el.textContent).toContain('Büro OG');
+  });
+
+  it('shows the derived function and saves the type', async () => {
+    const functions = { switch: 0, cover: 1, light: 0, meter: 0, input: 2, sensor: 0, metering: true };
+    const { fixture, el } = await render({ ...DETAILS, device: { ...DETAILS.device, functions } });
+    expect(el.textContent).toContain('Rollladen · Messung');
+    el.querySelector<HTMLButtonElement>('button[aria-label="Typ bearbeiten"]')?.click();
+    await fixture.whenStable();
+    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
+    expect(input?.getAttribute('list')).toBe('kind-suggestions');
+    type(input, 'Storen');
+    input?.form?.dispatchEvent(new Event('submit'));
+    const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
+    expect(patch.request.body).toEqual({ kind: 'Storen' });
+    patch.flush({ ...DETAILS.device, functions, kind: 'Storen' });
+    await settle(fixture);
   });
 
   it('asks for the password of a protected device and clears it after sending', async () => {

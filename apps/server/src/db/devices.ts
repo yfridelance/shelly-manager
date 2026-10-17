@@ -17,6 +17,10 @@ export interface DeviceRow {
   auth_required: number;
   location: string | null;
   notes: string | null;
+  /** What is connected (local, free text). */
+  kind: string | null;
+  /** DeviceFunctions as JSON, derived from the newest snapshot. */
+  functions: string | null;
   state: DeviceState;
   first_seen: string;
   last_seen: string;
@@ -132,6 +136,7 @@ export interface LocalDeviceFields {
   name?: string | null;
   location?: string | null;
   notes?: string | null;
+  kind?: string | null;
 }
 
 /** Updates local-only fields; nothing is written to the device. Returns false for unknown MACs. */
@@ -140,12 +145,14 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
   const name = clean(fields.name);
   const location = clean(fields.location);
   const notes = clean(fields.notes);
+  const kind = clean(fields.kind);
   const res = db
     .prepare(
       `UPDATE devices SET
          name = CASE WHEN @setName THEN COALESCE(@name, device_name) ELSE name END,
          location = CASE WHEN @setLocation THEN @location ELSE location END,
-         notes = CASE WHEN @setNotes THEN @notes ELSE notes END
+         notes = CASE WHEN @setNotes THEN @notes ELSE notes END,
+         kind = CASE WHEN @setKind THEN @kind ELSE kind END
        WHERE mac = @mac`,
     )
     .run({
@@ -156,6 +163,8 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
       location: location ?? null,
       setNotes: notes !== undefined ? 1 : 0,
       notes: notes ?? null,
+      setKind: kind !== undefined ? 1 : 0,
+      kind: kind ?? null,
     });
   return res.changes > 0;
 }

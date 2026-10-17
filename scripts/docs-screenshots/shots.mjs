@@ -93,7 +93,7 @@ try {
 
   // 2. Inventory
   await go('/inventar', `document.querySelectorAll('tbody tr').length >= 6`);
-  await shot('inventar', { maxHeight: 420 });
+  await shot('inventar', { maxHeight: 500 });
 
   // 3. Firmware check of all devices
   await js(`$btn('Alle auf Updates prüfen').click()`);

@@ -54,3 +54,20 @@
 tr.inactive td {
   color: var(--text-muted);
 }
+
+// Eleven columns: slightly tighter cells so the table fits a 1280 px laptop screen.
+.data-table th,
+.data-table td {
+  padding-inline: 0.45rem;
+}
+
+// Type above, derived function below in smaller text.
+.kind {
+  span {
+    display: block;
+  }
+
+  .fn {
+    font-size: 0.85em;
+  }
+}
