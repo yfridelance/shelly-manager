@@ -6,3 +6,6 @@ data/
 *.sqlite-*
 .DS_Store
 coverage/
+
+# Local Claude Code settings (preview config)
+.claude/
