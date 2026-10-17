@@ -87,6 +87,9 @@ from real devices are especially valuable. Ideas for what comes next:
 
 ## Contributing
 
+Questions, ideas or want to show your setup? Join the
+[Discussions](https://github.com/yfridelance/shelly-manager/discussions).
+
 Bug reports, test results from real devices, translations and pull requests are welcome. Please read
 [CONTRIBUTING.md](CONTRIBUTING.md) first.
 

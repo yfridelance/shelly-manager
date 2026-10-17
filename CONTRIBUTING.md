@@ -4,7 +4,8 @@ Thanks for your interest! Shelly Manager is a small project. Contributions of an
 test result from a real device, a translation or a pull request.
 
 Please be respectful; see the [Code of Conduct](CODE_OF_CONDUCT.md). Issues and discussions can be in English or
-German.
+German. Questions and ideas belong in [Discussions](https://github.com/yfridelance/shelly-manager/discussions),
+bugs and device reports in [Issues](https://github.com/yfridelance/shelly-manager/issues/new/choose).
 
 ## Ways to help
 

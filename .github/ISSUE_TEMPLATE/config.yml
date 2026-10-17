@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Questions and ideas
+    url: https://github.com/yfridelance/shelly-manager/discussions
+    about: Ask questions, share ideas and your setup in Discussions.
   - name: Report a security vulnerability
     url: https://github.com/yfridelance/shelly-manager/security/advisories/new
     about: Please report vulnerabilities privately, not as a public issue.
