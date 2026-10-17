@@ -14,6 +14,8 @@ export interface MockDevice {
   state: MockDeviceState;
   /** Gen2+ only: forget issued nonces to provoke a stale challenge. */
   expireNonces(): void;
+  /** Answer on another port as well (dev CLI: the device "moved" to a new IP). */
+  listenAlso(port: number): Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -33,6 +35,10 @@ export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<M
   let server: Server;
   const stop = async (): Promise<void> => {
     state.online = false;
+    for (const alias of aliases.splice(0)) {
+      alias.closeAllConnections();
+      alias.close();
+    }
     if (!server.listening) return;
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -40,7 +46,7 @@ export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<M
     });
   };
 
-  server = createServer((req: IncomingMessage, res: ServerResponse) => {
+  const onRequest = (req: IncomingMessage, res: ServerResponse): void => {
     if (spec.kind === 'hang') return; // never answer
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
@@ -59,7 +65,9 @@ export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<M
       if (delayMs > 0) setTimeout(respond, delayMs);
       else respond();
     });
-  });
+  };
+  server = createServer(onRequest);
+  const aliases: Server[] = [];
 
   await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve));
   const boundPort = (server.address() as AddressInfo).port;
@@ -69,6 +77,11 @@ export async function startMockDevice(spec: MockDeviceSpec, port = 0): Promise<M
     host: `127.0.0.1:${boundPort}`,
     port: boundPort,
     state,
+    listenAlso: async (aliasPort: number) => {
+      const alias = createServer(onRequest);
+      await new Promise<void>((resolve) => alias.listen(aliasPort, '127.0.0.1', resolve));
+      aliases.push(alias);
+    },
     expireNonces: () => {
       if (handler instanceof RpcDevice) handler.expireNonces();
     },

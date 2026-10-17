@@ -21,7 +21,7 @@ export interface BuildAppOptions {
   /** Overrides for tests (timeouts, host resolution, clock). */
   scan?: Partial<ScanOptions>;
   /** Overrides for tests (e.g. the wait before re-probing after a broken reset). */
-  devices?: Partial<Pick<DeviceServiceOptions, 'resetRecheckDelayMs'>>;
+  devices?: Partial<Pick<DeviceServiceOptions, 'resetRecheckDelayMs' | 'networkSettleMs' | 'networkWaitMs'>>;
   /** Tests only: capture log output. */
   logStream?: { write(msg: string): void };
 }

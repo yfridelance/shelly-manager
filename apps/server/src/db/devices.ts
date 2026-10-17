@@ -151,3 +151,11 @@ export function recordFirmwareUpdates(db: Db, mac: string, updates: FirmwareUpda
     mac,
   );
 }
+
+/** New address of a device after a network change (null: unknown); another device loses the address. */
+export function updateDeviceIp(db: Db, mac: string, ip: string | null): void {
+  db.transaction(() => {
+    if (ip) db.prepare('UPDATE devices SET ip = NULL WHERE ip = ? AND mac <> ?').run(ip, mac);
+    db.prepare('UPDATE devices SET ip = ? WHERE mac = ?').run(ip, mac);
+  })();
+}

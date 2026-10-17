@@ -1,6 +1,23 @@
 import { Type, type Static } from 'typebox';
+import { IPV4_PATTERN } from './ip-plan.js';
 
 const Bool = Type.Optional(Type.Boolean());
+const Ipv4 = Type.String({ pattern: IPV4_PATTERN });
+
+export const NetworkSchema = Type.Object(
+  {
+    mode: Type.Union([Type.Literal('dhcp'), Type.Literal('static')]),
+    /** Static: first address for the incremental assignment (also defines the subnet with netmask). */
+    ipFrom: Type.Optional(Ipv4),
+    netmask: Type.Optional(Ipv4),
+    /** Optional; Gen1 without gateway needs the cloud disabled (official Gen1 docs). */
+    gateway: Type.Optional(Ipv4),
+    dns: Type.Optional(Ipv4),
+  },
+  { additionalProperties: false },
+);
+
+export type NetworkSettings = Static<typeof NetworkSchema>;
 const Text = (maxLength: number) => Type.Optional(Type.String({ minLength: 1, maxLength }));
 
 /**
@@ -70,6 +87,14 @@ export const TemplateSettingsSchema = Type.Object(
         { additionalProperties: false },
       ),
     ),
+    /**
+     * WLAN client network (sta = main WLAN, sta1 = fallback WLAN). Static IPs are assigned per
+     * device from `ipFrom` upwards when applying (see ip-plan.ts); the SSID and WLAN password are
+     * never touched.
+     */
+    network: Type.Optional(
+      Type.Object({ sta: Type.Optional(NetworkSchema), sta1: Type.Optional(NetworkSchema) }, { additionalProperties: false }),
+    ),
     /** Gen2+ only: create or update a script by name. */
     script: Type.Optional(
       Type.Object(
@@ -95,3 +120,5 @@ export interface TemplateSecrets {
   mqttPassword?: string | undefined;
   apPassword?: string | undefined;
 }
+
+export type WifiInterface = 'sta' | 'sta1';

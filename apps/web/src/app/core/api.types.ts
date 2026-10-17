@@ -127,6 +127,8 @@ export interface ActionEntry {
     restartRequired?: boolean;
     rebooted?: boolean;
     appliedSteps?: string[];
+    /** Template with network settings: address change of the device. */
+    ipChange?: { from: string | null; to: string | null; confirmed: boolean; dhcp?: boolean };
   } | null;
 }
 
@@ -142,6 +144,18 @@ export interface TemplateSettings {
   apRoaming?: { enable?: boolean; threshold?: number };
   coiot?: { enable?: boolean; updatePeriod?: number; peer?: string };
   script?: { name: string; code: string; enable?: boolean; start?: boolean };
+  network?: { sta?: NetworkSettings; sta1?: NetworkSettings };
+}
+
+export type WifiInterface = 'sta' | 'sta1';
+
+export interface NetworkSettings {
+  mode: 'dhcp' | 'static';
+  /** Static: first address of the incremental assignment. */
+  ipFrom?: string;
+  netmask?: string;
+  gateway?: string;
+  dns?: string;
 }
 
 export interface Template {
@@ -158,7 +172,7 @@ export interface PlanItem {
   status: 'change' | 'same' | 'unsupported';
   current?: unknown;
   target?: unknown;
-  reason?: 'generation' | 'firmware' | 'password';
+  reason?: 'generation' | 'firmware' | 'password' | 'inactive' | 'no_ip' | 'gateway_cloud';
 }
 
 export interface TemplatePreview {
@@ -168,6 +182,8 @@ export interface TemplatePreview {
   state: DeviceState;
   basedOn: string | null;
   items: PlanItem[];
+  /** Planned static IPs per WLAN interface. */
+  assignedIps: Partial<Record<WifiInterface, string>>;
 }
 
 export interface ApplyTemplateResult {
@@ -176,5 +192,7 @@ export interface ApplyTemplateResult {
   changed: number;
   restartRequired: boolean;
   rebooted: boolean;
+  /** WLAN the app talks through was reconfigured: address now in the inventory, and whether the device was found there. */
+  network?: { ip: string | null; confirmed: boolean };
   script?: { created: boolean; codeChanged: boolean; enableChanged: boolean; started: boolean };
 }

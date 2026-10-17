@@ -229,11 +229,13 @@ zum Template**; alles andere bleibt auf den Geräten unverändert.
 | AP-Roaming | an/aus, Schwelle (dBm) | ✓ | ✓ |
 | CoIoT | an/aus, Intervall, Peer | ✓ | – |
 | Script | Name, Code, beim Start ausführen, nach dem Verteilen starten | – | ✓ |
+| Netzwerk (WLAN) | Haupt- und zweites WLAN: DHCP oder statisch (IP ab, Netzmaske, Gateway, DNS) | ✓ | ✓ |
 
 - **Platzhalter:** In Client-ID und Topic-Präfix werden `{id}` (Geräte-ID) und `{mac}` pro Gerät ersetzt,
   z.B. `haus/{id}`.
-- **Nicht in Templates:** WLAN-Client-Einstellungen und das Gerätepasswort. Ein Fehler würde Geräte aus dem Netz
-  werfen, und Passwörter speichert die App grundsätzlich nicht.
+- **Nicht in Templates:** SSID und WLAN-Passwort sowie das Gerätepasswort. Ein Fehler würde Geräte aus dem Netz
+  werfen, und Passwörter speichert die App grundsätzlich nicht. Die IP-Einstellungen des WLANs gehören dazu, siehe
+  [Netzwerk](#netzwerk-dhcp-oder-statische-ip).
 - **Gen1 und Eco-Modus:** Für Gen1 ist der Eco-Modus nicht offiziell dokumentiert und wird deshalb nicht gesetzt.
 - **WLAN-Access-Point bei Gen1:** nicht möglich, weil sich dort AP und WLAN-Verbindung ausschliessen.
 - **Scripts** werden per Name angelegt oder aktualisiert. Ist der Code auf dem Gerät gleich, bleibt das Script
@@ -274,6 +276,36 @@ gestartet», «✓ keine Änderung nötig» oder «✗» mit Grund. Ein Fehler b
 > **Access-Point einschalten:** Seit Firmware 2.0 verlangen Shellys dafür ein Passwort. Ohne AP-Passwort wird der AP
 > nicht eingeschaltet («AP-Passwort nötig, wird nicht eingeschaltet»); die übrigen Einstellungen werden trotzdem
 > angewendet.
+
+### Netzwerk: DHCP oder statische IP
+
+In der Gruppe **Netzwerk (WLAN)** lässt sich für das Haupt-WLAN und das zweite WLAN (falls auf dem Gerät eingerichtet)
+festlegen, ob das Gerät seine Adresse per **DHCP** bekommt oder eine **statische IP**. Für statisch gibst du «IP ab»,
+Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer unverändert.
+
+- **Fortlaufende Vergabe:** Beim Anwenden verteilt die App die Adressen ab «IP ab» aufsteigend auf die ausgewählten
+  Geräte, sortiert nach Standort und Name. Belegte Adressen (andere Geräte im Inventar, Gateway, Netz- und
+  Broadcast-Adresse) werden übersprungen. Geräte, die schon eine statische IP im Bereich haben, behalten sie; ein
+  zweiter Durchlauf ändert also nichts.
+- **IP anpassen:** Die Spalte **Neue IP** zeigt die geplante Adresse pro Gerät und lässt sich ändern. Ändert sich die
+  Auswahl, plant die App neu.
+- **Prüfungen vor dem Ändern:** Die Adresse muss im Netz liegen, darf keinem anderen Gerät im Inventar gehören und unter
+  ihr darf nichts antworten. Sonst bleibt das Gerät unverändert («Die geplante IP ist nicht verfügbar»).
+  Geräte ohne Webserver (Handys, Drucker …) erkennt diese Prüfung nicht. Den Bereich deshalb **ausserhalb des
+  DHCP-Pools** des Routers wählen.
+- **Ablauf:** Die Netzwerkänderung kommt als letzter Schritt. Danach sucht die App das Gerät unter der neuen IP, prüft
+  die MAC und trägt die neue IP im Inventar ein. Erst dann folgen Snapshot und ein allfälliger Neustart.
+  Ist das Gerät dort nicht erreichbar, steht im Ergebnis «unter … nicht erreichbar – bitte neu scannen».
+  Beim Wechsel auf DHCP ist die neue Adresse vorher unbekannt; antwortet das Gerät nicht mehr unter der alten,
+  hilft ein neuer Scan.
+- **Gen1 ohne Gateway:** Laut Shelly-Doku muss dafür vorher die Cloud aus sein. Die App setzt die statische IP sonst
+  nicht («ohne Gateway muss bei Gen1 zuerst die Cloud aus sein»).
+- **Export für DHCP-Reservierung:** Statt fester IPs auf den Geräten kannst du die geplanten Adressen auch im Router
+  als DHCP-Reservierung hinterlegen. Der Knopf erzeugt dafür eine CSV mit Name, Geräte-ID, MAC und IP der
+  ausgewählten Geräte. Das ist robuster, weil ein Tippfehler im Router kein Gerät aussperrt.
+
+> **Wichtig:** Falsche Netzwerkwerte (z.B. eine falsche Netzmaske) machen Geräte unerreichbar; dann hilft nur der
+> Werksreset am Gerät. Ein Netzwerk-Template **immer zuerst an einem Gerät** testen.
 
 > **Tipp:** Ein neues Template zuerst auf **ein** Gerät anwenden, das Ergebnis in der Detailansicht mit
 > «Vergleichen mit» prüfen und erst dann auf alle.
@@ -339,6 +371,10 @@ Gerätepasswörter sind nie im Export, weil die App sie nicht speichert.
 | Auf diesem Kanal ist kein neueres Firmware-Update verfügbar | Es gibt auf dem gewählten Kanal nichts Neueres. |
 | Template konnte nicht vollständig angewendet werden | Ein Befehl wurde vom Gerät abgelehnt; die bereits ausgeführten Schritte stehen im Protokoll. |
 | AP-Passwort nötig, wird nicht eingeschaltet | Beim Anwenden ein AP-Passwort (mindestens 8 Zeichen) angeben. |
+| Die geplante IP ist nicht verfügbar | Die Adresse liegt nicht im Netz, gehört einem anderen Gerät oder etwas antwortet dort. Andere IP eintragen; das Gerät ist unverändert. |
+| keine freie IP im Bereich | «IP ab» und Netzmaske lassen keine freie Adresse mehr übrig. Bereich anpassen. |
+| auf dem Gerät nicht eingerichtet | Das zweite WLAN ist auf diesem Gerät nicht konfiguriert; nichts geändert. |
+| unter … nicht erreichbar – bitte neu scannen | Die Netzwerkänderung wurde gesendet, das Gerät meldet sich aber nicht unter der neuen IP. Neu scannen; im schlimmsten Fall Werksreset am Gerät. |
 | von Modell/Firmware nicht unterstützt | Das Gerät kennt diese Einstellung nicht; sie wird übersprungen. |
 | Kein Shelly | Unter der Adresse antwortet ein anderes Gerät (Router, Drucker …). |
 | Zugriff über diesen Hostnamen ist nicht erlaubt … | Die App wird über einen nicht freigegebenen Namen aufgerufen; siehe `ALLOWED_HOSTS` in [betrieb.md](betrieb.md#umgebungsvariablen). |

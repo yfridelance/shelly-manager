@@ -117,6 +117,29 @@ export class Gen1Device implements DeviceHandler {
         sendJson(res, 200, this.settings());
         return;
       }
+      case '/settings/sta':
+      case '/settings/sta1': {
+        // Write parameters netmask/gateway appear as mask/gw in the answer (official Gen1 docs).
+        const iface = url.pathname === '/settings/sta' ? 'sta' : 'sta1';
+        const target = iface === 'sta' ? 'wifi_sta' : 'wifi_sta1';
+        const names: Record<string, string> = { ipv4_method: 'ipv4_method', ip: 'ip', netmask: 'mask', gateway: 'gw', dns: 'dns' };
+        const patch: Record<string, unknown> = {};
+        for (const [key, raw] of url.searchParams) {
+          const name = names[key];
+          if (!name) {
+            sendText(res, 400, `Unknown parameter ${key}`);
+            return;
+          }
+          patch[name] = raw;
+        }
+        this.overrides = deepMerge(this.overrides, { [target]: patch });
+        const now = (this.settings() as Record<string, Record<string, unknown>>)[target] ?? {};
+        sendJson(res, 200, now);
+        if ('ipv4_method' in patch || 'ip' in patch) {
+          this.spec.onIpChange?.(iface, now['ipv4_method'] === 'static' ? String(now['ip']) : null);
+        }
+        return;
+      }
       case '/settings/cloud':
         if (url.searchParams.has('enabled')) {
           this.overrides = deepMerge(this.overrides, { cloud: { enabled: parseValue(url.searchParams.get('enabled') ?? '', 'bool') } });

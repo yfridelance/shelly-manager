@@ -150,6 +150,16 @@ export class RpcDevice implements DeviceHandler {
         delete ap['pass'];
       }
       this.overrides = deepMerge(this.overrides, { [component]: clean });
+      if (component === 'wifi') {
+        for (const iface of ['sta', 'sta1'] as const) {
+          const p = clean[iface] as Record<string, unknown> | undefined;
+          if (p && ('ipv4mode' in p || 'ip' in p)) {
+            const now = ((this.config()['wifi'] as Record<string, Record<string, unknown>>)[iface]) ?? {};
+            // Reply first, then "reconnect" (real devices reconnect about a second later).
+            res.on('finish', () => this.spec.onIpChange?.(iface, now['ipv4mode'] === 'static' ? String(now['ip']) : null));
+          }
+        }
+      }
       // MQTT changes need a reboot (official docs); the others apply at runtime.
       return reply({ restart_required: component === 'mqtt' });
     }

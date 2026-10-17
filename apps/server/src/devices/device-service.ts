@@ -1,11 +1,13 @@
 import type { Db } from '../db/database.js';
 import { finishAction, startAction, type ActionType } from '../db/actions.js';
-import { getDevice, markReset, recordFirmwareUpdates, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
+import { getDevice, listDevices, markReset, recordFirmwareUpdates, updateDeviceIp, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
 import { getSnapshot, insertSnapshot } from '../db/snapshots.js';
 import type { Template } from '../db/templates.js';
 import { RpcAdapter } from '../shelly/rpc-adapter.js';
-import { planTemplate, type PlanItem } from '../templates/planner.js';
-import type { TemplateSecrets } from '../templates/settings.js';
+import { assignStaticIps, checkStaticIp, type IpProblem } from '../templates/ip-plan.js';
+import { currentStaticIp, planTemplate, type NetworkChange, type PlanItem } from '../templates/planner.js';
+import type { TemplateSecrets, WifiInterface } from '../templates/settings.js';
+import { NotAShellyError } from '../shelly/errors.js';
 import { isRecord } from '../shelly/http.js';
 import { probeShelly } from '../shelly/detect.js';
 import { ShellyAuthError, ShellyNetworkError, ShellyTimeoutError, describeError, type DeviceErrorCode } from '../shelly/errors.js';
@@ -18,8 +20,10 @@ import {
   type Credentials,
   type DeviceInfo,
   type FirmwareChannel,
+  type ConfigStep,
   type FirmwareUpdates,
   type ShellyAdapter,
+  type ShellyGen,
 } from '../shelly/types.js';
 
 export interface DeviceServiceOptions {
@@ -27,8 +31,20 @@ export interface DeviceServiceOptions {
   adapterTimeoutMs: number;
   /** Wait before re-probing a device whose connection broke off during the reset command. */
   resetRecheckDelayMs: number;
+  /** After a WLAN IP change: wait before looking for the device, and how long to keep looking. */
+  networkSettleMs: number;
+  networkWaitMs: number;
   now: () => string;
 }
+
+const IP_PROBLEM_TEXT: Record<IpProblem | 'in_use', string> = {
+  invalid: 'is not a valid address in the configured subnet',
+  outside_subnet: 'is outside the subnet',
+  reserved: 'is the network or broadcast address',
+  gateway: 'is the gateway',
+  taken: 'belongs to another device in the inventory',
+  in_use: 'already answers on the network',
+};
 
 export const DEFAULT_RESET_RECHECK_DELAY_MS = 2500;
 
@@ -41,6 +57,7 @@ export type DeviceActionErrorCode =
   | 'snapshot_failed'
   | 'no_update'
   | 'template_failed'
+  | 'ip_conflict'
   | DeviceErrorCode;
 
 export class DeviceActionError extends Error {
@@ -85,6 +102,8 @@ export interface ApplyTemplateRequest {
   secrets?: TemplateSecrets | undefined;
   /** Reboot if a changed setting needs it (Gen2+ reports restart_required). */
   rebootIfRequired?: boolean | undefined;
+  /** Planned static IPs per WLAN interface; missing ones are assigned here. */
+  networkIps?: Partial<Record<WifiInterface, string>> | undefined;
 }
 
 export interface ApplyTemplateResult {
@@ -93,6 +112,8 @@ export interface ApplyTemplateResult {
   changed: number;
   restartRequired: boolean;
   rebooted: boolean;
+  /** Set when the WLAN the app talks through got a new IP configuration. */
+  network?: { ip: string | null; confirmed: boolean } | undefined;
   script?: { created: boolean; codeChanged: boolean; enableChanged: boolean; started: boolean } | undefined;
 }
 
@@ -100,6 +121,8 @@ export interface ApplyTemplateResult {
 export class DeviceService {
   private readonly options: DeviceServiceOptions;
   private readonly busy = new Set<string>();
+  /** Static IPs handed out by running template applications (ip → mac), so parallel runs do not collide. */
+  private readonly reservedIps = new Map<string, string>();
 
   constructor(
     private readonly db: Db,
@@ -109,6 +132,8 @@ export class DeviceService {
       hostFor: directHost,
       adapterTimeoutMs: DEFAULT_ADAPTER_TIMEOUT_MS,
       resetRecheckDelayMs: DEFAULT_RESET_RECHECK_DELAY_MS,
+      networkSettleMs: 3000,
+      networkWaitMs: 30_000,
       now: () => new Date().toISOString(),
       ...options,
     };
@@ -195,43 +220,69 @@ export class DeviceService {
           live.gen === 1
             ? String((isRecord(config) && isRecord(config['device']) && config['device']['hostname']) || mac)
             : String((isRecord(info) && info['id']) || mac);
-        const plan = planTemplate(live.gen, config, template.settings, { deviceId, mac }, request.secrets);
-
-        let restartRequired = false;
-        const done: string[] = [];
+        const reserved: string[] = [];
         try {
-          for (const step of plan.steps) {
-            const res = await adapter.applyConfig(step);
+          const assignedIps = await this.assignIps(mac, live, config, template, request.networkIps, device.ip, reserved);
+          const plan = planTemplate(live.gen, config, template.settings, { deviceId, mac, assignedIps }, request.secrets);
+
+          let restartRequired = false;
+          const done: string[] = [];
+          const run = async (step: ConfigStep, a: ShellyAdapter = adapter): Promise<void> => {
+            const res = await a.applyConfig(step);
             restartRequired ||= res.restartRequired;
             done.push(step.kind === 'gen1' ? step.path : step.method);
-          }
-        } catch (err) {
-          details.appliedSteps = done;
-          const { code, message } = describeError(err);
-          throw new DeviceActionError('template_failed', `Applying failed after ${done.length} of ${plan.steps.length} calls: ${message}`, code);
-        }
-
-        let script: ApplyTemplateResult['script'];
-        if (plan.script) {
-          if (!(adapter instanceof RpcAdapter)) throw new DeviceActionError('template_failed', 'Scripts need a Gen2+ device');
-          const r = await adapter.deployScript(plan.script.name, plan.script.code, plan.script.enable, plan.script.start);
-          script = { created: r.created, codeChanged: r.codeChanged, enableChanged: r.enableChanged, started: r.started };
-        }
-
-        // Document the new state (before a reboot takes the device away for a moment).
-        if (plan.steps.length > 0 || plan.script) {
+          };
           try {
-            details.snapshotAfterId = await this.snapshotUnlocked(mac, request.credentials, ctx);
+            for (const step of plan.steps) await run(step);
           } catch (err) {
-            details.snapshotAfterError = err instanceof DeviceActionError ? err.code : describeError(err).code;
+            details.appliedSteps = done;
+            const { code, message } = describeError(err);
+            throw new DeviceActionError('template_failed', `Applying failed after ${done.length} of ${plan.steps.length} calls: ${message}`, code);
           }
-        }
 
-        let rebooted = false;
-        if (restartRequired && request.rebootIfRequired) {
-          await adapter.reboot();
-          rebooted = true;
-        }
+          let script: ApplyTemplateResult['script'];
+          if (plan.script) {
+            if (!(adapter instanceof RpcAdapter)) throw new DeviceActionError('template_failed', 'Scripts need a Gen2+ device');
+            const r = await adapter.deployScript(plan.script.name, plan.script.code, plan.script.enable, plan.script.start);
+            script = { created: r.created, codeChanged: r.codeChanged, enableChanged: r.enableChanged, started: r.started };
+          }
+
+          // WLAN changes last; the interface the device is connected through goes very last,
+          // because the device reconnects about a second after storing it.
+          const activeIface = activeWifiInterface(live.gen, config, snapshot?.status_json ? (JSON.parse(snapshot.status_json) as unknown) : undefined);
+          const ordered = [...plan.network].sort((a, b) => Number(a.iface === activeIface) - Number(b.iface === activeIface));
+          let networkResult: ApplyTemplateResult['network'];
+          for (const change of ordered) {
+            try {
+              await run(change.step);
+            } catch (err) {
+              details.appliedSteps = done;
+              const { code, message } = describeError(err);
+              throw new DeviceActionError('template_failed', `Network change of ${change.iface} failed: ${message}`, code);
+            }
+            if (change.iface === activeIface) networkResult = await this.followNetworkChange(mac, device.ip, change, details);
+          }
+
+          // Document the new state (before a reboot takes the device away for a moment).
+          const reachable = networkResult === undefined || networkResult.confirmed;
+          if ((plan.steps.length > 0 || plan.script || plan.network.length > 0) && reachable) {
+            try {
+              details.snapshotAfterId = await this.snapshotUnlocked(mac, request.credentials, ctx);
+            } catch (err) {
+              details.snapshotAfterError = err instanceof DeviceActionError ? err.code : describeError(err).code;
+            }
+          }
+
+          let rebooted = false;
+          if (restartRequired && request.rebootIfRequired && reachable) {
+            // After an IP change the old adapter points to the old address; connect again (checks the MAC).
+            const now = getDevice(this.db, mac);
+            const { adapter: current } = networkResult && now ? await this.connect(now, request.credentials) : { adapter };
+            await current.reboot();
+            rebooted = true;
+          } else if (restartRequired && request.rebootIfRequired) {
+            details.rebootSkipped = 'unreachable';
+          }
 
         // A script whose code, autostart and run state already matched counts as unchanged.
         const scriptChanged = !!script && (script.created || script.codeChanged || script.enableChanged || script.started);
@@ -242,9 +293,98 @@ export class DeviceService {
         details.restartRequired = restartRequired;
         details.rebooted = rebooted;
         if (script) details.script = script;
-        return { snapshotId, items, changed: changes.length, restartRequired, rebooted, script };
+        if (networkResult) details.network = networkResult;
+        return { snapshotId, items, changed: changes.length, restartRequired, rebooted, network: networkResult, script };
+        } finally {
+          for (const ip of reserved) this.reservedIps.delete(ip);
+        }
       }),
     );
+  }
+
+  /**
+   * Static IPs for this device per WLAN interface: the requested ones (validated), otherwise the
+   * next free one from the template's range. A candidate that is not the device's own current
+   * address must not answer on the network. Reserved until the application ends.
+   */
+  private async assignIps(
+    mac: string,
+    live: DeviceInfo,
+    config: unknown,
+    template: Template,
+    requested: Partial<Record<WifiInterface, string>> | undefined,
+    ownIp: string | null,
+    reserved: string[],
+  ): Promise<Partial<Record<WifiInterface, string>>> {
+    const result: Partial<Record<WifiInterface, string>> = {};
+    for (const iface of ['sta', 'sta1'] as const) {
+      const n = template.settings.network?.[iface];
+      if (n?.mode !== 'static' || !n.ipFrom || !n.netmask) continue;
+      const cfg = { ipFrom: n.ipFrom, netmask: n.netmask, gateway: n.gateway };
+      const taken = new Map<string, string>(this.reservedIps);
+      for (const d of listDevices(this.db)) if (d.ip && !taken.has(d.ip)) taken.set(d.ip, d.mac);
+      const current = currentStaticIp(live.gen, config, iface);
+
+      let ip = requested?.[iface];
+      if (ip) {
+        const problem = checkStaticIp(ip, cfg, mac, taken);
+        if (problem) throw new DeviceActionError('ip_conflict', `${ip} ${IP_PROBLEM_TEXT[problem]}; nothing changed`);
+      } else {
+        ip = assignStaticIps([{ mac, currentStatic: current }], cfg, taken).get(mac);
+      }
+      if (!ip) continue;
+      if (ip !== current && ip !== ownIp && (await this.addressInUse(ip))) {
+        throw new DeviceActionError('ip_conflict', `${ip} ${IP_PROBLEM_TEXT.in_use}; nothing changed`);
+      }
+      this.reservedIps.set(ip, mac);
+      reserved.push(ip);
+      result[iface] = ip;
+    }
+    return result;
+  }
+
+  /** Something answers HTTP at this address (a Shelly or anything else). Devices without a web server stay unnoticed. */
+  private async addressInUse(ip: string): Promise<boolean> {
+    try {
+      await probeShelly(this.options.hostFor(ip), Math.min(this.options.adapterTimeoutMs, 1500));
+      return true;
+    } catch (err) {
+      return err instanceof NotAShellyError;
+    }
+  }
+
+  /**
+   * After changing the WLAN the app talks through: find the device again and update the inventory.
+   * Static: at the new address. DHCP: the address is unknown unless the device answers at the old one.
+   */
+  private async followNetworkChange(
+    mac: string,
+    oldIp: string | null,
+    change: NetworkChange,
+    details: ActionDetails,
+  ): Promise<{ ip: string | null; confirmed: boolean }> {
+    const target = change.mode === 'static' ? change.ip : oldIp;
+    await new Promise((resolve) => setTimeout(resolve, this.options.networkSettleMs));
+    const deadline = Date.now() + this.options.networkWaitMs;
+    let found = false;
+    while (target && !found && Date.now() <= deadline) {
+      try {
+        found = (await probeShelly(this.options.hostFor(target), 1500)).mac === mac;
+      } catch {
+        // not (yet) reachable
+      }
+      if (!found) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    if (change.mode === 'static') {
+      // Keep the intended address even if unconfirmed: that is where the device most likely is.
+      updateDeviceIp(this.db, mac, change.ip);
+      details.ipChange = { from: oldIp, to: change.ip, confirmed: found };
+      return { ip: change.ip, confirmed: found };
+    }
+    if (!found) updateDeviceIp(this.db, mac, null);
+    details.ipChange = { from: oldIp, to: found ? oldIp : null, confirmed: found, dhcp: true };
+    return { ip: found ? oldIp : null, confirmed: found };
   }
 
   /**
@@ -388,4 +528,16 @@ function sameMac(input: string, mac: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The WLAN interface the device is currently connected through: sta1 if the connected SSID is the
+ * fallback network's, otherwise sta. Gen1: status.wifi_sta.ssid, Gen2+: status.wifi.ssid.
+ */
+function activeWifiInterface(gen: ShellyGen, config: unknown, status: unknown): WifiInterface {
+  const get = (obj: unknown, ...path: string[]): unknown =>
+    path.reduce<unknown>((acc, k) => (isRecord(acc) ? acc[k] : undefined), obj);
+  const ssid = gen === 1 ? get(status, 'wifi_sta', 'ssid') : get(status, 'wifi', 'ssid');
+  const sta1Ssid = gen === 1 ? get(config, 'wifi_sta1', 'ssid') : get(config, 'wifi', 'sta1', 'ssid');
+  return typeof ssid === 'string' && ssid !== '' && ssid === sta1Ssid ? 'sta1' : 'sta';
 }

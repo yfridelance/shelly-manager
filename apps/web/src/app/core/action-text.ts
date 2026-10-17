@@ -17,6 +17,7 @@ export function actionSummary(e: ActionEntry): string {
   if (e.action === 'apply_template') {
     const n = d.changes?.length ?? 0;
     const parts = [n === 0 ? 'keine Änderung nötig' : `${n} geändert`];
+    if (d.ipChange) parts.push(ipChangeText(d.ipChange));
     if (d.rebooted) parts.push('neu gestartet');
     else if (d.restartRequired) parts.push('Neustart nötig');
     return parts.join(', ');
@@ -42,6 +43,7 @@ export function actionDetail(e: ActionEntry): string {
     } else if (e.result === 'ok') {
       parts.push('keine Änderung nötig');
     }
+    if (d.ipChange) parts.push(ipChangeText(d.ipChange));
     if (d.rebooted) parts.push('neu gestartet');
     else if (d.restartRequired) parts.push('Neustart nötig');
     if (d.appliedSteps && d.appliedSteps.length > 0) parts.push(`bereits ausgeführt: ${d.appliedSteps.join(', ')}`);
@@ -53,4 +55,12 @@ export function actionDetail(e: ActionEntry): string {
   else if (d.snapshotId !== undefined) parts.push(`Config vorher gesichert (Snapshot ${d.snapshotId})`);
   else if (d.snapshotError) parts.push(`Snapshot: ${errorText(d.snapshotError)}`);
   return parts.join(' · ');
+}
+
+/** "IP 192.168.10.11 → 192.168.10.50", with a hint when the device was not found again. */
+export function ipChangeText(c: { from: string | null; to: string | null; confirmed: boolean; dhcp?: boolean }): string {
+  if (c.dhcp && !c.confirmed) return 'auf DHCP umgestellt, neue IP unbekannt – bitte neu scannen';
+  if (c.dhcp) return `auf DHCP umgestellt, weiterhin unter ${c.from}`;
+  const text = `IP ${c.from ?? '–'} → ${c.to}`;
+  return c.confirmed ? text : `${text} (dort nicht erreichbar – bitte neu scannen)`;
 }

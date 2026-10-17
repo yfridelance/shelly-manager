@@ -1,6 +1,6 @@
 import { isRecord } from '../shelly/http.js';
 import type { ConfigStep, ShellyGen } from '../shelly/types.js';
-import type { TemplateSecrets, TemplateSettings } from './settings.js';
+import type { NetworkSettings, TemplateSecrets, TemplateSettings, WifiInterface } from './settings.js';
 
 // Translates curated template settings into device calls for one device, based on its current
 // configuration (Gen1: /settings, Gen2+: Shelly.GetConfig). Pure functions, no I/O.
@@ -23,7 +23,7 @@ export interface PlanItem {
    * For `unsupported`: not available on this generation, missing in this firmware/model, or a
    * password is needed that was not given (enabling the AP).
    */
-  reason?: 'generation' | 'firmware' | 'password';
+  reason?: 'generation' | 'firmware' | 'password' | 'inactive' | 'no_ip' | 'gateway_cloud';
 }
 
 export interface ScriptPlan {
@@ -33,9 +33,19 @@ export interface ScriptPlan {
   start: boolean;
 }
 
+export interface NetworkChange {
+  iface: WifiInterface;
+  step: ConfigStep;
+  mode: 'dhcp' | 'static';
+  /** Static: the new address; dhcp: null. */
+  ip: string | null;
+}
+
 export interface TemplatePlan {
   items: PlanItem[];
   steps: ConfigStep[];
+  /** WLAN client changes, kept apart: they are sent last because the device reconnects. */
+  network: NetworkChange[];
   /** Gen2+ script deployment; code is compared on the device when applying. */
   script?: ScriptPlan;
 }
@@ -44,6 +54,8 @@ export interface PlanContext {
   /** Gen1: hostname (e.g. "shelly1-A1B2C3"), Gen2+: device id. Used for {id}. */
   deviceId: string;
   mac: string;
+  /** Static IP per WLAN interface, assigned beforehand (preview or apply), see ip-plan.ts. */
+  assignedIps?: Partial<Record<WifiInterface, string>> | undefined;
 }
 
 /** Shown instead of secret values in plans and logs. */
@@ -227,7 +239,136 @@ const FIELDS: FieldDef[] = [
 ];
 
 /** All field keys, in display order (the UI has a label for each). */
-export const TEMPLATE_FIELD_KEYS = [...FIELDS.map((f) => f.key), 'mqtt.password', 'wifiAp.password', 'script'];
+export const TEMPLATE_FIELD_KEYS = [
+  ...FIELDS.map((f) => f.key),
+  'mqtt.password',
+  'wifiAp.password',
+  'script',
+  ...(['sta', 'sta1'] as const).flatMap((i) => ['mode', 'ip', 'netmask', 'gateway', 'dns'].map((k) => `network.${i}.${k}`)),
+];
+
+interface WifiState {
+  /** Interface in use: enabled and with an SSID. */
+  configured: boolean;
+  mode: unknown;
+  ip: unknown;
+  netmask: unknown;
+  gateway: unknown;
+  dns: unknown;
+}
+
+/**
+ * Current WLAN client settings. Gen1 /settings: wifi_sta / wifi_sta1 with `ipv4_method`, `ip`,
+ * `mask`, `gw`, `dns` (the write parameters are named netmask/gateway). Gen2+ Shelly.GetConfig:
+ * wifi.sta / wifi.sta1 with `ipv4mode`, `ip`, `netmask`, `gw`, `nameserver`.
+ */
+function readWifi(gen: ShellyGen, cfg: Cfg, iface: WifiInterface): WifiState | undefined {
+  const w = gen === 1 ? at(cfg, iface === 'sta' ? 'wifi_sta' : 'wifi_sta1') : at(cfg, 'wifi', iface);
+  if (!isRecord(w)) return undefined;
+  const enabled = gen === 1 ? w['enabled'] : w['enable'];
+  return {
+    configured: enabled === true && typeof w['ssid'] === 'string' && w['ssid'] !== '',
+    mode: gen === 1 ? w['ipv4_method'] : w['ipv4mode'],
+    ip: w['ip'] ?? null,
+    netmask: (gen === 1 ? w['mask'] : w['netmask']) ?? null,
+    gateway: w['gw'] ?? null,
+    dns: (gen === 1 ? w['dns'] : w['nameserver']) ?? null,
+  };
+}
+
+/** Current static IP of a WLAN interface (for keeping it on re-runs), or null. */
+export function currentStaticIp(gen: ShellyGen, config: unknown, iface: WifiInterface): string | null {
+  const w = readWifi(gen, isRecord(config) ? config : {}, iface);
+  return w && w.mode === 'static' && typeof w.ip === 'string' ? w.ip : null;
+}
+
+function planNetwork(
+  gen: ShellyGen,
+  cfg: Cfg,
+  iface: WifiInterface,
+  n: NetworkSettings,
+  settings: TemplateSettings,
+  ctx: PlanContext,
+  items: PlanItem[],
+): NetworkChange | undefined {
+  const key = (k: string) => `network.${iface}.${k}`;
+  const cur = readWifi(gen, cfg, iface);
+  if (!cur) {
+    items.push({ key: key('mode'), status: 'unsupported', target: n.mode, reason: 'firmware' });
+    return undefined;
+  }
+  if (!cur.configured) {
+    items.push({ key: key('mode'), status: 'unsupported', current: cur.mode, target: n.mode, reason: 'inactive' });
+    return undefined;
+  }
+  const path = iface === 'sta' ? '/settings/sta' : '/settings/sta1';
+
+  if (n.mode === 'dhcp') {
+    if (sameValue(cur.mode, 'dhcp')) {
+      items.push({ key: key('mode'), status: 'same', current: cur.mode, target: 'dhcp' });
+      return undefined;
+    }
+    items.push({ key: key('mode'), status: 'change', current: cur.mode, target: 'dhcp' });
+    const step: ConfigStep =
+      gen === 1
+        ? { kind: 'gen1', path, params: { ipv4_method: 'dhcp' } }
+        : { kind: 'rpc', method: 'WiFi.SetConfig', params: { config: { [iface]: { ipv4mode: 'dhcp' } } } };
+    return { iface, step, mode: 'dhcp', ip: null };
+  }
+
+  const ip = ctx.assignedIps?.[iface];
+  if (!ip) {
+    items.push({ key: key('mode'), status: 'unsupported', current: cur.mode, target: 'static', reason: 'no_ip' });
+    return undefined;
+  }
+  // Gen1 docs: a static config without gateway needs the cloud disabled first.
+  const cloudOn = settings.cloud?.enable ?? at(cfg, 'cloud', 'enabled');
+  if (gen === 1 && !n.gateway && cloudOn === true) {
+    items.push({ key: key('mode'), status: 'unsupported', current: cur.mode, target: 'static', reason: 'gateway_cloud' });
+    return undefined;
+  }
+
+  const wanted: [string, unknown, unknown][] = [
+    ['mode', cur.mode, 'static'],
+    ['ip', cur.ip, ip],
+    ['netmask', cur.netmask, n.netmask],
+    ...(n.gateway ? [['gateway', cur.gateway, n.gateway] as [string, unknown, unknown]] : []),
+    ...(n.dns ? [['dns', cur.dns, n.dns] as [string, unknown, unknown]] : []),
+  ];
+  let changed = false;
+  for (const [k, current, target] of wanted) {
+    const same = sameValue(current, target);
+    changed ||= !same;
+    items.push({ key: key(k), status: same ? 'same' : 'change', current, target });
+  }
+  if (!changed) return undefined;
+
+  // Only IP settings are sent; SSID and WLAN password stay untouched (Gen2 docs: pass is only
+  // required together with ssid; Gen1 applies /settings/sta parameters individually).
+  const step: ConfigStep =
+    gen === 1
+      ? {
+          kind: 'gen1',
+          path,
+          params: {
+            ipv4_method: 'static',
+            ip,
+            netmask: n.netmask ?? '',
+            ...(n.gateway ? { gateway: n.gateway } : {}),
+            ...(n.dns ? { dns: n.dns } : {}),
+          },
+        }
+      : {
+          kind: 'rpc',
+          method: 'WiFi.SetConfig',
+          params: {
+            config: {
+              [iface]: { ipv4mode: 'static', ip, netmask: n.netmask, ...(n.gateway ? { gw: n.gateway } : {}), ...(n.dns ? { nameserver: n.dns } : {}) },
+            },
+          },
+        };
+  return { iface, step, mode: 'static', ip };
+}
 
 function sameValue(a: unknown, b: unknown): boolean {
   if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) < 1e-9;
@@ -336,6 +477,14 @@ export function planTemplate(
     }
   }
 
+  const network: NetworkChange[] = [];
+  for (const iface of ['sta', 'sta1'] as const) {
+    const n = settings.network?.[iface];
+    if (!n) continue;
+    const change = planNetwork(gen, cfg, iface, n, settings, ctx, items);
+    if (change) network.push(change);
+  }
+
   const steps: ConfigStep[] = [
     ...[...gen1Steps].map(([path, params]): ConfigStep => ({
       kind: 'gen1',
@@ -344,5 +493,5 @@ export function planTemplate(
     })),
     ...[...rpcSteps].map(([method, config]): ConfigStep => ({ kind: 'rpc', method, params: { config } })),
   ];
-  return { items, steps, ...(script ? { script } : {}) };
+  return { items, steps, network, ...(script ? { script } : {}) };
 }

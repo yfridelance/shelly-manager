@@ -219,12 +219,12 @@ Vorbereitet für später (noch nicht anlegen, aber nicht verbauen): `sites`, `te
 | POST | `/api/devices/:mac/firmware/update` | Update starten (`{ channel, credentials? }`); 409 `no_update` |
 | GET/POST | `/api/templates` | Templates auflisten / anlegen (`{ name, description?, settings }`) |
 | GET/PUT/DELETE | `/api/templates/:id` | Template lesen / ändern / löschen |
-| POST | `/api/templates/:id/preview` | Vorschau pro Gerät (`{ macs? }`, Default alle aktiven) aus dem neusten Snapshot, ohne Gerätezugriff |
-| POST | `/api/devices/:mac/apply-template` | Template anwenden (`{ templateId, credentials?, secrets?: { mqttPassword?, apPassword? }, rebootIfRequired? }`) |
+| POST | `/api/templates/:id/preview` | Vorschau pro Gerät (`{ macs? }`, Default alle aktiven) aus dem neusten Snapshot, ohne Gerätezugriff; mit geplanten statischen IPs (`assignedIps`) für genau diese Auswahl |
+| POST | `/api/devices/:mac/apply-template` | Template anwenden (`{ templateId, credentials?, secrets?: { mqttPassword?, apPassword? }, rebootIfRequired?, network?: { sta?, sta1? } }`; Antwort u.a. `network: { ip, confirmed }`) |
 | GET | `/api/export.json` / `/api/export.csv` | Export (`?snapshots=all` für alle Snapshots) |
 | GET | `/api/actions` | Aktionsprotokoll (`?mac=`, `?limit=`) |
 
-Fehlercodes Templates: 409 `name_taken`, 400 `empty_template`, 404 `template_not_found`, 409 `snapshot_failed` (vorher), 502 `template_failed` (mit `cause`).
+Fehlercodes Templates: 409 `name_taken`, 400 `empty_template`, 400 `invalid_network`, 409 `ip_conflict`, 404 `template_not_found`, 409 `snapshot_failed` (vorher), 502 `template_failed` (mit `cause`).
 
 MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`, 403 `host_not_allowed`/`origin_not_allowed` (Abschnitt 9), 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
 
@@ -242,6 +242,7 @@ Zusätzlich umgesetzt (beibehalten):
 - Schutz gegen DNS-Rebinding/Cross-Site (`apps/server/src/security/host-guard.ts`): Alle `/api`-Anfragen brauchen einen erlaubten Host-Header (`localhost`, `*.localhost`, `127.0.0.1`, `::1` plus `ALLOWED_HOSTS`), sonst 403 `host_not_allowed`. Schreibende Anfragen (POST/PUT/PATCH/DELETE) mit `Origin`-Header brauchen einen erlaubten Origin-Host, sonst 403 `origin_not_allowed`. Das SPA selbst wird ohne Prüfung ausgeliefert.
 - Bricht beim Reset die Verbindung ab, wird nach kurzer Wartezeit erneut geprüft: Gerät weg oder Passwortschutz entfernt → Reset gilt als unbestätigt erfolgreich (`confirmed: false`), sonst Fehler.
 - Zugangsdaten gehen nur an Geräte, die sie verlangen. Für zurückgesetzte Geräte bietet das UI keine Aktionen mehr an.
+- Netzwerk-Templates: geplante IP vorher prüfen (Netz, Inventar, antwortet niemand), Netzwerkänderung zuletzt, Gerät danach unter der neuen IP mit MAC-Prüfung wiederfinden; SSID/WLAN-Passwort nie anfassen.
 - Templates: Anwenden nur nach Vorschau und einer Bestätigung; pro Gerät Snapshot vorher (blockiert bei Fehler) und nachher; MQTT- und AP-Passwort nur beim Anwenden, nie im Template, nie im Protokoll (maskiert); WLAN-Client-Einstellungen und Gerätepasswort sind bewusst nicht Teil von Templates.
 
 ## 10. Frontend
@@ -311,6 +312,9 @@ Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), 
 | `apRoaming.enable/threshold` | `ap_roaming_enabled`, `ap_roaming_threshold` | `wifi.roam.interval` (0 = aus, sonst bisheriger Wert bzw. 60), `rssi_thr` |
 | `coiot.enable/updatePeriod/peer` | `coiot_enable`, `coiot_update_period`, `coiot_peer` | – |
 | `script` | – | `Script.List/Create/Stop/PutCode (1024 B)/SetConfig/Start`, per Name, Code-Vergleich via `GetCode` |
+| `network.sta` / `network.sta1` (`mode: dhcp\|static`, `ipFrom`, `netmask`, `gateway?`, `dns?`) | `/settings/sta` bzw. `/settings/sta1` mit `ipv4_method`, `ip`, `netmask`, `gateway`, `dns` (Antwort heisst `mask`/`gw`); ohne Gateway muss die Cloud aus sein | `WiFi.SetConfig {sta\|sta1: {ipv4mode, ip, netmask, gw, nameserver}}`; Gerät verbindet sich ~1 s später neu |
+
+**Netzwerk (WLAN-IP):** SSID und WLAN-Passwort werden nie gesendet (Gen2-Doku: `pass` nur zusammen mit `ssid` nötig; Gen1 wendet `/settings/sta`-Parameter einzeln an – am echten Gerät noch zu bestätigen). Statische IPs plant `src/templates/ip-plan.ts` (`assignStaticIps`): pro Auswahl, sortiert nach Standort und Name, bestehende statische IPs im Bereich bleiben, sonst nächste freie ab `ipFrom` (belegt = IP eines anderen Geräts im Inventar, Gateway, Netz/Broadcast; während laufender Anwendungen reserviert). Beim Anwenden: angefragte IP prüfen (`ip_conflict`, auch wenn unter der Adresse etwas per HTTP antwortet), Netzwerk-Schritte zuletzt und das aktive WLAN (erkannt über die SSID im Status) ganz zuletzt, danach das Gerät unter der neuen IP suchen (MAC-Prüfung), `devices.ip` nachführen, erst dann Snapshot und Neustart. Nicht wiedergefunden: Ergebnis `network.confirmed = false`, kein Snapshot/Neustart. Wechsel auf DHCP: alte IP prüfen, sonst `ip = NULL` (neu scannen).
 
 Regeln: Nur Felder setzen, die die aktuelle Config des Geräts kennt (sonst `unsupported`, Grund `generation` oder `firmware`); gleiche Werte nicht senden; Platzhalter `{id}` (Gen1 Hostname, Gen2+ Geräte-ID) und `{mac}`; Gen1-Fehlermeldungen ohne Query-String.
 

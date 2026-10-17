@@ -24,6 +24,8 @@ export const ACTION_ERROR_TEXT: Record<string, string> = {
   no_update: 'Auf diesem Kanal ist kein neueres Firmware-Update verfügbar',
   template_failed: 'Template konnte nicht vollständig angewendet werden',
   template_not_found: 'Template nicht gefunden',
+  ip_conflict: 'Die geplante IP ist nicht verfügbar',
+  invalid_network: 'Netzwerkeinstellungen ungültig',
 };
 
 /** Factory reset whose command broke off, but the device was gone when probed again. */

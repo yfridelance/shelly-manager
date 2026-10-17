@@ -9,7 +9,23 @@ const specs: MockDeviceSpec[] = [...DEFAULT_FLEET, { kind: 'hang' }, { kind: 'fo
 
 const devices: MockDevice[] = [];
 for (const [i, spec] of specs.entries()) {
-  devices.push(await startMockDevice(spec, BASE_PORT + i + 1));
+  // A static IP 10.99.0.N makes the device answer on port 18000+N as well (SHELLY_HOST_MAP convention).
+  const withHook: MockDeviceSpec =
+    spec.kind === 'gen1' || spec.kind === 'rpc'
+      ? {
+          ...spec,
+          onIpChange: (_iface, ip) => {
+            const last = ip?.startsWith('10.99.0.') ? Number(ip.split('.')[3]) : NaN;
+            if (Number.isInteger(last) && last > 0 && last < 255) {
+              void devices[i]?.listenAlso(BASE_PORT + last).then(
+                () => console.log(`  ${spec.mac} antwortet jetzt auch unter 10.99.0.${last}`),
+                () => console.log(`  ${spec.mac}: Port ${BASE_PORT + last} belegt`),
+              );
+            }
+          },
+        }
+      : spec;
+  devices.push(await startMockDevice(withHook, BASE_PORT + i + 1));
 }
 
 console.log('Mock-Shelly-Fleet läuft:');

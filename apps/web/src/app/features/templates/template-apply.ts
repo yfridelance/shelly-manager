@@ -2,9 +2,10 @@ import { Component, DestroyRef, computed, effect, inject, input, signal } from '
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import type { ApplyTemplateResult, Device, Template, TemplatePreview } from '../../core/api.types';
+import type { ApplyTemplateResult, Device, Template, TemplatePreview, WifiInterface } from '../../core/api.types';
+import { ipChangeText } from '../../core/action-text';
 import type { DeviceApiError } from '../../core/devices-api';
-import { describeSettings, itemText } from '../../core/template-fields';
+import { WIFI_LABEL, describeSettings, itemText } from '../../core/template-fields';
 import { errorText, formatMac } from '../../core/texts';
 import { TemplatesApi, type ApplyRequest } from '../../core/templates-api';
 
@@ -40,6 +41,16 @@ export class TemplateApply {
   protected readonly lines = computed(() => (this.template.hasValue() ? describeSettings(this.template.value().settings) : []));
   protected readonly needsMqttPassword = computed(() => this.template.hasValue() && this.template.value().settings.mqtt !== undefined);
   protected readonly needsApPassword = computed(() => this.template.hasValue() && this.template.value().settings.wifiAp?.enable === true);
+  protected readonly wifiLabel = WIFI_LABEL;
+  /** WLAN interfaces with static addressing in this template (each gets an IP column). */
+  protected readonly staticIfaces = computed<WifiInterface[]>(() => {
+    const net = this.template.hasValue() ? this.template.value().settings.network : undefined;
+    return (['sta', 'sta1'] as const).filter((i) => net?.[i]?.mode === 'static');
+  });
+  protected readonly hasNetwork = computed(() => this.template.hasValue() && !!this.template.value().settings.network);
+  /** IPs edited by hand, per device and interface; otherwise the planned ones from the preview are used. */
+  protected readonly ipOverrides = signal<Record<string, Partial<Record<WifiInterface, string>>>>({});
+  private previewTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** Only active devices with an IP can be configured. */
   protected readonly candidates = computed(() => this.devices.value().filter((d) => d.state === 'active' && d.ip !== null));
@@ -77,6 +88,39 @@ export class TemplateApply {
         () => this.previews.set({}),
       );
     });
+    // Static IPs are planned for the selection: re-plan when it changes, so the addresses stay contiguous.
+    effect(() => {
+      const macs = [...this.selected()];
+      if (this.staticIfaces().length === 0 || macs.length === 0 || !this.template.hasValue()) return;
+      const id = this.template.value().id;
+      clearTimeout(this.previewTimer);
+      this.previewTimer = setTimeout(() => {
+        void this.api.preview(id, macs).then((list) => this.previews.update((p) => ({ ...p, ...Object.fromEntries(list.map((x) => [x.mac, x])) })));
+      }, 300);
+    });
+  }
+
+  /** IP that will be sent for this device and interface: edited by hand or planned. */
+  protected plannedIp(mac: string, iface: WifiInterface): string {
+    return this.ipOverrides()[mac]?.[iface] ?? this.previews()[mac]?.assignedIps[iface] ?? '';
+  }
+
+  protected setIp(mac: string, iface: WifiInterface, ip: string): void {
+    this.ipOverrides.update((o) => ({ ...o, [mac]: { ...o[mac], [iface]: ip.trim() } }));
+  }
+
+  /** CSV for DHCP reservations in the router: MAC → planned IP, for the selected devices. */
+  protected exportReservations(): void {
+    const iface = this.staticIfaces()[0] ?? 'sta';
+    const rows = this.selectedDevices().map((d) => [d.name ?? '', d.deviceId ?? '', formatMac(d.mac), this.plannedIp(d.mac, iface)]);
+    const cell = (v: string) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const csv = '\uFEFF' + [['Name', 'Geräte-ID', 'MAC', 'IP'], ...rows].map((r) => r.map(cell).join(';')).join('\r\n') + '\r\n';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dhcp-reservierungen-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   protected summary(mac: string): { text: string; kind: 'change' | 'same' | 'unknown' | 'unsupported' } {
@@ -138,16 +182,20 @@ export class TemplateApply {
     const lane = async (): Promise<void> => {
       while (!this.cancelled && next < devices.length) {
         const d = devices[next++] as Device;
+        const network = Object.fromEntries(
+          this.staticIfaces().flatMap((i) => (this.plannedIp(d.mac, i) ? [[i, this.plannedIp(d.mac, i)]] : [])),
+        ) as Partial<Record<WifiInterface, string>>;
         const request: ApplyRequest = {
           templateId,
           rebootIfRequired,
+          ...(Object.keys(network).length > 0 ? { network } : {}),
           ...(Object.keys(secrets).length > 0 ? { secrets } : {}),
           ...(d.authRequired && password ? { credentials: { password, ...(d.gen === 1 && username ? { username } : {}) } } : {}),
         };
         let row: RowResult;
         try {
           const result = await this.api.apply(d.mac, request);
-          row = { ok: true, result, text: resultText(result) };
+          row = { ok: !result.network || result.network.confirmed, result, text: resultText(result) };
         } catch (err) {
           const e = err as DeviceApiError;
           row = { ok: false, text: e.causeCode ? `${e.message}: ${errorText(e.causeCode)}` : e.message };
@@ -183,6 +231,15 @@ export class TemplateApply {
 function resultText(r: ApplyTemplateResult): string {
   if (r.changed === 0) return 'keine Änderung nötig';
   const parts = [`${r.changed} ${r.changed === 1 ? 'Einstellung' : 'Einstellungen'} geändert`];
+  if (r.network) {
+    parts.push(
+      r.network.ip === null
+        ? ipChangeText({ from: null, to: null, confirmed: false, dhcp: true })
+        : r.network.confirmed
+          ? `jetzt unter ${r.network.ip}`
+          : `unter ${r.network.ip} nicht erreichbar – bitte neu scannen`,
+    );
+  }
   if (r.rebooted) parts.push('neu gestartet');
   else if (r.restartRequired) parts.push('Neustart nötig');
   return parts.join(', ');

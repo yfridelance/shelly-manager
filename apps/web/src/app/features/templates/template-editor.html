@@ -55,6 +55,53 @@
     </fieldset>
   }
 
+  <fieldset class="network">
+    <legend>Netzwerk (WLAN) <span class="muted">(Gen1 und Gen2+)</span></legend>
+    <p class="message warn">
+      Achtung: Falsche Netzwerkwerte machen Geräte unerreichbar; dann hilft nur der Werksreset am Gerät. Zuerst an einem
+      Gerät testen. SSID und WLAN-Passwort werden nie verändert.
+    </p>
+    <p class="hint">
+      Bei «Statisch» verteilt die App die Adressen ab «IP ab» aufsteigend (nach Standort und Name) und überspringt belegte.
+      Geräte, die schon eine statische IP im Bereich haben, behalten sie. Beim Anwenden lässt sich die IP pro Gerät ändern.
+    </p>
+    @for (iface of ifaces; track iface) {
+      <div class="row" [class.off]="!netOn()[iface]">
+        <label class="include">
+          <input type="checkbox" [attr.name]="'on:network.' + iface" [checked]="netOn()[iface]" (change)="toggleNet(iface, checked($event))" />
+          {{ wifiLabel[iface] }}
+        </label>
+        <select [attr.name]="'network.' + iface + '.mode'" [attr.aria-label]="wifiLabel[iface] + ' Adressvergabe'" (change)="setNet(iface, 'mode', value($event))">
+          <option value="dhcp" [selected]="net()[iface].mode === 'dhcp'">DHCP</option>
+          <option value="static" [selected]="net()[iface].mode === 'static'">Statisch</option>
+        </select>
+        @if (iface === 'sta1') {
+          <span class="muted small">Nur Geräte mit eingerichtetem zweitem WLAN.</span>
+        }
+      </div>
+      @if (net()[iface].mode === 'static') {
+        <div class="netgrid" [class.off]="!netOn()[iface]">
+          <label class="field">
+            <span>IP ab</span>
+            <input [attr.name]="'network.' + iface + '.ipFrom'" placeholder="192.168.10.50" [value]="net()[iface].ipFrom ?? ''" (input)="setNet(iface, 'ipFrom', value($event))" />
+          </label>
+          <label class="field">
+            <span>Netzmaske</span>
+            <input [attr.name]="'network.' + iface + '.netmask'" placeholder="255.255.255.0" [value]="net()[iface].netmask ?? ''" (input)="setNet(iface, 'netmask', value($event))" />
+          </label>
+          <label class="field">
+            <span>Gateway (optional)</span>
+            <input [attr.name]="'network.' + iface + '.gateway'" placeholder="192.168.10.1" [value]="net()[iface].gateway ?? ''" (input)="setNet(iface, 'gateway', value($event))" />
+          </label>
+          <label class="field">
+            <span>DNS (optional)</span>
+            <input [attr.name]="'network.' + iface + '.dns'" placeholder="192.168.10.1" [value]="net()[iface].dns ?? ''" (input)="setNet(iface, 'dns', value($event))" />
+          </label>
+        </div>
+      }
+    }
+  </fieldset>
+
   <fieldset>
     <legend>
       <label class="include">

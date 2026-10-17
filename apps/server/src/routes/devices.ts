@@ -119,7 +119,7 @@ function toSnapshotDto(row: SnapshotRow) {
   return { id: row.id, takenAt: row.taken_at, confirmedAt: row.confirmed_at, info: parse(row.info_json), config: parse(row.config_json), status: parse(row.status_json) };
 }
 
-const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed', 'no_update']);
+const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_failed', 'no_update', 'ip_conflict']);
 // template_failed and device errors map to 502.
 
 /** Maps device action failures to HTTP: 404 unknown, 400 wrong confirmation, 409 refused by a safety check, 502 device error. */
@@ -336,6 +336,13 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
               ),
             ),
             rebootIfRequired: Type.Optional(Type.Boolean()),
+            /** Planned static IPs (from the preview, possibly edited); missing ones are assigned on the server. */
+            network: Type.Optional(
+              Type.Object(
+                { sta: Type.Optional(Type.String({ maxLength: 15 })), sta1: Type.Optional(Type.String({ maxLength: 15 })) },
+                { additionalProperties: false },
+              ),
+            ),
           },
           { additionalProperties: false },
         ),
@@ -346,6 +353,14 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
             changed: Type.Integer(),
             restartRequired: Type.Boolean(),
             rebooted: Type.Boolean(),
+            network: Type.Optional(
+              Type.Object({
+                /** Address the device now has in the inventory (null: unknown, e.g. switched to DHCP). */
+                ip: Nullable(Type.String()),
+                /** false: not reachable at the expected address after the change; rescan. */
+                confirmed: Type.Boolean(),
+              }),
+            ),
             script: Type.Optional(
               Type.Object({ created: Type.Boolean(), codeChanged: Type.Boolean(), enableChanged: Type.Boolean(), started: Type.Boolean() }),
             ),
@@ -366,7 +381,12 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
         return await devices.applyTemplate(
           mac,
           template,
-          { credentials: request.body.credentials, secrets: request.body.secrets, rebootIfRequired: request.body.rebootIfRequired },
+          {
+            credentials: request.body.credentials,
+            secrets: request.body.secrets,
+            rebootIfRequired: request.body.rebootIfRequired,
+            networkIps: request.body.network,
+          },
           { requestedBy: request.ip },
         );
       } catch (err) {

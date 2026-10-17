@@ -26,6 +26,11 @@ interface BaseSpec {
   dropConnectionOnReset?: boolean;
   /** Gen1 paths (e.g. "/status") or RPC methods (e.g. "Shelly.GetStatus") that answer with an error. */
   failing?: string[];
+  /**
+   * Called when the IP configuration of a WLAN interface changes (static: the new IP, dhcp: null).
+   * Tests move their IP → host mapping here; the dev CLI lets the device answer at the new address too.
+   */
+  onIpChange?: (iface: 'sta' | 'sta1', ip: string | null) => void;
 }
 
 export interface Gen1Spec extends BaseSpec {

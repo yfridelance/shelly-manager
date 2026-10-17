@@ -1,4 +1,4 @@
-import type { PlanItem, TemplateSettings } from './api.types';
+import type { NetworkSettings, PlanItem, TemplateSettings, WifiInterface } from './api.types';
 
 export type FieldType = 'bool' | 'text' | 'number' | 'code';
 
@@ -118,7 +118,28 @@ const EXTRA_LABELS: Record<string, string> = {
   script: 'Script',
 };
 
+export const WIFI_LABEL: Record<WifiInterface, string> = { sta: 'Haupt-WLAN', sta1: 'Zweites WLAN' };
+
+const NETWORK_FIELD_LABEL: Record<string, string> = {
+  mode: 'Adressvergabe',
+  ip: 'IP',
+  netmask: 'Netzmaske',
+  gateway: 'Gateway',
+  dns: 'DNS',
+};
+
+/** "Haupt-WLAN: statisch ab 192.168.10.50/255.255.255.0, Gateway 192.168.10.1" */
+export function describeNetwork(iface: WifiInterface, n: NetworkSettings): string {
+  if (n.mode === 'dhcp') return `${WIFI_LABEL[iface]}: DHCP`;
+  const parts = [`${WIFI_LABEL[iface]}: statisch ab ${n.ipFrom}/${n.netmask}`];
+  if (n.gateway) parts.push(`Gateway ${n.gateway}`);
+  if (n.dns) parts.push(`DNS ${n.dns}`);
+  return parts.join(', ');
+}
+
 export function fieldLabel(key: string): string {
+  const net = /^network\.(sta1?)\.(\w+)$/.exec(key);
+  if (net) return `${WIFI_LABEL[net[1] as WifiInterface]}: ${NETWORK_FIELD_LABEL[net[2] ?? ''] ?? net[2]}`;
   for (const g of TEMPLATE_GROUPS) {
     const f = g.fields.find((x) => x.key === key);
     if (f) return `${g.title}: ${f.label}`;
@@ -140,15 +161,22 @@ export function describeSettings(settings: TemplateSettings): string[] {
     }
   }
   if (settings.script) lines.push(`Script «${settings.script.name}» verteilen`);
+  for (const iface of ['sta', 'sta1'] as const) {
+    const n = settings.network?.[iface];
+    if (n) lines.push(`Netzwerk: ${describeNetwork(iface, n)}`);
+  }
   return lines;
 }
 
 export function groupTitles(settings: TemplateSettings): string[] {
   const titles = TEMPLATE_GROUPS.filter((g) => settings[g.id] && Object.keys(settings[g.id] as object).length > 0).map((g) => g.title);
-  return settings.script ? [...titles, 'Script'] : titles;
+  const extra = [...(settings.script ? ['Script'] : []), ...(settings.network ? ['Netzwerk'] : [])];
+  return [...titles, ...extra];
 }
 
 export function formatValue(v: unknown): string {
+  if (v === 'dhcp') return 'DHCP';
+  if (v === 'static') return 'statisch';
   if (v === true) return 'Ein';
   if (v === false) return 'Aus';
   if (v === null || v === undefined || v === '') return '–';
@@ -169,12 +197,14 @@ export function formatValue(v: unknown): string {
 export function itemText(item: PlanItem): string {
   const label = fieldLabel(item.key);
   if (item.status === 'unsupported') {
-    const why =
-      item.reason === 'generation'
-        ? 'für diese Generation nicht verfügbar'
-        : item.reason === 'password'
-          ? 'AP-Passwort nötig, wird nicht eingeschaltet'
-          : 'von Modell/Firmware nicht unterstützt';
+    const why: string = {
+      generation: 'für diese Generation nicht verfügbar',
+      password: 'AP-Passwort nötig, wird nicht eingeschaltet',
+      inactive: 'auf dem Gerät nicht eingerichtet',
+      no_ip: 'keine freie IP im Bereich',
+      gateway_cloud: 'ohne Gateway muss bei Gen1 zuerst die Cloud aus sein',
+      firmware: 'von Modell/Firmware nicht unterstützt',
+    }[item.reason ?? 'firmware'];
     return `${label}: ${why}`;
   }
   if (item.status === 'same') return `${label}: bereits ${formatValue(item.target)}`;
