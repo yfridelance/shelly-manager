@@ -8,10 +8,13 @@ services:
       # Only reachable from this machine: the app has no login and can factory-reset devices.
       # For access from other machines put a reverse proxy with authentication in front,
       # or (at your own risk) change to "8080:8080".
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       LOG_LEVEL: info
     volumes:
-      - ./data:/data
+      - shelly-data:/data
     # Scanning works through the default bridge network (outgoing HTTP to the LAN).
     # On Linux, `network_mode: host` is an alternative if the LAN is not reachable from the bridge.
+
+volumes:
+  shelly-data:
