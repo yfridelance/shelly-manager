@@ -81,6 +81,8 @@ export interface Device {
   deviceId: string | null;
   siteId: number;
   authRequired: boolean;
+  /** Floor («Stockwerk»), local; ordered by core/floor.ts. */
+  floor: string | null;
   location: string | null;
   notes: string | null;
   /** What is connected (local, free text, «Typ»). */
@@ -122,9 +124,9 @@ export interface DeviceDetails {
   snapshots: SnapshotMeta[];
 }
 
-export type LocalDeviceFields = Partial<Pick<Device, 'name' | 'location' | 'notes' | 'kind'>>;
+export type LocalDeviceFields = Partial<Pick<Device, 'name' | 'floor' | 'location' | 'notes' | 'kind'>>;
 
-export type ActionType = 'snapshot' | 'reboot' | 'factory_reset';
+export type ActionType = 'snapshot' | 'reboot' | 'factory_reset' | 'firmware_update' | 'apply_template' | 'rename';
 
 export interface ActionEntry {
   id: number;
@@ -144,7 +146,7 @@ export interface ActionEntry {
     /** Factory reset: false when the device dropped the connection and was only re-checked afterwards. */
     confirmed?: boolean;
     recheck?: 'unreachable' | 'auth_disabled';
-    /** Firmware update: channel and versions. */
+    /** Firmware update: channel and versions; rename: old and new device name. */
     channel?: FirmwareChannel;
     from?: string | null;
     to?: string;
@@ -165,6 +167,8 @@ export interface ActionEntry {
 export interface TemplateSettings {
   mqtt?: { enable?: boolean; server?: string; user?: string; clientId?: string; topicPrefix?: string };
   cloud?: { enable?: boolean };
+  /** Placeholders {name}, {floor}, {location}, {kind}, {id}, {mac}. */
+  device?: { name?: string };
   time?: { sntpServer?: string; timezone?: string; lat?: number; lon?: number };
   eco?: { ecoMode?: boolean; ledStatusDisable?: boolean };
   bluetooth?: { enable?: boolean; rpc?: boolean; observer?: boolean };
@@ -201,7 +205,7 @@ export interface PlanItem {
   status: 'change' | 'same' | 'unsupported';
   current?: unknown;
   target?: unknown;
-  reason?: 'generation' | 'firmware' | 'password' | 'inactive' | 'no_ip' | 'gateway_cloud';
+  reason?: 'generation' | 'firmware' | 'password' | 'inactive' | 'no_ip' | 'gateway_cloud' | 'name_empty' | 'name_too_long';
 }
 
 export interface TemplatePreview {

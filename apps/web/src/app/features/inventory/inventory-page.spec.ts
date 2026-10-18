@@ -8,7 +8,7 @@ import { InventoryFilters } from './inventory-filters';
 
 const device = (over: Partial<Device>): Device => ({
   mac: '000000000000', ip: null, gen: 2, model: null, app: null, firmware: null, name: null, deviceName: null, deviceId: null, siteId: 1,
-  authRequired: false, location: null, notes: null, kind: null, functions: null, state: 'active',
+  authRequired: false, floor: null, location: null, notes: null, kind: null, functions: null, state: 'active',
   firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
   updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });
@@ -99,6 +99,34 @@ describe('InventoryPage', () => {
     filters.search.set('plus1pm');
     await fixture.whenStable();
     expect(names()).toEqual(['Boiler']);
+    filters.reset();
+  });
+
+  it('shows floor and location together, sorts them in building order and filters by floor', async () => {
+    const fixture = TestBed.createComponent(InventoryPage);
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne('/api/devices?site=1').flush([
+      device({ mac: '1', name: 'Dach', floor: 'DG', location: 'Estrich' }),
+      device({ mac: '2', name: 'Küche', floor: 'EG', location: 'Küche' }),
+      device({ mac: '3', name: 'Bad', floor: '1. OG', location: 'Bad' }),
+      device({ mac: '4', name: 'Waschen', floor: 'UG', location: 'Waschküche' }),
+    ]);
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const names = () => [...el.querySelectorAll('tbody tr td:first-child')].map((td) => td.textContent?.trim());
+    expect(el.textContent).toContain('EG · Küche');
+    const filters = TestBed.inject(InventoryFilters);
+    filters.sortBy('location');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Waschen', 'Küche', 'Bad', 'Dach']);
+    filters.floor.set('1. OG');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Bad']);
+    filters.reset();
+    filters.sortBy('name');
+    filters.search.set('dg');
+    await fixture.whenStable();
+    expect(names()).toEqual(['Dach']);
     filters.reset();
   });
 

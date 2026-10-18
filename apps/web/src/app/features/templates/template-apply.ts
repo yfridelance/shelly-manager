@@ -66,7 +66,7 @@ export class TemplateApply {
   protected readonly search = signal('');
   protected readonly visible = computed(() => {
     const q = this.search().trim().toLowerCase();
-    return this.candidates().filter((d) => !q || [d.name, d.mac, d.ip, d.model, d.location].some((v) => v?.toLowerCase().includes(q)));
+    return this.candidates().filter((d) => !q || [d.name, d.mac, d.ip, d.model, d.floor, d.location].some((v) => v?.toLowerCase().includes(q)));
   });
   protected readonly selectedDevices = computed(() => this.candidates().filter((d) => this.selected().has(d.mac)));
   protected readonly selectedProtected = computed(() => this.selectedDevices().filter((d) => d.authRequired));

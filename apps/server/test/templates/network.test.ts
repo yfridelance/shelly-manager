@@ -214,6 +214,21 @@ describe('network templates via API', () => {
     });
   });
 
+  it('plans IPs floor by floor in building order', async () => {
+    const a = await setup([GEN2_A, GEN2_B, GEN1_A]);
+    for (const m of ['A8032AB12345', '34CDB0A1A1A1', 'E868E7A1B2C3']) await json(a, `/api/devices/${m}/snapshot`);
+    db.prepare("UPDATE devices SET floor = '1. OG', location = 'Bad' WHERE mac = 'A8032AB12345'").run();
+    db.prepare("UPDATE devices SET floor = 'EG', location = 'Wohnen' WHERE mac = '34CDB0A1A1A1'").run();
+    db.prepare("UPDATE devices SET floor = 'UG', location = 'Waschküche' WHERE mac = 'E868E7A1B2C3'").run();
+    const id = await staticTemplate(a);
+    const preview = (await json(a, `/api/templates/${id}/preview`)).json<{ mac: string; assignedIps: { sta?: string } }[]>();
+    expect(Object.fromEntries(preview.map((p) => [p.mac, p.assignedIps.sta]))).toEqual({
+      E868E7A1B2C3: '192.168.10.50', // UG
+      '34CDB0A1A1A1': '192.168.10.51', // EG, although «Wohnen» sorts after «Bad»
+      A8032AB12345: '192.168.10.52', // 1. OG
+    });
+  });
+
   it('switches a Gen2 device to a static IP, finds it again and updates the inventory', async () => {
     const a = await setup([GEN2_A]);
     const id = await staticTemplate(a, { mqtt: { enable: true } });

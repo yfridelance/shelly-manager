@@ -144,6 +144,12 @@ export class RpcDevice implements DeviceHandler {
         this.state.secretsReceived['mqtt.pass'] = clean['pass'];
         delete clean['pass'];
       }
+      // The name is reported by /shelly and Sys.GetConfig alike, so it lives outside the overrides.
+      const dev = component === 'sys' ? (clean['device'] as Record<string, unknown> | undefined) : undefined;
+      if (dev && 'name' in dev) {
+        this.name = typeof dev['name'] === 'string' && dev['name'] !== '' ? dev['name'] : null;
+        delete dev['name'];
+      }
       const ap = (clean['ap'] ?? undefined) as Record<string, unknown> | undefined;
       if (component === 'wifi' && ap && typeof ap['pass'] === 'string') {
         this.state.secretsReceived['wifi.ap.pass'] = ap['pass'];

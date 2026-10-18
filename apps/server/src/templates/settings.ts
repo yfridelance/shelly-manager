@@ -43,6 +43,11 @@ export const TemplateSettingsSchema = Type.Object(
       ),
     ),
     cloud: Type.Optional(Type.Object({ enable: Bool }, { additionalProperties: false })),
+    /**
+     * Name written to the device. Placeholders {name} (local name), {floor}, {location}, {kind},
+     * {id}, {mac}; empty placeholders collapse.
+     */
+    device: Type.Optional(Type.Object({ name: Text(200) }, { additionalProperties: false })),
     time: Type.Optional(
       Type.Object(
         {

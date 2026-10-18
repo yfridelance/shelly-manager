@@ -9,6 +9,8 @@ export type SortKey = 'name' | 'deviceId' | 'model' | 'gen' | 'ip' | 'mac' | 'fi
 export class InventoryFilters {
   readonly search = signal('');
   readonly gen = signal<number | null>(null);
+  /** null: all, '': without floor. */
+  readonly floor = signal<string | null>(null);
   /** null: all, '': without location. */
   readonly location = signal<string | null>(null);
   readonly state = signal<DeviceState | null>(null);
@@ -28,6 +30,7 @@ export class InventoryFilters {
   reset(): void {
     this.search.set('');
     this.gen.set(null);
+    this.floor.set(null);
     this.location.set(null);
     this.state.set(null);
     this.function.set(null);

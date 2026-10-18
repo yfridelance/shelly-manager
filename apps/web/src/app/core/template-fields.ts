@@ -44,6 +44,11 @@ export const TEMPLATE_GROUPS: TemplateGroup[] = [
     fields: [{ key: 'cloud.enable', type: 'bool' }],
   },
   {
+    id: 'device',
+    hint: true,
+    fields: [{ key: 'device.name', type: 'text', placeholder: '{floor} {location} {kind}', hint: true }],
+  },
+  {
     id: 'time',
     hint: true,
     fields: [

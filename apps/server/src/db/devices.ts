@@ -15,6 +15,8 @@ export interface DeviceRow {
   device_id: string | null;
   site_id: number;
   auth_required: number;
+  /** Floor («Stockwerk»), local free text; ordered by src/devices/floor.ts. */
+  floor: string | null;
   location: string | null;
   notes: string | null;
   /** What is connected (local, free text). */
@@ -134,6 +136,7 @@ export function moveDevice(db: Db, mac: string, siteId: number): boolean {
 export interface LocalDeviceFields {
   /** null/empty: show the name the device reports again (and follow it on later scans). */
   name?: string | null;
+  floor?: string | null;
   location?: string | null;
   notes?: string | null;
   kind?: string | null;
@@ -143,6 +146,7 @@ export interface LocalDeviceFields {
 export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields): boolean {
   const clean = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null);
   const name = clean(fields.name);
+  const floor = clean(fields.floor);
   const location = clean(fields.location);
   const notes = clean(fields.notes);
   const kind = clean(fields.kind);
@@ -150,6 +154,7 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
     .prepare(
       `UPDATE devices SET
          name = CASE WHEN @setName THEN COALESCE(@name, device_name) ELSE name END,
+         floor = CASE WHEN @setFloor THEN @floor ELSE floor END,
          location = CASE WHEN @setLocation THEN @location ELSE location END,
          notes = CASE WHEN @setNotes THEN @notes ELSE notes END,
          kind = CASE WHEN @setKind THEN @kind ELSE kind END
@@ -159,6 +164,8 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
       mac,
       setName: name !== undefined ? 1 : 0,
       name: name ?? null,
+      setFloor: floor !== undefined ? 1 : 0,
+      floor: floor ?? null,
       setLocation: location !== undefined ? 1 : 0,
       location: location ?? null,
       setNotes: notes !== undefined ? 1 : 0,
@@ -167,6 +174,14 @@ export function updateLocalFields(db: Db, mac: string, fields: LocalDeviceFields
       kind: kind ?? null,
     });
   return res.changes > 0;
+}
+
+/**
+ * After the name was written to the device: local and reported name are equal again, so later
+ * scans follow renames made on the device (see upsertSeenDevice).
+ */
+export function recordDeviceName(db: Db, mac: string, name: string): void {
+  db.prepare('UPDATE devices SET name = ?, device_name = ? WHERE mac = ?').run(name, name, mac);
 }
 
 /** After a successful factory reset. The record stays for documentation. */

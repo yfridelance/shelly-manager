@@ -23,7 +23,7 @@ export interface PlanItem {
    * For `unsupported`: not available on this generation, missing in this firmware/model, or a
    * password is needed that was not given (enabling the AP).
    */
-  reason?: 'generation' | 'firmware' | 'password' | 'inactive' | 'no_ip' | 'gateway_cloud';
+  reason?: 'generation' | 'firmware' | 'password' | 'inactive' | 'no_ip' | 'gateway_cloud' | 'name_empty' | 'name_too_long';
 }
 
 export interface ScriptPlan {
@@ -56,6 +56,40 @@ export interface PlanContext {
   mac: string;
   /** Static IP per WLAN interface, assigned beforehand (preview or apply), see ip-plan.ts. */
   assignedIps?: Partial<Record<WifiInterface, string>> | undefined;
+  /** Local inventory fields for the device name placeholders {name}, {floor}, {location}, {kind}. */
+  local?: { name?: string | null; floor?: string | null; location?: string | null; kind?: string | null } | undefined;
+}
+
+/**
+ * Longest device name the device accepts. Gen1: 30 characters (official Gen1 changelog 1.9.0:
+ * "Limit device and channel name up to 30 characters"). Gen2+: the docs give no limit; 64 is our
+ * own cap until confirmed on a real device.
+ */
+export function maxDeviceNameLength(gen: ShellyGen): number {
+  return gen === 1 ? 30 : 64;
+}
+
+/** Gen1 GET /settings?name=…, Gen2+ Sys.SetConfig { device: { name } } (both in the official docs). */
+export function deviceNameStep(gen: ShellyGen, name: string): ConfigStep {
+  return gen === 1
+    ? { kind: 'gen1', path: '/settings', params: { name } }
+    : { kind: 'rpc', method: 'Sys.SetConfig', params: { config: { device: { name } } } };
+}
+
+/** Fills a device name pattern; empty placeholders collapse, so no double spaces remain. */
+export function fillDeviceName(pattern: string, ctx: PlanContext): string {
+  const values: Record<string, string> = {
+    name: ctx.local?.name ?? '',
+    floor: ctx.local?.floor ?? '',
+    location: ctx.local?.location ?? '',
+    kind: ctx.local?.kind ?? '',
+    id: ctx.deviceId,
+    mac: ctx.mac,
+  };
+  return pattern
+    .replace(/\{(name|floor|location|kind|id|mac)\}/g, (_, key: string) => values[key] ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** Shown instead of secret values in plans and logs. */
@@ -133,6 +167,14 @@ const FIELDS: FieldDef[] = [
     target: (s) => s.cloud?.enable,
     gen1: { read: (c) => at(c, 'cloud', 'enabled'), write: (v) => ({ path: '/settings/cloud', params: { enabled: v } }) },
     rpc: { read: (c) => at(c, 'cloud', 'enable'), write: (v) => ({ method: 'Cloud.SetConfig', config: { enable: v } }) },
+  },
+  // --- Device name ---------------------------------------------------------------
+  // Checked for empty/too long results in planTemplate before sending.
+  {
+    key: 'device.name',
+    target: (s, ctx) => (s.device?.name === undefined ? undefined : fillDeviceName(s.device.name, ctx)),
+    gen1: { read: (c) => at(c, 'name'), write: (v) => settings1({ name: v }) },
+    rpc: { read: (c) => at(c, 'sys', 'device', 'name'), write: (v) => ({ method: 'Sys.SetConfig', config: { device: { name: v } } }) },
   },
   // --- Time and location --------------------------------------------------------
   {
@@ -422,6 +464,13 @@ export function planTemplate(
     if (sameValue(current, target)) {
       items.push({ key: field.key, status: 'same', current, target });
       continue;
+    }
+    if (field.key === 'device.name' && typeof target === 'string') {
+      const reason = target === '' ? 'name_empty' : target.length > maxDeviceNameLength(gen) ? 'name_too_long' : undefined;
+      if (reason) {
+        items.push({ key: field.key, status: 'unsupported', current, target, reason });
+        continue;
+      }
     }
     // Since firmware 2.0 the device rejects enabling the AP without a password in the same call
     // (changelog 2.0.0: "AP password is only required when enabling the Access Point";

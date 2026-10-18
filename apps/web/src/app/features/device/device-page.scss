@@ -156,3 +156,19 @@ h3 {
     color: var(--warn);
   }
 }
+
+.device-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+
+  .confirm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: end;
+  }
+}

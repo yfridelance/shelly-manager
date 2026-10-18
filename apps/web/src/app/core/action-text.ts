@@ -27,6 +27,7 @@ export function actionSummary(e: ActionEntry): string {
     else if (d.restartRequired) parts.push(t('action.restartRequired'));
     return parts.join(', ');
   }
+  if (e.action === 'rename' && d.to) return t('action.renamed', { from: d.from ?? '–', to: d.to });
   if (e.action === 'firmware_update' && d.to) return `${shortFirmware(d.from ?? null)} → ${shortFirmware(d.to)}`;
   if (e.action === 'factory_reset' && d.confirmed === false) return t('action.probablySuccessful');
   return '';
@@ -45,6 +46,7 @@ export function actionDetail(e: ActionEntry): string {
         : t('action.channel', { channel }),
     );
   }
+  if (e.action === 'rename' && d.to) parts.push(t('action.renamed', { from: d.from ?? '–', to: d.to }));
   if (e.action === 'apply_template') {
     const changes = d.changes ?? [];
     if (changes.length > 0) {

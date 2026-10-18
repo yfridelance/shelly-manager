@@ -22,7 +22,7 @@ export function errorText(code: string | null | undefined): string {
 }
 
 /** Action types of the log, in the order of the filter. */
-export const ACTION_TYPES = ['snapshot', 'reboot', 'factory_reset', 'firmware_update', 'apply_template'] as const;
+export const ACTION_TYPES = ['snapshot', 'reboot', 'factory_reset', 'firmware_update', 'apply_template', 'rename'] as const;
 
 export function actionTypeText(action: string): string {
   return translateOptional(`actionType.${action}`) ?? action;

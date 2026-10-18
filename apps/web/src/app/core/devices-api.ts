@@ -46,6 +46,11 @@ export class DevicesApi {
     return this.call(this.http.post<Snapshot>(`/api/devices/${mac}/snapshot`, credentials ? { credentials } : {}));
   }
 
+  /** Writes the name to the device; afterwards local and device name are equal. */
+  writeName(mac: string, name: string, credentials?: Credentials): Promise<{ name: string; snapshotId: number | null }> {
+    return this.call(this.http.post<{ name: string; snapshotId: number | null }>(`/api/devices/${mac}/name`, { name, ...(credentials ? { credentials } : {}) }));
+  }
+
   reboot(mac: string, credentials?: Credentials): Promise<{ ok: true }> {
     return this.call(this.http.post<{ ok: true }>(`/api/devices/${mac}/reboot`, credentials ? { credentials } : {}));
   }

@@ -19,6 +19,7 @@ import { TemplateSettingsSchema, type TemplateSettings, type WifiInterface } fro
 import type { DeviceListRow } from '../db/devices.js';
 import { getSite } from '../db/sites.js';
 import { SiteQuery } from './sites.js';
+import { compareFloor } from '../devices/floor.js';
 import type { ShellyGen } from '../shelly/types.js';
 
 const Nullable = <T extends Parameters<typeof Type.Union>[0][number]>(t: T) => Type.Union([t, Type.Null()]);
@@ -46,6 +47,8 @@ export const PlanItemSchema = Type.Object({
       Type.Literal('inactive'),
       Type.Literal('no_ip'),
       Type.Literal('gateway_cloud'),
+      Type.Literal('name_empty'),
+      Type.Literal('name_too_long'),
     ]),
   ),
 });
@@ -93,7 +96,8 @@ function networkProblem(settings: TemplateSettings): string | undefined {
 const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
 
 /**
- * Plans static IPs for the given devices (in the order location, name), per WLAN interface.
+ * Plans static IPs for the given devices (in the order floor, location, name), per WLAN interface,
+ * so each floor gets a contiguous block.
  * Used IPs are all addresses in the inventory, held by their device's MAC.
  */
 export function planIpAssignments(
@@ -106,6 +110,7 @@ export function planIpAssignments(
   const result = new Map<string, Partial<Record<WifiInterface, string>>>();
   const ordered = [...devices].sort(
     (a, b) =>
+      compareFloor(a.floor, b.floor, collator.compare) ||
       collator.compare(a.location ?? '\uffff', b.location ?? '\uffff') ||
       collator.compare(a.name ?? a.device_name ?? `\uffff${a.mac}`, b.name ?? b.device_name ?? `\uffff${b.mac}`),
   );
@@ -123,6 +128,11 @@ export function planIpAssignments(
     for (const [mac, ip] of assigned) result.set(mac, { ...result.get(mac), [iface]: ip });
   }
   return result;
+}
+
+/** Inventory fields for the device name placeholders. */
+export function localFields(d: DeviceListRow) {
+  return { name: d.name ?? d.device_name, floor: d.floor, location: d.location, kind: d.kind };
 }
 
 export const templateRoutes: FastifyPluginAsyncTypebox<{ db: Db; now: () => string }> = async (app, { db, now }) => {
@@ -232,7 +242,7 @@ export const templateRoutes: FastifyPluginAsyncTypebox<{ db: Db; now: () => stri
           items:
             config === undefined
               ? []
-              : planTemplate(gen, config, template.settings, { deviceId, mac: d.mac, assignedIps: ips.get(d.mac) }).items,
+              : planTemplate(gen, config, template.settings, { deviceId, mac: d.mac, assignedIps: ips.get(d.mac), local: localFields(d) }).items,
           assignedIps: ips.get(d.mac) ?? {},
         };
       });

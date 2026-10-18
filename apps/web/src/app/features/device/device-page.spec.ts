@@ -8,7 +8,7 @@ import { DevicePage } from './device-page';
 const DETAILS: DeviceDetails = {
   device: {
     mac: 'A8032AB67890', ip: '10.0.0.4', gen: 2, model: 'SNSW-102P16EU', app: 'Plus2PM', firmware: '20241011-114455/1.4.4-g6d2a586',
-    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', siteId: 1, authRequired: true, location: null, notes: null, kind: null, functions: null, state: 'active',
+    name: 'Rollladen Büro', deviceName: 'Rollladen Büro', deviceId: 'shellyplus2pm-a8032ab67890', siteId: 1, authRequired: true, floor: null, location: null, notes: null, kind: null, functions: null, state: 'active',
     firstSeen: '2026-10-14T10:00:00.000Z', lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null,
     updateStable: null, updateBeta: null, updateCheckedAt: null,
   },
@@ -81,6 +81,74 @@ describe('DevicePage', () => {
     patch.flush({ ...DETAILS.device, location: 'Büro OG' });
     await settle(fixture);
     expect(el.textContent).toContain('Büro OG');
+  });
+
+  it('suggests a name from floor, location and kind, numbered within the site, without saving it yet', async () => {
+    const details = { ...DETAILS, device: { ...DETAILS.device, floor: 'EG', location: 'Büro', kind: 'Storen' } };
+    const fixture = TestBed.createComponent(DevicePage);
+    fixture.componentRef.setInput('mac', details.device.mac);
+    fixture.detectChanges();
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setTimeout(r));
+      TestBed.tick();
+      for (const req of http.match((r) => r.method === 'GET')) {
+        if (req.request.url.startsWith('/api/devices?')) req.flush([details.device, { ...details.device, mac: 'OTHER', name: 'EG Büro Storen' }]);
+        else if (req.request.url === `/api/devices/${details.device.mac}`) req.flush(details);
+        else req.flush([]);
+      }
+    }
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    button(el, 'Vorschlag: EG Büro Storen 2')?.click();
+    await fixture.whenStable();
+    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
+    expect(input?.value).toBe('EG Büro Storen 2');
+    // In the editor the suggestion can be inserted again after typing.
+    type(input, 'x');
+    await fixture.whenStable();
+    button(el, 'Vorschlag einsetzen')?.click();
+    await fixture.whenStable();
+    expect(input?.value).toBe('EG Büro Storen 2');
+    http.expectNone({ method: 'PATCH' });
+    input?.form?.dispatchEvent(new Event('submit'));
+    expect(http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' }).request.body).toEqual({ name: 'EG Büro Storen 2' });
+  });
+
+  it('saves the floor with building floors as suggestions', async () => {
+    const { fixture, el } = await render();
+    el.querySelector<HTMLElement>('kern-button[label="Stockwerk bearbeiten"]')?.click();
+    await fixture.whenStable();
+    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
+    expect(input?.getAttribute('list')).toBe('floor-suggestions');
+    expect([...el.querySelectorAll('#floor-suggestions option')].map((o) => o.getAttribute('value'))).toEqual(['UG', 'EG', 'OG', 'DG']);
+    type(input, '1. OG');
+    input?.form?.dispatchEvent(new Event('submit'));
+    const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
+    expect(patch.request.body).toEqual({ floor: '1. OG' });
+    patch.flush({ ...DETAILS.device, floor: '1. OG' });
+    await settle(fixture);
+  });
+
+  it('writes a differing local name to the device only after confirmation, with the password inline', async () => {
+    const renamed = { ...DETAILS, device: { ...DETAILS.device, name: 'EG Büro Storen' } };
+    const { fixture, el } = await render(renamed);
+    expect(el.textContent).toContain('Auf dem Gerät: «Rollladen Büro»');
+    button(el, 'Name auf Gerät schreiben')?.click();
+    await fixture.whenStable();
+    http.expectNone({ method: 'POST' });
+    expect(el.textContent).toContain('«EG Büro Storen» auf das Gerät schreiben?');
+    expect(button(el, 'Ja, schreiben')?.disabled).toBe(true);
+    type(el.querySelector('kern-input[name="name-password"]'), 'gen2-secret');
+    await fixture.whenStable();
+    el.querySelector('.device-name form')?.dispatchEvent(new Event('submit'));
+    const post = http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/name' });
+    expect(post.request.body).toEqual({ name: 'EG Büro Storen', credentials: { password: 'gen2-secret' } });
+    post.flush({ name: 'EG Büro Storen', snapshotId: 3 });
+    const synced = { ...renamed, device: { ...renamed.device, deviceName: 'EG Büro Storen' } };
+    await settle(fixture, synced);
+    expect(el.textContent).toContain('Name «EG Büro Storen» auf das Gerät geschrieben.');
+    expect(button(el, 'Name auf Gerät schreiben')).toBeUndefined();
+    expect(el.textContent).toContain('Gleich wie auf dem Gerät');
   });
 
   it('shows the derived function and saves the type', async () => {
