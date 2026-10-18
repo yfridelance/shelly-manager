@@ -20,6 +20,7 @@ const device = (over: Partial<Device>): Device => ({
   lastSeen: '2026-10-14T10:00:00.000Z', lastSnapshotAt: null, updateStable: null, updateBeta: null, updateCheckedAt: null, ...over,
 });
 
+import { fill, kernValueOf, setKernValue, toggleNamed } from '../../../testing/kern';
 describe('itemText', () => {
   it('describes plan items in German', () => {
     expect(itemText({ key: 'mqtt.server', status: 'change', current: null, target: 'mqtt.home:1883' })).toBe('MQTT: Server: – → mqtt.home:1883');
@@ -51,11 +52,8 @@ describe('TemplateEditor', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  function type(el: HTMLElement, name: string, value: string, event = 'input'): void {
-    const input = el.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${name}"]`);
-    if (!input) throw new Error(`no field ${name}`);
-    input.value = value;
-    input.dispatchEvent(new Event(event));
+  function type(el: HTMLElement, name: string, value: string): void {
+    fill(el, name, value);
   }
 
   it('builds settings only from included fields; typing includes a field', async () => {
@@ -66,14 +64,14 @@ describe('TemplateEditor', () => {
 
     type(el, 'name', 'Haus-Standard');
     type(el, 'mqtt.server', 'mqtt.home:1883');
-    type(el, 'cloud.enable', 'false', 'change');
+    type(el, 'cloud.enable', 'false');
     type(el, 'time.lat', '47.37');
     // Included, then excluded again: must not end up in the template.
     type(el, 'mqtt.user', 'shelly');
     await fixture.whenStable();
-    el.querySelector<HTMLInputElement>('input[name="on:mqtt.user"]')?.click();
+    toggleNamed(el, 'on:mqtt.user');
     await fixture.whenStable();
-    expect(el.querySelector<HTMLInputElement>('input[name="on:mqtt.server"]')?.checked).toBe(true);
+    expect(el.querySelector<HTMLElement & { checked?: boolean }>('[name="on:mqtt.server"]')?.checked).toBe(true);
 
     el.querySelector('form')?.dispatchEvent(new Event('submit'));
     const req = http.expectOne({ method: 'POST', url: '/api/templates' });
@@ -91,9 +89,9 @@ describe('TemplateEditor', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     type(el, 'name', 'Scripts');
-    el.querySelector<HTMLInputElement>('input[name="on:script"]')?.click();
+    toggleNamed(el, 'on:script');
     await fixture.whenStable();
-    const save = () => [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Speichern'));
+    const save = () => [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('Speichern'));
     type(el, 'script.name', 'heizung');
     await fixture.whenStable();
     expect(save()?.disabled).toBe(true);
@@ -155,7 +153,7 @@ describe('TemplateApply', () => {
     await tick();
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (text: string) => [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(text));
+    const button = (text: string) => [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes(text));
     return { fixture, el, button };
   }
 
@@ -172,13 +170,8 @@ describe('TemplateApply', () => {
     await fixture.whenStable();
     expect(el.textContent).toContain('2 ausgewählt');
 
-    const pw = el.querySelector<HTMLInputElement>('input[name="password"]');
-    const mqtt = el.querySelector<HTMLInputElement>('input[name="mqttPassword"]');
-    if (!pw || !mqtt) throw new Error('password fields missing');
-    pw.value = 'gen4-secret';
-    pw.dispatchEvent(new Event('input'));
-    mqtt.value = 'mqtt-geheim';
-    mqtt.dispatchEvent(new Event('input'));
+    fill(el, 'password', 'gen4-secret');
+    fill(el, 'mqttPassword', 'mqtt-geheim');
     await fixture.whenStable();
 
     button('Auf 2 Geräte anwenden')?.click();
@@ -194,7 +187,7 @@ describe('TemplateApply', () => {
     expect(garage.request.body).toEqual({
       templateId: 7, rebootIfRequired: true, secrets: { mqttPassword: 'mqtt-geheim' }, credentials: { password: 'gen4-secret' },
     });
-    expect(el.querySelector<HTMLInputElement>('input[name="password"]')?.value).toBe('');
+    expect(kernValueOf(el, '[name="password"]')).toBe('');
 
     boiler.flush({ snapshotId: 1, items: [], changed: 2, restartRequired: true, rebooted: true });
     garage.flush({ error: 'snapshot_failed', message: 'x', cause: 'auth_invalid' }, { status: 409, statusText: 'Conflict' });
@@ -224,16 +217,11 @@ describe('network templates in the UI', () => {
     const el = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
     await fixture.whenStable();
-    const set = (name: string, value: string, event = 'input') => {
-      const input = el.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${name}"]`);
-      if (!input) throw new Error(`no ${name}`);
-      input.value = value;
-      input.dispatchEvent(new Event(event));
-    };
+    const set = (name: string, value: string) => fill(el, name, value);
     set('name', 'Fix-IP');
-    set('network.sta.mode', 'static', 'change');
+    set('network.sta.mode', 'static');
     await fixture.whenStable();
-    const save = () => [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Speichern'));
+    const save = () => [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('Speichern'));
     expect(save()?.disabled).toBe(true);
     set('network.sta.ipFrom', '192.168.10.50');
     set('network.sta.netmask', '255.255.255.0');
@@ -277,7 +265,7 @@ describe('network templates in the UI', () => {
     expect([...el.querySelectorAll('thead th')].map((t) => t.textContent?.trim())).toContain('Neue IP');
     expect(el.textContent).toContain('Dieses Template ändert Netzwerkeinstellungen');
 
-    [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('alle sichtbaren'))?.click();
+    [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('alle sichtbaren'))?.click();
     await tick();
     TestBed.tick();
     // Selection changed: the IPs are planned again for exactly these devices.
@@ -288,17 +276,15 @@ describe('network templates in the UI', () => {
     await tick();
     await fixture.whenStable();
 
-    const ipInput = el.querySelector<HTMLInputElement>('input[name="ip:E868E7A1B2C3:sta"]');
-    expect(el.querySelector<HTMLInputElement>('input[name="ip:A8032AB12345:sta"]')?.value).toBe('192.168.10.50');
-    if (!ipInput) throw new Error('no ip input');
-    ipInput.value = '192.168.10.80';
-    ipInput.dispatchEvent(new Event('change'));
+    expect(kernValueOf(el, '[name="ip:A8032AB12345:sta"]')).toBe('192.168.10.50');
+    setKernValue(el, '[name="ip:E868E7A1B2C3:sta"]', '192.168.10.80');
+    el.querySelector('[name="ip:E868E7A1B2C3:sta"]')?.dispatchEvent(new CustomEvent('kernChange', { detail: { value: '192.168.10.80' } }));
     await fixture.whenStable();
-    expect([...el.querySelectorAll<HTMLButtonElement>('button')].some((b) => b.textContent?.includes('Export für DHCP-Reservierung'))).toBe(true);
+    expect([...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].some((b) => b.textContent?.includes('Export für DHCP-Reservierung'))).toBe(true);
 
-    [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Auf 2 Geräte anwenden'))?.click();
+    [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('Auf 2 Geräte anwenden'))?.click();
     await fixture.whenStable();
-    [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Ja, anwenden'))?.click();
+    [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('Ja, anwenden'))?.click();
     await tick();
     const boiler = http.expectOne('/api/devices/A8032AB12345/apply-template');
     const licht = http.expectOne('/api/devices/E868E7A1B2C3/apply-template');

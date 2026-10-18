@@ -1,19 +1,6 @@
-// Topbar layout comes from Kern (.k-topbar, .k-brand, .k-nav); only the app-specific parts live here.
-.spacer {
-  flex: 1;
-}
-
+// Layout of the header comes from kern-topbar; only app-specific bits live here.
 .site {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 13px;
-  color: var(--text-muted);
-
-  select {
-    height: var(--control-sm);
-    font-size: 13px;
-  }
+  width: 11rem;
 }
 
 .manage {
@@ -25,15 +12,6 @@
   &.active {
     color: var(--text);
   }
-}
-
-.language {
-  height: var(--control-sm);
-  font-size: 13px;
-}
-
-.health {
-  font-size: 13px;
 }
 
 main {

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, inject, signal } from '@angular/core';
 import type { Site } from '../../core/api.types';
 import { t } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
@@ -6,20 +6,22 @@ import type { DeviceApiError } from '../../core/devices-api';
 import { SiteService, SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
 import { EditableField } from '../../shared/editable-field';
+import { kernValue } from '../../core/kern';
 
 /** Sites (houses, customers): each has its own inventory, templates and log. */
 @Component({
   selector: 'app-sites-page',
   imports: [DateTimePipe, TranslatePipe, EditableField],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
-    <h1>{{ 'nav.sites' | t }}</h1>
-    <p class="muted intro">{{ 'sites.intro' | t }}</p>
+    <kern-page-header [heading]="'nav.sites' | t" [description]="'sites.intro' | t" />
 
     @if (message(); as m) {
-      <p [class]="'message ' + m.kind" role="status">{{ m.text }}</p>
+      <kern-alert [tone]="m.kind === 'ok' ? 'ok' : 'danger'" [attr.role]="m.kind === 'ok' ? 'status' : 'alert'">{{ m.text }}</kern-alert>
     }
 
-    <table class="data-table">
+    <kern-table>
+    <table>
       <thead>
         <tr>
           <th>{{ 'common.name' | t }}</th>
@@ -42,17 +44,17 @@ import { EditableField } from '../../shared/editable-field';
             <td>{{ s.createdAt | dateTime: 'date' }}</td>
             <td class="actions">
               @if (s.id === site.siteId()) {
-                <span class="muted">{{ 'sites.current' | t }}</span>
+                <kern-badge tone="accent">{{ 'sites.current' | t }}</kern-badge>
               } @else {
-                <button type="button" class="link" (click)="site.select(s.id)">{{ 'sites.switch' | t }}</button>
+                <kern-button size="sm" variant="ghost" (click)="site.select(s.id)">{{ 'sites.switch' | t }}</kern-button>
               }
               @if (s.deviceCount === 0 && s.templateCount === 0 && sites.list.value().length > 1) {
                 @if (confirmDelete() === s.id) {
                   <span>{{ 'common.deleteQuestion' | t }}</span>
-                  <button type="button" class="danger" (click)="remove(s)">{{ 'common.yes' | t }}</button>
-                  <button type="button" class="secondary" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</button>
+                  <kern-button size="sm" variant="danger" (click)="remove(s)">{{ 'common.yes' | t }}</kern-button>
+                  <kern-button size="sm" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</kern-button>
                 } @else {
-                  <button type="button" class="link" (click)="confirmDelete.set(s.id)">{{ 'common.delete' | t }}</button>
+                  <kern-button size="sm" variant="ghost" (click)="confirmDelete.set(s.id)">{{ 'common.delete' | t }}</kern-button>
                 }
               }
             </td>
@@ -60,26 +62,22 @@ import { EditableField } from '../../shared/editable-field';
         }
       </tbody>
     </table>
+    </kern-table>
 
-    <form class="create" (submit)="create($event)">
-      <h2>{{ 'sites.new' | t }}</h2>
-      <label class="field">
-        <span>{{ 'common.name' | t }}</span>
-        <input name="siteName" maxlength="100" [value]="newName()" (input)="newName.set(value($event))" />
-      </label>
-      <label class="field grow">
-        <span>{{ 'common.descriptionOptional' | t }}</span>
-        <input name="siteDescription" maxlength="2000" [value]="newDescription()" (input)="newDescription.set(value($event))" />
-      </label>
-      <button type="submit" [disabled]="!newName().trim()">{{ 'common.create' | t }}</button>
-    </form>
+    <kern-card class="create" [heading]="'sites.new' | t">
+      <form (submit)="create($event)">
+        <kern-input name="siteName" [label]="'common.name' | t" [value]="newName()" (kernInput)="newName.set(value($event))" />
+        <kern-input name="siteDescription" class="grow" [label]="'common.descriptionOptional' | t" [value]="newDescription()" (kernInput)="newDescription.set(value($event))" />
+        <kern-button type="submit" variant="primary" [disabled]="!newName().trim()">{{ 'common.create' | t }}</kern-button>
+      </form>
+    </kern-card>
   `,
   styles: `
-    .intro { max-width: 52rem; margin-top: 0; }
-    tr.current td { background: var(--surface-sunken); }
-    .actions { display: flex; gap: 0.5rem; align-items: center; }
-    .create { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-top: 1.5rem; max-width: 52rem; }
-    .create h2 { flex-basis: 100%; font-size: 1.05rem; margin: 0; }
+    kern-alert { margin-bottom: var(--space-4); }
+    tr.current td { background: var(--accent-soft); }
+    .actions { display: flex; gap: var(--space-2); align-items: center; }
+    .create { display: block; margin-top: var(--space-5); max-width: 52rem; }
+    .create form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-4); }
     .grow { flex: 1 1 18rem; }
   `,
 })
@@ -126,7 +124,5 @@ export class SitesPage {
     }
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
+  protected readonly value = kernValue;
 }

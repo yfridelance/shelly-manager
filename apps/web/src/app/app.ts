@@ -3,12 +3,13 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HealthService } from './core/health.service';
 import { I18nService } from './core/i18n/i18n.service';
 import { TranslatePipe } from './core/i18n/pipes';
+import { kernValue } from './core/kern';
 import { SiteService, SitesStore } from './core/site.service';
 
 @Component({
   imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslatePipe],
   selector: 'app-root',
-  // <kern-theme-toggle> is a custom element from src/kern/kern.js
+  // kern-* web components (registered in main.ts via defineKern)
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   styleUrl: './app.scss',
   templateUrl: './app.html',
@@ -21,7 +22,7 @@ export class App implements OnInit {
   /** Kern status modifier for the server health indicator. */
   protected readonly healthTone = computed(() => {
     const state = this.health.state();
-    return state === 'ok' ? 'k-status--ok' : state === 'down' ? 'k-status--danger' : 'k-status--busy';
+    return state === 'ok' ? 'ok' : state === 'down' ? 'danger' : 'busy';
   });
 
   constructor() {
@@ -37,10 +38,10 @@ export class App implements OnInit {
   }
 
   protected selectSite(event: Event): void {
-    this.site.select(Number((event.target as HTMLSelectElement).value));
+    this.site.select(Number(kernValue(event)));
   }
 
   protected selectLanguage(event: Event): void {
-    void this.i18n.use((event.target as HTMLSelectElement).value);
+    void this.i18n.use(kernValue(event));
   }
 }

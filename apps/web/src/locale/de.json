@@ -20,7 +20,8 @@
     "unreachable": "Server nicht erreichbar",
     "connecting": "Verbinde …",
     "themeLight": "Zu hellem Design wechseln",
-    "themeDark": "Zu dunklem Design wechseln"
+    "themeDark": "Zu dunklem Design wechseln",
+    "navigation": "Hauptnavigation"
   },
   "common": {
     "user": "Benutzer",
@@ -276,6 +277,7 @@
     "expandAll": "Alles aufklappen",
     "collapse": "Zuklappen",
     "copyJson": "JSON kopieren",
+    "copy": "Kopieren",
     "copied": "JSON in die Zwischenablage kopiert.",
     "snapshotConfirmed": "Config gelesen am {{taken}}, unverändert bestätigt bis {{confirmed}}. Der Status stammt vom {{confirmed}}.",
     "noConfigRead": "Für diesen Snapshot wurde keine Config gelesen.",
@@ -389,6 +391,7 @@
     "gatewayOptional": "Gateway (optional)",
     "dnsOptional": "DNS (optional)",
     "distributeScript": "Script verteilen",
+    "includeScript": "Ins Template aufnehmen",
     "saveAndPreview": "Speichern und Vorschau"
   },
   "templateApply": {

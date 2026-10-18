@@ -1,6 +1,6 @@
-<button type="button" class="secondary" [disabled]="running()" (click)="toggle()" [attr.aria-expanded]="open()">
+<kern-button [disabled]="running()" (click)="toggle()" [attr.aria-expanded]="open()">
   {{ 'firmwareCheck.button' | t }}
-</button>
+</kern-button>
 
 @if (open()) {
   <section class="panel" [attr.aria-label]="'firmwareCheck.label' | t">
@@ -10,27 +10,20 @@
         @if (protectedCount() > 0) {
           <p class="muted">{{ 'firmwareCheck.protected' | t: { count: protectedCount() } }}</p>
           <div class="credentials">
-            <label class="field">
-              <span>{{ 'common.userGen1' | t }}</span>
-              <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
-            </label>
-            <label class="field">
-              <span>{{ 'firmwareCheck.passwordOptional' | t }}</span>
-              <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
-            </label>
+            <kern-input name="username" size="sm" autocomplete="off" [label]="'common.userGen1' | t" [value]="username()" (kernInput)="username.set(value($event))" />
+            <kern-input name="password" size="sm" type="password" autocomplete="off" [label]="'firmwareCheck.passwordOptional' | t" [value]="password()" (kernInput)="password.set(value($event))" />
           </div>
         }
         <div class="buttons">
-          <button type="submit" [disabled]="candidates().length === 0">{{ 'firmwareCheck.start' | t }}</button>
-          <button type="button" class="secondary" (click)="close()">{{ 'common.close' | t }}</button>
+          <kern-button type="submit" variant="primary" size="sm" [disabled]="candidates().length === 0">{{ 'firmwareCheck.start' | t }}</kern-button>
+          <kern-button variant="ghost" size="sm" (click)="close()">{{ 'common.close' | t }}</kern-button>
         </div>
       </form>
     } @else {
       <div class="progress" aria-live="polite">
-        <progress [max]="total()" [value]="done()"></progress>
-        <span>{{ 'firmwareCheck.progress' | t: { done: done(), total: total() } }}</span>
+        <kern-progress [max]="total()" [value]="done()" [label]="'firmwareCheck.progress' | t: { done: done(), total: total() }" />
         @if (running()) {
-          <button type="button" class="secondary" (click)="cancel()">{{ 'common.cancel' | t }}</button>
+          <kern-button size="sm" (click)="cancel()">{{ 'common.cancel' | t }}</kern-button>
         }
       </div>
       @if (finished()) {
@@ -62,9 +55,9 @@
         }
         <div class="buttons">
           @if (count('update') > 0) {
-            <button type="button" (click)="showUpdates.emit()">{{ 'firmwareCheck.showUpdates' | t }}</button>
+            <kern-button variant="primary" size="sm" (click)="showUpdates.emit()">{{ 'firmwareCheck.showUpdates' | t }}</kern-button>
           }
-          <button type="button" class="secondary" (click)="close()">{{ 'common.close' | t }}</button>
+          <kern-button variant="ghost" size="sm" (click)="close()">{{ 'common.close' | t }}</kern-button>
         </div>
       }
     }

@@ -1,82 +1,68 @@
 <p class="back"><a routerLink="/inventar">← {{ 'nav.inventory' | t }}</a></p>
 
 @if (details.error()) {
-  <p class="message error" role="alert">{{ 'device.notFound' | t: { mac: mac() } }}</p>
+  <kern-alert tone="danger" role="alert">{{ 'device.notFound' | t: { mac: mac() } }}</kern-alert>
 } @else if (device(); as d) {
-  <header class="title">
-    <h1>{{ d.name ?? ('common.unnamed' | t) }}</h1>
-    <span [class]="'state ' + d.state">{{ stateText(d.state) }}</span>
-  </header>
+  <kern-page-header [heading]="d.name ?? ('common.unnamed' | t)">
+    <kern-status [tone]="stateTone(d.state)">{{ stateText(d.state) }}</kern-status>
+    <kern-badge>Gen{{ d.gen }}</kern-badge>
+  </kern-page-header>
 
   @if (message(); as m) {
-    <p [class]="'message ' + (m.kind === 'error' ? 'error' : 'ok')" role="status">{{ m.text }}</p>
+    <kern-alert class="message" [tone]="m.kind === 'error' ? 'danger' : 'ok'" [attr.role]="m.kind === 'error' ? 'alert' : 'status'">{{ m.text }}</kern-alert>
   }
 
   <div class="columns">
-    <section class="card">
-      <h2>{{ 'titles.device' | t }}</h2>
-      <dl class="facts">
-        <dt>{{ 'columns.deviceId' | t }}</dt>
-        <dd class="mono">
+    <kern-card [heading]="'titles.device' | t">
+      <kern-kv>
+        <kern-kv-item [label]="'columns.deviceId' | t" mono>
           @if (d.deviceId) {
-            {{ d.deviceId }}
+            <kern-copy [label]="'device.copy' | t">{{ d.deviceId }}</kern-copy>
           } @else {
             <span class="muted" [title]="'device.deviceIdUnknown' | t">{{ 'device.unknownYet' | t }}</span>
           }
-        </dd>
-        <dt>{{ 'columns.mac' | t }}</dt>
-        <dd class="mono">{{ formatMac(d.mac) }}</dd>
-        <dt>{{ 'header.site' | t }}</dt>
-        <dd>
+        </kern-kv-item>
+        <kern-kv-item [label]="'columns.mac' | t"><kern-copy [label]="'device.copy' | t">{{ formatMac(d.mac) }}</kern-copy></kern-kv-item>
+        <kern-kv-item [label]="'header.site' | t">
           @if (moveTo(); as target) {
             <span class="confirm">
               {{ 'device.moveQuestion' | t: { site: sites.name(target) } }}
-              <button type="button" (click)="moveDevice()">{{ 'device.moveConfirm' | t }}</button>
-              <button type="button" class="secondary" (click)="moveTo.set(null)">{{ 'common.cancel' | t }}</button>
+              <kern-button size="sm" variant="primary" (click)="moveDevice()">{{ 'device.moveConfirm' | t }}</kern-button>
+              <kern-button size="sm" variant="ghost" (click)="moveTo.set(null)">{{ 'common.cancel' | t }}</kern-button>
             </span>
           } @else {
-            <select name="site" [attr.aria-label]="'device.siteOfDevice' | t" (change)="moveTo.set(+value($event))">
+            <kern-select name="site" size="sm" class="site" [attr.aria-label-text]="'device.siteOfDevice' | t" [value]="'' + d.siteId" (kernChange)="onSiteChange(value($event), d.siteId)">
               @for (s of sites.list.value(); track s.id) {
-                <option [value]="s.id" [selected]="s.id === d.siteId">{{ s.name }}</option>
+                <option [value]="s.id">{{ s.name }}</option>
               }
-            </select>
+            </kern-select>
           }
-        </dd>
-        <dt>{{ 'columns.ip' | t }}</dt>
-        <dd class="mono">
+        </kern-kv-item>
+        <kern-kv-item [label]="'columns.ip' | t" mono>
           @if (d.ip) {
             <a [href]="'http://' + d.ip" target="_blank" rel="noopener">{{ d.ip }}</a>
           } @else {
             –
           }
-        </dd>
-        <dt>{{ 'columns.model' | t }}</dt>
-        <dd>{{ d.model ?? '–' }} @if (d.app) { <span class="muted">({{ d.app }})</span> }</dd>
-        <dt>{{ 'inventory.function' | t }}</dt>
-        <dd>
+        </kern-kv-item>
+        <kern-kv-item [label]="'columns.model' | t">{{ d.model ?? '–' }} @if (d.app) { <span class="muted">({{ d.app }})</span> }</kern-kv-item>
+        <kern-kv-item [label]="'inventory.function' | t">
           @if (d.functions) {
             {{ functionsText(d.functions) || '–' }}
           } @else {
             <span class="muted" [title]="'device.functionUnknown' | t">{{ 'device.unknownYet' | t }}</span>
           }
-        </dd>
-        <dt>{{ 'inventory.generation' | t }}</dt>
-        <dd>Gen{{ d.gen }}</dd>
-        <dt>{{ 'columns.firmware' | t }}</dt>
-        <dd [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</dd>
-        <dt>{{ 'scan.protection' | t }}</dt>
-        <dd>{{ (d.authRequired ? 'common.passwordProtected' : 'device.unprotected') | t }}</dd>
-        <dt>{{ 'device.nameOnDevice' | t }}</dt>
-        <dd>{{ d.deviceName ?? '–' }}</dd>
-        <dt>{{ 'device.firstSeen' | t }}</dt>
-        <dd>{{ d.firstSeen | dateTime }}</dd>
-        <dt>{{ 'columns.lastSeen' | t }}</dt>
-        <dd>{{ d.lastSeen | dateTime }}</dd>
-      </dl>
-    </section>
+        </kern-kv-item>
+        <kern-kv-item [label]="'inventory.generation' | t">Gen{{ d.gen }}</kern-kv-item>
+        <kern-kv-item [label]="'columns.firmware' | t" mono><span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span></kern-kv-item>
+        <kern-kv-item [label]="'scan.protection' | t">{{ (d.authRequired ? 'common.passwordProtected' : 'device.unprotected') | t }}</kern-kv-item>
+        <kern-kv-item [label]="'device.nameOnDevice' | t">{{ d.deviceName ?? '–' }}</kern-kv-item>
+        <kern-kv-item [label]="'device.firstSeen' | t">{{ d.firstSeen | dateTime }}</kern-kv-item>
+        <kern-kv-item [label]="'columns.lastSeen' | t">{{ d.lastSeen | dateTime }}</kern-kv-item>
+      </kern-kv>
+    </kern-card>
 
-    <section class="card">
-      <h2>{{ 'device.documentation' | t }}</h2>
+    <kern-card [heading]="'device.documentation' | t">
       <p class="hint">{{ 'device.documentationHint' | t }}</p>
       <datalist id="location-suggestions">
         @for (l of locationSuggestions(); track l) {
@@ -110,50 +96,42 @@
         <h3>{{ 'device.notes' | t }}</h3>
         <app-editable-field [label]="'device.notes' | t" [multiline]="true" [value]="d.notes" [saving]="saving()" (saved)="saveField('notes', $event)" />
       </div>
-    </section>
+    </kern-card>
   </div>
 
-  <section class="card">
-    <h2>{{ 'device.actions' | t }}</h2>
+  <kern-card class="block" [heading]="'device.actions' | t">
     @if (d.state === 'reset') {
-      <p class="message warn">{{ 'device.isReset' | t }}</p>
+      <kern-alert tone="warn">{{ 'device.isReset' | t }}</kern-alert>
     } @else {
       <form class="actions" (submit)="$event.preventDefault(); takeSnapshot()">
         @if (d.authRequired) {
           @if (d.gen === 1) {
-            <label class="field">
-              <span>{{ 'common.user' | t }}</span>
-              <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
-            </label>
+            <kern-input name="username" autocomplete="off" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
           }
-          <label class="field">
-            <span>{{ 'common.devicePassword' | t }}</span>
-            <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
-          </label>
+          <kern-input name="password" type="password" autocomplete="off" [label]="'common.devicePassword' | t" [value]="password()" (kernInput)="password.set(value($event))" />
         }
-        <button type="submit" [disabled]="running() !== null || !d.ip || (d.authRequired && !password())">
+        <kern-button type="submit" [busy]="running() === 'snapshot'" [disabled]="running() !== null || !d.ip || (d.authRequired && !password())">
           {{ (running() === 'snapshot' ? 'device.reading' : 'device.readConfig') | t }}
-        </button>
+        </kern-button>
         @if (confirmReboot()) {
           <span class="confirm">
             {{ 'device.rebootQuestion' | t }}
-            <button type="button" (click)="reboot()">{{ 'device.rebootConfirm' | t }}</button>
-            <button type="button" class="secondary" (click)="confirmReboot.set(false)">{{ 'common.cancel' | t }}</button>
+            <kern-button variant="primary" (click)="reboot()">{{ 'device.rebootConfirm' | t }}</kern-button>
+            <kern-button variant="ghost" (click)="confirmReboot.set(false)">{{ 'common.cancel' | t }}</kern-button>
           </span>
         } @else {
-          <button
-            type="button"
-            class="secondary"
+          <kern-button
+            [busy]="running() === 'reboot'"
             [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
             (click)="confirmReboot.set(true)"
           >
             {{ (running() === 'reboot' ? 'device.rebooting' : 'device.reboot') | t }}
-          </button>
+          </kern-button>
         }
         <span class="spacer"></span>
-        <button type="button" class="danger" [disabled]="running() !== null || !d.ip" (click)="resetOpen.set(true)">
+        <kern-button variant="danger" [disabled]="running() !== null || !d.ip" (click)="resetOpen.set(true)">
           {{ 'device.factoryReset' | t }}
-        </button>
+        </kern-button>
       </form>
       @if (d.authRequired) {
         <p class="hint">{{ 'device.passwordHint' | t }}</p>
@@ -164,7 +142,7 @@
         <p>
           {{ 'device.firmware.installed' | t }} <span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span>
           @if (d.updateStable) {
-            · <strong class="update">{{ 'device.firmware.updateAvailable' | t }} <span [title]="d.updateStable">{{ shortFirmware(d.updateStable) }}</span></strong>
+            · <kern-badge tone="warn">{{ 'device.firmware.updateAvailable' | t }} <span [title]="d.updateStable">{{ shortFirmware(d.updateStable) }}</span></kern-badge>
           }
           @if (d.updateBeta) {
             · {{ 'device.firmware.beta' | t }} <span [title]="d.updateBeta">{{ shortFirmware(d.updateBeta) }}</span>
@@ -179,39 +157,37 @@
           }
         </p>
         <div class="actions">
-          <button
-            type="button"
-            class="secondary"
+          <kern-button
+            [busy]="running() === 'firmware'"
             [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
             (click)="checkFirmware()"
           >
             {{ (running() === 'firmware' ? 'device.firmware.wait' : 'device.firmware.check') | t }}
-          </button>
+          </kern-button>
           @if (confirmUpdate(); as channel) {
             <span class="confirm">
               {{ (channel === 'beta' ? 'device.firmware.installBetaQuestion' : 'device.firmware.installQuestion') | t: { version: shortFirmware(channel === 'beta' ? d.updateBeta : d.updateStable) } }}
-              <button type="button" (click)="installUpdate(channel)">{{ 'device.firmware.installConfirm' | t }}</button>
-              <button type="button" class="secondary" (click)="confirmUpdate.set(null)">{{ 'common.cancel' | t }}</button>
+              <kern-button variant="primary" (click)="installUpdate(channel)">{{ 'device.firmware.installConfirm' | t }}</kern-button>
+              <kern-button variant="ghost" (click)="confirmUpdate.set(null)">{{ 'common.cancel' | t }}</kern-button>
             </span>
           } @else {
             @if (d.updateStable) {
-              <button
-                type="button"
+              <kern-button
+                variant="primary"
                 [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
                 (click)="confirmUpdate.set('stable')"
               >
                 {{ 'device.firmware.install' | t }}
-              </button>
+              </kern-button>
             }
             @if (d.updateBeta) {
-              <button
-                type="button"
-                class="link"
+              <kern-button
+                variant="ghost"
                 [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
                 (click)="confirmUpdate.set('beta')"
               >
                 {{ 'device.firmware.installBeta' | t }}
-              </button>
+              </kern-button>
             }
           }
         </div>
@@ -220,7 +196,8 @@
 
     @if (recentActions.value().length > 0) {
       <h3>{{ 'device.recentActions' | t }}</h3>
-      <table class="data-table compact">
+      <kern-table compact class="recent">
+      <table class="compact">
         <tbody>
           @for (a of recentActions.value(); track a.id) {
             <tr>
@@ -228,57 +205,51 @@
               <td>{{ actionLabel(a) }}</td>
               <td [title]="actionDetail(a) || (a.error ?? '')">
                 @if (a.result === 'ok') {
-                  <span class="state active">{{ 'common.ok' | t }}</span>
+                  <kern-status tone="ok">{{ 'common.ok' | t }}</kern-status>
                   @if (actionSummary(a); as summary) {
                     <span class="muted"> · {{ summary }}</span>
                   }
                 } @else if (a.result === 'error') {
-                  <span class="error-text">{{ actionSummary(a) }}</span>
+                  <kern-status tone="danger">{{ actionSummary(a) }}</kern-status>
                 } @else {
-                  <span class="muted">{{ 'common.running' | t }}</span>
+                  <kern-status tone="busy">{{ 'common.running' | t }}</kern-status>
                 }
               </td>
             </tr>
           }
         </tbody>
       </table>
+      </kern-table>
       <p><a routerLink="/protokoll">{{ 'device.fullLog' | t }}</a></p>
     }
-  </section>
+  </kern-card>
 
   @if (resetOpen()) {
     <app-reset-dialog [device]="d" (closed)="onResetClosed()" (resetDone)="onResetDone($event)" />
   }
 
-  <section class="card">
+  <kern-card class="block" [heading]="'device.configuration' | t">
     <div class="section-head">
-      <h2>{{ 'device.configuration' | t }}</h2>
       @if (details.value()?.snapshots; as snaps) {
         @if (snaps.length > 0) {
-          <label class="field inline">
-            <span>{{ 'device.snapshot' | t }}</span>
-            <select (change)="selectSnapshot(value($event))">
+          <kern-select size="sm" [label]="'device.snapshot' | t" [value]="selectedId() === null ? '' : '' + selectedId()" (kernChange)="selectSnapshot(value($event))">
               @for (s of snaps; track s.id; let first = $first) {
-                <option [value]="first ? '' : s.id" [selected]="first ? selectedId() === null : selectedId() === s.id">
+                <option [value]="first ? '' : s.id">
                   {{ s.takenAt | dateTime: 'seconds' }}{{ first ? ' ' + ('device.newest' | t) : '' }}{{ s.confirmedAt ? ' – ' + ('device.confirmedUntil' | t: { time: (s.confirmedAt | dateTime) }) : '' }}{{ s.hasConfig ? '' : ' – ' + ('device.withoutConfig' | t) }}
                 </option>
               }
-            </select>
-          </label>
+          </kern-select>
           @if (snaps.length > 1) {
-            <label class="field inline">
-              <span>{{ 'device.compareWith' | t }}</span>
-              <select name="compare" (change)="selectCompare(value($event))">
-                <option value="" [selected]="compareId() === null">–</option>
+            <kern-select name="compare" size="sm" [label]="'device.compareWith' | t" [value]="compareId() === null ? '' : '' + compareId()" (kernChange)="selectCompare(value($event))">
+                <option value="">–</option>
                 @for (s of snaps; track s.id) {
                   @if (s.id !== shownId()) {
-                    <option [value]="s.id" [selected]="compareId() === s.id">
+                    <option [value]="s.id">
                       {{ s.takenAt | dateTime: 'seconds' }}{{ s.confirmedAt ? ' – ' + ('device.confirmedUntil' | t: { time: (s.confirmedAt | dateTime) }) : '' }}
                     </option>
                   }
                 }
-              </select>
-            </label>
+            </kern-select>
           }
           <span class="muted">{{ 'device.snapshotCount' | t: { count: snaps.length } }}</span>
         }
@@ -292,9 +263,9 @@
         <button type="button" role="tab" [attr.aria-selected]="tab() === 'status'" (click)="tab.set('status')">{{ 'device.tab.status' | t }}</button>
         <button type="button" role="tab" [attr.aria-selected]="tab() === 'info'" (click)="tab.set('info')">{{ 'device.tab.info' | t }}</button>
         <span class="spacer"></span>
-        <button type="button" class="link" (click)="openDepth.set(99)">{{ 'device.expandAll' | t }}</button>
-        <button type="button" class="link" (click)="openDepth.set(1)">{{ 'device.collapse' | t }}</button>
-        <button type="button" class="link" (click)="copyShown()">{{ 'device.copyJson' | t }}</button>
+        <kern-button size="sm" variant="ghost" (click)="openDepth.set(99)">{{ 'device.expandAll' | t }}</kern-button>
+        <kern-button size="sm" variant="ghost" (click)="openDepth.set(1)">{{ 'device.collapse' | t }}</kern-button>
+        <kern-button size="sm" variant="ghost" (click)="copyShown()">{{ 'device.copyJson' | t }}</kern-button>
       </div>
       @if (s.confirmedAt && compareId() === null) {
         <p class="muted snapshot-confirmed">
@@ -315,7 +286,8 @@
               }
             </p>
             @if (c.entries.length > 0) {
-              <table class="data-table diff">
+              <kern-table>
+              <table class="diff">
                 <thead>
                   <tr>
                     <th>{{ 'device.diff.path' | t }}</th>
@@ -335,6 +307,7 @@
                   }
                 </tbody>
               </table>
+              </kern-table>
             }
           } @else {
             <p class="muted">{{ 'device.diff.loading' | t }}</p>
@@ -342,7 +315,7 @@
         } @else if (shown() === null) {
           <p class="muted">{{ (tab() === 'config' ? 'device.noConfigRead' : 'device.noStatusRead') | t }}</p>
         } @else {
-          <app-json-tree [value]="shown()" [openDepth]="openDepth()" />
+          <kern-json [data]="shown()" [openDepth]="openDepth()" />
         }
       </div>
     } @else {
@@ -353,7 +326,7 @@
         }
       </p>
     }
-  </section>
+  </kern-card>
 } @else {
   <p class="muted">{{ 'common.loading' | t }}</p>
 }

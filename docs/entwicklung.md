@@ -55,7 +55,7 @@ apps/
       routes/                 HTTP-Routen mit TypeBox-Schemas
     test/                     Vitest; mock-shelly/ ist die Mock-Fleet
   web/                        Angular 22, Standalone Components, Signals, SCSS
-    src/kern/                 Design-System Kern: tokens.css, kern.css, kern.js (Kopie, nicht von Hand ändern)
+    src/testing/              Test-Helfer für Kern-Elemente (kern.ts) und Vitest-Setup (setup.ts)
     src/locale/               Übersetzungen: de.json (Quelle), weitere Sprachen
     src/app/
       core/                   API-Typen, API-Clients, Texte, Template-Feldliste
@@ -108,13 +108,26 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
 - Sammelabläufe («Alle auf Updates prüfen», Template anwenden) laufen im Browser mit begrenzter Parallelität über die
   Einzel-Endpunkte; so gibt es Fortschritt pro Gerät ohne Job-Verwaltung im Server.
 - Passwörter liegen nur in Formular-Signals und werden beim Absenden geleert.
-- **Design-System Kern** (`src/kern/`, eingebunden über `angular.json` → `styles`/`scripts`): Tokens als
-  CSS-Variablen (`tokens.css`, aus `tokens.json` erzeugt), Komponenten als `k-*`-Klassen (`kern.css`) und
-  `kern-*`-Custom-Elements (`kern.js`, setzt `window.Kern`). Dark ist Standard; `index.html` setzt `data-theme` vor
-  dem ersten Rendern aus `localStorage['kern-theme']`, `<kern-theme-toggle>` in der Kopfzeile schaltet um. Farben,
-  Abstände und Radien in eigenen Styles nur über Kern-Tokens (`var(--surface)`, `var(--space-4)` …). `styles.scss`
-  gleicht die bestehenden App-Klassen (`.field`, `.message`, `.data-table` …) an den Kern-Look an; neues Markup kann
-  direkt die `k-*`-Klassen nutzen. Komponenten mit `kern-*`-Elementen brauchen `CUSTOM_ELEMENTS_SCHEMA`.
+- **Design-System Kern** ([yfridelance/kern](https://github.com/yfridelance/kern)): Web Components (Stencil,
+  Shadow DOM) als Abhängigkeit `@yfridelance/kern`, bezogen als gebautes Paket aus dem GitHub-Release (URL in
+  `apps/web/package.json`, kein git und keine Install-Scripts nötig). Neue Version: Release in Kern erstellen, dann
+  `npm install -w apps/web https://github.com/yfridelance/kern/releases/download/vX.Y.Z/yfridelance-kern-X.Y.Z.tgz`.
+  - `kern.css` (Tokens, Theme, Grundstile) steht in `angular.json` → `styles`; `core/kern.ts` (`defineKern()` in
+    `main.ts`) registriert die benutzten `kern-*`-Elemente und setzt das gespeicherte Theme. Dark ist Standard;
+    `index.html` setzt `data-theme` schon vor dem ersten Rendern aus `localStorage['kern-theme']`,
+    `<kern-theme-toggle>` in der Kopfzeile schaltet um.
+  - Komponenten mit `kern-*` brauchen `CUSTOM_ELEMENTS_SCHEMA`. Werte per Property-Binding (`[value]`, `[checked]`,
+    `[data]`), Eingaben über die Kern-Events: `(kernInput)` bei `kern-input`/`kern-textarea`, `(kernChange)` bei
+    `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`; auslesen mit `kernValue($event)` /
+    `kernChecked($event)` aus `core/kern.ts`. Optionen von `kern-select` als Kind-`<option>` (`@for` funktioniert).
+  - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`).
+  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`), Sortierköpfe in Tabellen,
+    die Tabs im Gerätedetail (eine gemeinsame JSON-Ansicht) und Router-Links mit Button-Optik (`a.button` in
+    `styles.scss`, weil `kern-button href` die Seite neu laden würde).
+  - Farben, Abstände und Radien in eigenen Styles nur über Kern-Tokens (`var(--surface)`, `var(--space-4)` …).
+  - Tests (jsdom) kennen die Kern-Elemente nicht: `src/testing/kern.ts` setzt Werte und feuert die Kern-Events
+    (`setKernValue`, `setKernChecked`, `fill`, `toggleNamed`); `src/testing/setup.ts` lässt Klicks auf
+    `kern-button` wie im Browser wirken (deaktiviert = kein Klick, `type="submit"` sendet das Formular).
 
 ## Übersetzungen (i18n)
 

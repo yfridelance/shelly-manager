@@ -1,6 +1,7 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, effect, inject, signal } from '@angular/core';
 import { SiteService } from '../../core/site.service';
-import type { ScanDeviceResult } from '../../core/api.types';
+import type { ScanDeviceResult, ScanSummary } from '../../core/api.types';
+import { kernValue } from '../../core/kern';
 import { t } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { errorText, formatMac, ipSortKey, scanStatusText } from '../../core/texts';
@@ -11,6 +12,7 @@ import { ScanService } from './scan.service';
   imports: [DateTimePipe, TranslatePipe],
   templateUrl: './scan-page.html',
   styleUrl: './scan-page.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class ScanPage {
   protected readonly scans = inject(ScanService);
@@ -55,7 +57,9 @@ export class ScanPage {
     return errorText(d.errorCode);
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+  protected readonly value = kernValue;
+
+  protected statusTone(status: ScanSummary['status']): 'ok' | 'warn' | 'danger' | 'busy' {
+    return status === 'done' ? 'ok' : status === 'failed' ? 'danger' : status === 'cancelled' ? 'warn' : 'busy';
   }
 }

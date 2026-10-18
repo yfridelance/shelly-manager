@@ -1,75 +1,83 @@
 .back {
-  margin: 0 0 0.5rem;
-}
-
-.head {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
 }
 
 .settings {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-4);
   padding-left: 1.2rem;
-  font-size: 0.9rem;
+  font-size: 13px;
 }
 
-.card {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1rem;
-
-  h2 {
-    font-size: 1.05rem;
-    margin: 0;
-  }
+.block {
+  margin-bottom: var(--space-4);
 }
 
-.toolbar,
 .options,
 .buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: center;
 }
 
 .options {
   align-items: end;
-  margin: 0.75rem 0;
+  margin-bottom: var(--space-3);
 }
 
 .check {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  padding-bottom: 0.45rem;
+  padding-bottom: 6px;
+}
+
+kern-alert {
+  margin-bottom: var(--space-3);
 }
 
 .small {
-  font-size: 0.85rem;
+  font-size: 12px;
 }
 
-.preview.change {
-  color: var(--accent);
+.lock {
+  width: 13px;
+  height: 13px;
+  margin-left: var(--space-1);
+  vertical-align: -1px;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
 }
 
-.preview.same,
-.preview.unknown {
-  color: var(--text-muted);
-}
+// Toggle for the per-device details: reads as a link, coloured by what would change.
+.preview {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 
-.ok-text {
-  color: var(--ok);
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  &.change {
+    color: var(--accent-text);
+  }
+
+  &.same,
+  &.unknown {
+    color: var(--text-muted);
+  }
 }
 
 tr.details td {
   white-space: normal;
   background: var(--surface-sunken);
+  padding-block: var(--space-2);
 
   ul {
-    margin: 0.25rem 0;
+    margin: var(--space-1) 0;
     padding-left: 1.2rem;
   }
 
@@ -79,11 +87,10 @@ tr.details td {
   }
 }
 
-progress {
+kern-progress {
   width: 16rem;
 }
 
-input.ip {
-  width: 9rem;
-  padding: 0.2rem 0.4rem;
+kern-input.ip {
+  width: 10rem;
 }

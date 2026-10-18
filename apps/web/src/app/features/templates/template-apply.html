@@ -1,32 +1,28 @@
 <p class="back"><a routerLink="/templates">← {{ 'nav.templates' | t }}</a></p>
 
 @if (template.error()) {
-  <p class="message error" role="alert">{{ 'errors.template_not_found' | t }}</p>
+  <kern-alert tone="danger" role="alert">{{ 'errors.template_not_found' | t }}</kern-alert>
 } @else if (template.value(); as t) {
-  <div class="head">
-    <h1>{{ 'templateApply.title' | t: { name: t.name } }}</h1>
+  <kern-page-header [heading]="'templateApply.title' | t: { name: t.name }" [description]="t.description ?? ''">
     <a [routerLink]="['/templates', t.id]">{{ 'common.edit' | t }}</a>
-  </div>
-  @if (t.description) {
-    <p class="muted">{{ t.description }}</p>
-  }
+  </kern-page-header>
   <ul class="settings">
     @for (l of lines(); track l) {
       <li>{{ l }}</li>
     }
   </ul>
 
-  <section class="card">
-    <div class="toolbar">
-      <h2>{{ 'sites.devices' | t }}</h2>
-      <input type="search" [placeholder]="'templateApply.search' | t" [value]="search()" (input)="search.set(value($event))" />
-      <button type="button" class="link" (click)="selectAll(true)" [disabled]="running()">{{ 'templateApply.selectVisible' | t }}</button>
-      <button type="button" class="link" (click)="selectChanging()" [disabled]="running()">{{ 'templateApply.selectChanging' | t }}</button>
-      <button type="button" class="link" (click)="selectAll(false)" [disabled]="running()">{{ 'templateApply.selectNone' | t }}</button>
-      <span class="muted">{{ 'templateApply.selected' | t: { count: selectedDevices().length } }}</span>
-    </div>
+  <kern-card class="block" [heading]="'sites.devices' | t">
+    <span slot="meta" class="muted">{{ 'templateApply.selected' | t: { count: selectedDevices().length } }}</span>
+    <kern-toolbar>
+      <kern-input type="search" size="sm" [ariaLabelText]="'templateApply.search' | t" [placeholder]="'templateApply.search' | t" [value]="search()" (kernInput)="search.set(value($event))" />
+      <kern-button size="sm" variant="ghost" (click)="selectAll(true)" [disabled]="running()">{{ 'templateApply.selectVisible' | t }}</kern-button>
+      <kern-button size="sm" variant="ghost" (click)="selectChanging()" [disabled]="running()">{{ 'templateApply.selectChanging' | t }}</kern-button>
+      <kern-button size="sm" variant="ghost" (click)="selectAll(false)" [disabled]="running()">{{ 'templateApply.selectNone' | t }}</kern-button>
+    </kern-toolbar>
     <p class="muted small">{{ 'templateApply.previewHint' | t }}</p>
-    <table class="data-table">
+    <kern-table>
+    <table>
       <thead>
         <tr>
           <th></th>
@@ -45,48 +41,49 @@
         @for (d of visible(); track d.mac) {
           <tr>
             <td>
-              <input
-                type="checkbox"
-                [attr.aria-label]="'templateApply.selectDevice' | t: { name: d.name ?? d.mac }"
+              <kern-checkbox
+                [label]="'templateApply.selectDevice' | t: { name: d.name ?? d.mac }"
                 [checked]="selected().has(d.mac)"
                 [disabled]="running()"
-                (change)="toggle(d.mac, checked($event))"
+                (kernChange)="toggle(d.mac, checked($event))"
               />
             </td>
             <td>
               <a [routerLink]="['/inventar', d.mac]">{{ d.name ?? formatMac(d.mac) }}</a>
               @if (d.authRequired) {
-                <span [title]="'common.passwordProtected' | t"> 🔒</span>
+                <svg class="lock" viewBox="0 0 16 16" role="img" [attr.aria-label]="'common.passwordProtected' | t"><title>{{ 'common.passwordProtected' | t }}</title><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>
               }
             </td>
             <td>{{ d.model ?? '–' }}</td>
             <td>{{ d.gen }}</td>
             <td class="mono">{{ d.ip }}</td>
             <td>
-              <button type="button" class="link" [class]="'link preview ' + summary(d.mac).kind" (click)="expanded.set(expanded() === d.mac ? null : d.mac)">
+              <button type="button" [class]="'preview ' + summary(d.mac).kind" [attr.aria-expanded]="expanded() === d.mac" (click)="expanded.set(expanded() === d.mac ? null : d.mac)">
                 {{ summary(d.mac).text }}
               </button>
             </td>
             @for (iface of staticIfaces(); track iface) {
               <td>
                 @if (selected().has(d.mac)) {
-                  <input
-                    class="ip mono"
+                  <kern-input
+                    class="ip"
+                    size="sm"
+                    mono
                     [attr.name]="'ip:' + d.mac + ':' + iface"
-                    [attr.aria-label]="'templateApply.newIpFor' | t: { name: d.name ?? d.mac }"
+                    [ariaLabelText]="'templateApply.newIpFor' | t: { name: d.name ?? d.mac }"
                     [value]="plannedIp(d.mac, iface)"
                     [disabled]="running()"
                     [placeholder]="'templateApply.noneFree' | t"
-                    (change)="setIp(d.mac, iface, value($event))"
+                    (kernChange)="setIp(d.mac, iface, value($event))"
                   />
                 }
               </td>
             }
             <td>
               @if (results()[d.mac]; as r) {
-                <span [class.error-text]="!r.ok" [class.ok-text]="r.ok">{{ r.ok ? '✓' : '✗' }} {{ r.text }}</span>
+                <kern-status [tone]="r.ok ? 'ok' : 'danger'"><span aria-hidden="true">{{ r.ok ? '✓' : '✗' }}</span> {{ r.text }}</kern-status>
               } @else if (running() && selected().has(d.mac)) {
-                <span class="muted">{{ 'templateApply.waiting' | t }}</span>
+                <kern-status tone="busy">{{ 'templateApply.waiting' | t }}</kern-status>
               }
             </td>
           </tr>
@@ -118,69 +115,56 @@
           }
         } @empty {
           <tr>
-            <td [attr.colspan]="7 + staticIfaces().length" class="muted">{{ 'templateApply.noDevices' | t }}</td>
+            <td [attr.colspan]="7 + staticIfaces().length" class="empty">{{ 'templateApply.noDevices' | t }}</td>
           </tr>
         }
       </tbody>
     </table>
-  </section>
+    </kern-table>
+  </kern-card>
 
-  <section class="card">
-    <h2>{{ 'templates.apply' | t }}</h2>
+  <kern-card class="block" [heading]="'templates.apply' | t">
     <div class="options">
       @if (selectedProtected().length > 0) {
-        <label class="field">
-          <span>{{ 'common.userGen1' | t }}</span>
-          <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
-        </label>
-        <label class="field">
-          <span>{{ 'templateApply.devicePassword' | t: { count: selectedProtected().length } }}</span>
-          <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
-        </label>
+        <kern-input name="username" autocomplete="off" [label]="'common.userGen1' | t" [value]="username()" (kernInput)="username.set(value($event))" />
+        <kern-input name="password" type="password" autocomplete="off" [label]="'templateApply.devicePassword' | t: { count: selectedProtected().length }" [value]="password()" (kernInput)="password.set(value($event))" />
       }
       @if (needsMqttPassword()) {
-        <label class="field">
-          <span>{{ 'templateApply.mqttPassword' | t }}</span>
-          <input name="mqttPassword" type="password" autocomplete="off" [value]="mqttPassword()" (input)="mqttPassword.set(value($event))" />
-        </label>
+        <kern-input name="mqttPassword" type="password" autocomplete="off" [label]="'templateApply.mqttPassword' | t" [value]="mqttPassword()" (kernInput)="mqttPassword.set(value($event))" />
       }
       @if (needsApPassword()) {
-        <label class="field">
-          <span>{{ 'templateApply.apPassword' | t }}</span>
-          <input name="apPassword" type="password" autocomplete="off" [value]="apPassword()" (input)="apPassword.set(value($event))" />
-        </label>
+        <kern-input name="apPassword" type="password" autocomplete="off" [label]="'templateApply.apPassword' | t" [value]="apPassword()" (kernInput)="apPassword.set(value($event))" />
       }
-      <label class="check">
-        <input type="checkbox" name="reboot" [checked]="reboot()" (change)="reboot.set(checked($event))" />
+      <kern-switch name="reboot" class="check" [checked]="reboot()" (kernChange)="reboot.set(checked($event))">
         {{ 'templateApply.rebootIfRequired' | t }}
-      </label>
+      </kern-switch>
     </div>
     @if (hasNetwork()) {
-      <p class="message warn">{{ 'templateApply.networkWarning' | t }}</p>
+      <kern-alert tone="warn">{{ 'templateApply.networkWarning' | t }}</kern-alert>
     }
     @if (needsApPassword() && !apPassword()) {
-      <p class="message warn">{{ 'templateApply.apWarning' | t }}</p>
+      <kern-alert tone="warn">{{ 'templateApply.apWarning' | t }}</kern-alert>
     }
     <p class="muted small">{{ 'templateApply.snapshotHint' | t }}</p>
 
     <div class="buttons">
       @if (running()) {
-        <progress [max]="total()" [value]="doneCount()"></progress>
+        <kern-progress [max]="total()" [value]="doneCount()" />
         <span>{{ 'common.progress' | t: { done: doneCount(), total: total() } }}</span>
-        <button type="button" class="secondary" (click)="cancel()">{{ 'common.cancel' | t }}</button>
+        <kern-button (click)="cancel()">{{ 'common.cancel' | t }}</kern-button>
       } @else if (confirming()) {
         <span>{{ 'templateApply.confirm' | t: { name: t.name, count: selectedDevices().length } }}</span>
-        <button type="button" (click)="run()">{{ 'templateApply.confirmYes' | t }}</button>
-        <button type="button" class="secondary" (click)="confirming.set(false)">{{ 'common.cancel' | t }}</button>
+        <kern-button variant="primary" (click)="run()">{{ 'templateApply.confirmYes' | t }}</kern-button>
+        <kern-button variant="ghost" (click)="confirming.set(false)">{{ 'common.cancel' | t }}</kern-button>
       } @else {
         @if (staticIfaces().length > 0) {
-          <button type="button" class="secondary" [disabled]="selectedDevices().length === 0" (click)="exportReservations()">
+          <kern-button [disabled]="selectedDevices().length === 0" (click)="exportReservations()">
             {{ 'templateApply.exportReservations' | t }}
-          </button>
+          </kern-button>
         }
-        <button type="button" [disabled]="selectedDevices().length === 0" (click)="confirming.set(true)">
+        <kern-button variant="primary" [disabled]="selectedDevices().length === 0" (click)="confirming.set(true)">
           {{ 'templateApply.applyTo' | t: { count: selectedDevices().length } }}
-        </button>
+        </kern-button>
       }
     </div>
     @if (!running() && doneCount() > 0) {
@@ -192,7 +176,7 @@
         · {{ 'templateApply.detailsIn' | t }} <a routerLink="/protokoll">{{ 'nav.log' | t }}</a>
       </p>
     }
-  </section>
+  </kern-card>
 } @else {
   <p class="muted">{{ 'common.loading' | t }}</p>
 }

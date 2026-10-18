@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from '@angular/core';
 import { SiteService } from '../../core/site.service';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -7,12 +7,14 @@ import { actionDetail, actionLabel } from '../../core/action-text';
 import { formatNumber } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { ACTION_TYPES, actionTypeText, errorText, formatMac } from '../../core/texts';
+import { kernValue } from '../../core/kern';
 
 @Component({
   selector: 'app-log-page',
   imports: [DateTimePipe, TranslatePipe, RouterLink],
   templateUrl: './log-page.html',
   styleUrl: './log-page.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class LogPage {
   protected readonly actionText = actionTypeText;
@@ -47,7 +49,5 @@ export class LogPage {
   protected readonly actionLabel = actionLabel;
   protected readonly detailText = actionDetail;
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement | HTMLSelectElement).value;
-  }
+  protected readonly value = kernValue;
 }

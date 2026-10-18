@@ -1,20 +1,5 @@
-// Global styles on top of Kern (src/kern/: tokens.css, kern.css, kern.js).
-// Colors, spacing and radii come only from Kern tokens. The app's own class names
-// (.field, .message, .data-table, …) are kept and styled to match Kern components,
-// so templates and tests stay unchanged; new markup can use the k-* classes directly.
-
-h1 {
-  font-size: 22px;
-  line-height: 28px;
-  font-weight: 600;
-  margin: 0 0 var(--space-4);
-}
-
-h2 {
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 600;
-}
+// Global styles on top of Kern (@yfridelance/kern: kern.css for tokens and theme, kern-* web components).
+// Only what Kern does not cover lives here. Colors, spacing and radii come only from Kern tokens.
 
 code {
   font-family: var(--font-mono);
@@ -33,95 +18,27 @@ code {
   font-size: 13px;
 }
 
-// ---------- Field (Kern: Field) ----------
-.field {
-  display: grid;
-  gap: var(--space-1);
-  align-content: start;
-
-  > span {
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
+.error-text {
+  color: var(--danger);
 }
 
-input:not([type='checkbox'], [type='radio']),
-select,
-textarea {
-  height: var(--control-md);
-  padding: 0 var(--space-3);
-  font: 400 14px/20px var(--font-sans);
-  color: var(--text);
-  background: var(--surface-sunken);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-md);
-
-  &::placeholder {
-    color: var(--text-faint);
-  }
-
-  &:focus {
-    outline: 2px solid var(--focus);
-    outline-offset: -1px;
-    border-color: var(--focus);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-textarea {
-  height: auto;
-  padding: var(--space-2) var(--space-3);
-}
-
-select {
-  appearance: none;
-  padding-right: 30px;
-  cursor: pointer;
-  // Chevron in text-muted of each theme (data URIs cannot read CSS variables).
-  background: var(--surface-sunken) no-repeat right 10px center / 10px 6px
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239ba7ad' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-}
-
-[data-theme='light'] select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%234c5a62' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-}
-
-input[type='checkbox'],
-input[type='radio'] {
-  accent-color: var(--accent);
-  width: 15px;
-  height: 15px;
-  margin: 0;
-}
-
-// ---------- Button (Kern: Button) ----------
-// Plain <button> is the primary action, as before; .secondary is the Kern default button.
-button,
+// Router links that look like kern-button (kern-button href would reload the page instead of routing).
 a.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
   height: var(--control-md);
   padding: 0 var(--space-3);
   font: 500 14px/20px var(--font-sans);
   white-space: nowrap;
   text-decoration: none;
-  cursor: pointer;
   border: 1px solid var(--accent);
   border-radius: var(--radius-md);
   background: var(--accent);
   color: var(--on-accent);
   transition:
     background-color 0.12s,
-    border-color 0.12s,
-    color 0.12s;
+    border-color 0.12s;
 
   &:hover {
     background: var(--accent-hover);
@@ -138,214 +55,35 @@ a.button {
     }
   }
 
-  &.danger {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: var(--on-danger);
+  &.sm {
+    height: var(--control-sm);
+    padding: 0 var(--space-2);
+    font-size: 13px;
+  }
+}
 
-    &:hover {
-      background: var(--danger-hover);
-      border-color: var(--danger-hover);
+// Inline editing (app-editable-field) keeps native fields: a <datalist> cannot reach into kern-input's shadow root.
+app-editable-field {
+  input,
+  textarea {
+    width: 100%;
+    height: var(--control-sm);
+    padding: 0 var(--space-2);
+    font: 400 13px/18px var(--font-sans);
+    color: var(--text);
+    background: var(--surface-sunken);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+
+    &:focus {
+      outline: 2px solid var(--focus);
+      outline-offset: -1px;
+      border-color: var(--focus);
     }
   }
 
-  &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    pointer-events: none;
+  textarea {
+    height: auto;
+    padding: var(--space-2);
   }
-}
-
-button.link {
-  all: unset;
-  cursor: pointer;
-  color: var(--accent-text);
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-
-  &:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
-  }
-}
-
-// ---------- Alert (Kern: Alert) ----------
-.message {
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text);
-
-  p {
-    margin: 0;
-  }
-
-  p + p {
-    margin-top: var(--space-1);
-  }
-
-  &.error {
-    background: var(--danger-soft);
-    border-color: transparent;
-  }
-
-  &.warn {
-    background: var(--warn-soft);
-    border-color: transparent;
-  }
-
-  &.ok {
-    background: var(--ok-soft);
-    border-color: transparent;
-  }
-}
-
-.error-text {
-  color: var(--danger);
-}
-
-// ---------- Status (Kern: Status) ----------
-.status {
-  font-size: 13px;
-  font-weight: 500;
-
-  &.done {
-    color: var(--ok);
-  }
-
-  &.failed {
-    color: var(--danger);
-  }
-
-  &.cancelled {
-    color: var(--warn);
-  }
-}
-
-.state {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: 500;
-  color: var(--text);
-
-  &::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    flex: none;
-    border-radius: 50%;
-    border: 1.5px solid var(--text-faint);
-  }
-
-  &.active::before {
-    border: 0;
-    background: var(--ok);
-    box-shadow: 0 0 0 3px var(--ok-soft);
-  }
-
-  &.missing::before {
-    border: 0;
-    background: var(--warn);
-    border-radius: 1px;
-    transform: rotate(45deg) scale(0.9);
-    box-shadow: 0 0 0 3px var(--warn-soft);
-  }
-
-  &.reset {
-    color: var(--text-muted);
-  }
-}
-
-// ---------- Badge (Kern: Badge) ----------
-.badge {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: var(--radius-sm);
-  font: 500 12px/18px var(--font-sans);
-  white-space: nowrap;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-
-  &.update {
-    background: var(--warn-soft);
-    color: var(--warn);
-  }
-}
-
-// ---------- DataTable (Kern: DataTable) ----------
-.data-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 13px;
-  line-height: 18px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-
-  th,
-  td {
-    text-align: left;
-    padding: 0 var(--space-3);
-    border-bottom: 1px solid var(--line);
-    white-space: nowrap;
-  }
-
-  td {
-    height: var(--row-height);
-  }
-
-  th {
-    position: sticky;
-    top: 0;
-    height: 32px;
-    background: var(--surface-sunken);
-    color: var(--text-muted);
-    font-size: 11px;
-    line-height: 16px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  thead th:first-child {
-    border-top-left-radius: var(--radius-lg);
-  }
-
-  thead th:last-child {
-    border-top-right-radius: var(--radius-lg);
-  }
-
-  tbody tr:last-child td {
-    border-bottom: 0;
-  }
-
-  tbody tr:hover td {
-    background: var(--hover);
-  }
-
-  tr.clickable {
-    cursor: pointer;
-  }
-
-  .mono {
-    font-size: 12.5px;
-    color: var(--text-muted);
-  }
-}
-
-// ---------- Card (Kern: Card) ----------
-.card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-}
-
-a {
-  color: var(--accent-text);
 }

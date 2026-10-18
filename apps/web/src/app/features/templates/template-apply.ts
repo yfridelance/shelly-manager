@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ApplyTemplateResult, Device, Template, TemplatePreview, WifiInterface } from '../../core/api.types';
@@ -23,11 +23,13 @@ interface RowResult {
  * contact), one confirmation, then one request per device with limited parallelism. Each device
  * takes its own snapshot first on the server and fails on its own.
  */
+import { kernChecked, kernValue } from '../../core/kern';
 @Component({
   selector: 'app-template-apply',
   imports: [DateTimePipe, TranslatePipe, RouterLink],
   templateUrl: './template-apply.html',
   styleUrl: './template-apply.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class TemplateApply {
   private readonly api = inject(TemplatesApi);
@@ -221,13 +223,8 @@ export class TemplateApply {
     this.running.set(false);
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
-
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
-  }
+  protected readonly value = kernValue;
+  protected readonly checked = kernChecked;
 
   protected okCount(): number {
     return Object.values(this.results()).filter((r) => r.ok).length;

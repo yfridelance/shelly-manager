@@ -1,51 +1,44 @@
-<h1>{{ 'scan.title' | t }}</h1>
+<kern-page-header [heading]="'scan.title' | t" />
 
 <form class="scan-form" (submit)="start($event)">
-  <label class="field range">
-    <span>{{ 'scan.range' | t }}</span>
-    <input
-      name="range"
-      required
-      [placeholder]="'scan.rangePlaceholder' | t"
-      autocomplete="off"
-      [value]="range()"
-      (input)="range.set(value($event))"
-      [disabled]="running()"
-    />
-  </label>
+  <kern-input
+    name="range"
+    mono
+    required
+    autocomplete="off"
+    [label]="'scan.range' | t"
+    [placeholder]="'scan.rangePlaceholder' | t"
+    [value]="range()"
+    (kernInput)="range.set(value($event))"
+    [disabled]="running()"
+  />
   <fieldset class="credentials" [disabled]="running()">
     <legend>{{ 'scan.credentials' | t }}</legend>
-    <label class="field">
-      <span>{{ 'common.user' | t }}</span>
-      <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
-    </label>
-    <label class="field">
-      <span>{{ 'common.password' | t }}</span>
-      <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
-    </label>
+    <kern-input name="username" autocomplete="off" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
+    <kern-input name="password" type="password" autocomplete="off" [label]="'common.password' | t" [value]="password()" (kernInput)="password.set(value($event))" />
     <p class="hint">{{ 'scan.credentialsHint' | t }}</p>
   </fieldset>
   <div class="buttons">
     @if (running()) {
-      <button type="button" class="secondary" (click)="scans.cancel()">{{ 'common.cancel' | t }}</button>
+      <kern-button (click)="scans.cancel()">{{ 'common.cancel' | t }}</kern-button>
     } @else {
-      <button type="submit" [disabled]="!range().trim() || scans.busy()">{{ 'scan.start' | t }}</button>
+      <kern-button type="submit" variant="primary" [disabled]="!range().trim() || scans.busy()">{{ 'scan.start' | t }}</kern-button>
     }
   </div>
 </form>
 
 @if (scans.error(); as error) {
-  <p class="message error" role="alert">{{ error }}</p>
+  <kern-alert tone="danger" role="alert">{{ error }}</kern-alert>
 }
 
 @if (scan(); as s) {
   <section class="progress" aria-live="polite">
     <div class="progress-head">
-      <strong>{{ s.range }}</strong>
-      <span class="status" [class]="'status ' + s.status">{{ statusText(s.status) }}</span>
+      <strong class="mono">{{ s.range }}</strong>
+      <kern-status [tone]="statusTone(s.status)">{{ statusText(s.status) }}</kern-status>
       <span class="muted">{{ 'scan.started' | t: { time: (s.startedAt | dateTime: 'seconds') } }}</span>
     </div>
-    <progress [max]="s.total" [value]="s.scanned"></progress>
+    <kern-progress [max]="s.total" [value]="s.scanned" [valueText]="s.scanned + ' / ' + s.total" />
     <p>
       {{ 'scan.checked' | t: { scanned: s.scanned, total: s.total } }} · <strong>{{ s.found }}</strong>
       {{ 'scan.found' | t: { count: s.found } }}
@@ -54,47 +47,49 @@
       }
     </p>
     @if (s.status === 'failed' && s.error) {
-      <p class="message error">{{ 'scan.failed' | t: { error: s.error } }}</p>
+      <kern-alert tone="danger" role="alert">{{ 'scan.failed' | t: { error: s.error } }}</kern-alert>
     }
     @if (s.missing.length > 0) {
-      <p class="message warn">{{ 'scan.missing' | t: { count: s.missing.length } }}</p>
+      <kern-alert tone="warn">{{ 'scan.missing' | t: { count: s.missing.length } }}</kern-alert>
     }
   </section>
 
   @if (devices().length > 0) {
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>{{ 'columns.ip' | t }}</th>
-          <th>{{ 'columns.name' | t }}</th>
-          <th>{{ 'columns.deviceId' | t }}</th>
-          <th>{{ 'columns.model' | t }}</th>
-          <th>{{ 'columns.gen' | t }}</th>
-          <th>{{ 'columns.mac' | t }}</th>
-          <th>{{ 'scan.protection' | t }}</th>
-          <th>{{ 'scan.config' | t }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (d of devices(); track d.mac) {
+    <kern-table>
+      <table>
+        <thead>
           <tr>
-            <td class="mono">{{ d.ip }}</td>
-            <td>{{ d.name ?? '–' }}</td>
-            <td class="mono">{{ d.deviceId ?? '–' }}</td>
-            <td>{{ d.model ?? '–' }}</td>
-            <td>{{ d.gen }}</td>
-            <td class="mono">{{ formatMac(d.mac) }}</td>
-            <td>{{ (d.authRequired ? 'scan.protected' : 'scan.open') | t }}</td>
-            <td [class.error-text]="d.snapshot === 'error'" [title]="d.error ?? ''">{{ snapshotText(d) }}</td>
-            <td>
-              @if (d.created) {
-                <span class="badge">{{ 'scan.new' | t }}</span>
-              }
-            </td>
+            <th>{{ 'columns.ip' | t }}</th>
+            <th>{{ 'columns.name' | t }}</th>
+            <th>{{ 'columns.deviceId' | t }}</th>
+            <th>{{ 'columns.model' | t }}</th>
+            <th>{{ 'columns.gen' | t }}</th>
+            <th>{{ 'columns.mac' | t }}</th>
+            <th>{{ 'scan.protection' | t }}</th>
+            <th>{{ 'scan.config' | t }}</th>
+            <th></th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (d of devices(); track d.mac) {
+            <tr>
+              <td class="mono">{{ d.ip }}</td>
+              <td>{{ d.name ?? '–' }}</td>
+              <td class="mono">{{ d.deviceId ?? '–' }}</td>
+              <td>{{ d.model ?? '–' }}</td>
+              <td>{{ d.gen }}</td>
+              <td class="mono">{{ formatMac(d.mac) }}</td>
+              <td>{{ (d.authRequired ? 'scan.protected' : 'scan.open') | t }}</td>
+              <td [class.error-text]="d.snapshot === 'error'" [title]="d.error ?? ''">{{ snapshotText(d) }}</td>
+              <td>
+                @if (d.created) {
+                  <kern-badge tone="accent">{{ 'scan.new' | t }}</kern-badge>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </kern-table>
   }
 }

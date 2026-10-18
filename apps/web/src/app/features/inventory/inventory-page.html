@@ -1,5 +1,4 @@
-<div class="head">
-  <h1>{{ 'nav.inventory' | t }}</h1>
+<kern-page-header [heading]="'nav.inventory' | t">
   <span class="muted">
     @if (hasFilter()) {
       {{ 'inventory.countFiltered' | t: { shown: filtered().length, count: devices.value().length } }}
@@ -7,98 +6,84 @@
       {{ 'inventory.count' | t: { count: devices.value().length } }}
     }
   </span>
-  <span class="spacer"></span>
   @if (devices.value().length > 0) {
-    <nav class="export" [attr.aria-label]="'inventory.export' | t">
-      <a class="button secondary" [href]="'/api/export.csv?site=' + site.siteId() + '&lang=' + language()" download>{{ 'inventory.exportCsv' | t }}</a>
-      <a class="button secondary" [href]="'/api/export.json?site=' + site.siteId()" download [title]="'inventory.exportJsonHint' | t">{{ 'inventory.exportJson' | t }}</a>
+    <nav slot="actions" class="export" [attr.aria-label]="'inventory.export' | t">
       <a [href]="'/api/export.json?snapshots=all&site=' + site.siteId()" download>{{ 'inventory.exportAllSnapshots' | t }}</a>
+      <kern-button [href]="'/api/export.csv?site=' + site.siteId() + '&lang=' + language()" download>{{ 'inventory.exportCsv' | t }}</kern-button>
+      <kern-button [href]="'/api/export.json?site=' + site.siteId()" download [title]="'inventory.exportJsonHint' | t">{{ 'inventory.exportJson' | t }}</kern-button>
     </nav>
-    <app-firmware-check-panel [devices]="devices.value()" (checked)="applyCheck($event)" (showUpdates)="showOnlyUpdates()" />
+    <app-firmware-check-panel slot="actions" [devices]="devices.value()" (checked)="applyCheck($event)" (showUpdates)="showOnlyUpdates()" />
   }
-</div>
+</kern-page-header>
 
-<div class="filters" role="search">
-  <label class="field search">
-    <span>{{ 'inventory.search' | t }}</span>
-    <input type="search" [placeholder]="'inventory.searchPlaceholder' | t" [value]="f.search()" (input)="f.search.set(value($event))" />
-  </label>
-  <label class="field">
-    <span>{{ 'inventory.generation' | t }}</span>
-    <select (change)="setGen(value($event))">
-      <option value="" [selected]="f.gen() === null">{{ 'common.all' | t }}</option>
-      @for (g of gens(); track g) {
-        <option [value]="g" [selected]="f.gen() === g">Gen{{ g }}</option>
-      }
-    </select>
-  </label>
-  <label class="field">
-    <span>{{ 'columns.location' | t }}</span>
-    <select (change)="setLocation(value($event))">
-      <option value="*" [selected]="f.location() === null">{{ 'common.all' | t }}</option>
-      <option value="" [selected]="f.location() === ''">{{ 'inventory.noLocation' | t }}</option>
-      @for (l of locations(); track l) {
-        <option [value]="l" [selected]="f.location() === l">{{ l }}</option>
-      }
-    </select>
-  </label>
-  <label class="field">
-    <span>{{ 'inventory.function' | t }}</span>
-    <select name="function" (change)="setFunction(value($event))">
-      <option value="" [selected]="f.function() === null">{{ 'common.all' | t }}</option>
-      @for (fn of functionFilters; track fn) {
-        <option [value]="fn" [selected]="f.function() === fn">{{ functionFilterText(fn) }}</option>
-      }
-    </select>
-  </label>
-  <label class="field">
-    <span>{{ 'columns.state' | t }}</span>
-    <select (change)="setState(value($event))">
-      <option value="" [selected]="f.state() === null">{{ 'common.all' | t }}</option>
-      @for (s of states; track s) {
-        <option [value]="s" [selected]="f.state() === s">{{ stateText(s) }}</option>
-      }
-    </select>
-  </label>
+<kern-toolbar role="search">
+  <kern-input
+    class="search"
+    type="search"
+    size="sm"
+    [label]="'inventory.search' | t"
+    [placeholder]="'inventory.searchPlaceholder' | t"
+    [value]="f.search()"
+    (kernInput)="f.search.set(value($event))"
+  />
+  <kern-select size="sm" [label]="'inventory.generation' | t" [value]="f.gen() === null ? '' : '' + f.gen()" (kernChange)="setGen(value($event))">
+    <option value="">{{ 'common.all' | t }}</option>
+    @for (g of gens(); track g) {
+      <option [value]="g">Gen{{ g }}</option>
+    }
+  </kern-select>
+  <kern-select size="sm" [label]="'columns.location' | t" [value]="f.location() ?? '*'" (kernChange)="setLocation(value($event))">
+    <option value="*">{{ 'common.all' | t }}</option>
+    <option value="">{{ 'inventory.noLocation' | t }}</option>
+    @for (l of locations(); track l) {
+      <option [value]="l">{{ l }}</option>
+    }
+  </kern-select>
+  <kern-select name="function" size="sm" [label]="'inventory.function' | t" [value]="f.function() ?? ''" (kernChange)="setFunction(value($event))">
+    <option value="">{{ 'common.all' | t }}</option>
+    @for (fn of functionFilters; track fn) {
+      <option [value]="fn">{{ functionFilterText(fn) }}</option>
+    }
+  </kern-select>
+  <kern-select size="sm" [label]="'columns.state' | t" [value]="f.state() ?? ''" (kernChange)="setState(value($event))">
+    <option value="">{{ 'common.all' | t }}</option>
+    @for (s of states; track s) {
+      <option [value]="s">{{ stateText(s) }}</option>
+    }
+  </kern-select>
   @if (updateCount() > 0 || f.onlyUpdates()) {
-    <label class="check">
-      <input type="checkbox" [checked]="f.onlyUpdates()" (change)="f.onlyUpdates.set($any($event.target).checked)" />
+    <kern-checkbox class="check" [checked]="f.onlyUpdates()" (kernChange)="f.onlyUpdates.set(checked($event))">
       {{ 'inventory.onlyUpdates' | t: { count: updateCount() } }}
-    </label>
+    </kern-checkbox>
   }
   @if (hasFilter()) {
-    <button type="button" class="secondary" (click)="f.reset()">{{ 'inventory.resetFilter' | t }}</button>
+    <kern-button size="sm" variant="ghost" (click)="f.reset()">{{ 'inventory.resetFilter' | t }}</kern-button>
   }
-</div>
+</kern-toolbar>
 
 @if (devices.error()) {
-  <p class="message error" role="alert">{{ 'inventory.loadError' | t }}</p>
+  <kern-alert tone="danger" role="alert">{{ 'inventory.loadError' | t }}</kern-alert>
 } @else if (!devices.isLoading() && devices.value().length === 0) {
   <p class="muted">{{ 'inventory.empty' | t }} <a routerLink="/scan">{{ 'inventory.scanNetwork' | t }}</a></p>
 } @else {
-  <div class="table-wrap">
-    <table class="data-table">
+  <kern-table>
+    <table>
       <thead>
         <tr>
           @for (col of columns; track col.key) {
             <th [attr.aria-sort]="ariaSort(col.key)">
-              <button type="button" class="sort" (click)="f.sortBy(col.key)">
-                {{ col.label | t }}
-                @if (f.sortKey() === col.key) {
-                  <span aria-hidden="true">{{ f.sortAsc() ? '▲' : '▼' }}</span>
-                }
-              </button>
+              <button type="button" (click)="f.sortBy(col.key)">{{ col.label | t }}</button>
             </th>
           }
         </tr>
       </thead>
       <tbody>
         @for (d of filtered(); track d.mac) {
-          <tr class="clickable" [class.inactive]="d.state !== 'active'" (click)="open(d)">
+          <tr class="clickable" [class.dim]="d.state !== 'active'" (click)="open(d)">
             <td>
               <a [routerLink]="['/inventar', d.mac]" (click)="$event.stopPropagation()">{{ d.name ?? ('common.unnamed' | t) }}</a>
               @if (d.authRequired) {
-                <span class="lock" [title]="'common.passwordProtected' | t" [attr.aria-label]="'common.passwordProtected' | t">🔒</span>
+                <svg class="lock" viewBox="0 0 16 16" role="img" [attr.aria-label]="'common.passwordProtected' | t"><title>{{ 'common.passwordProtected' | t }}</title><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>
               }
             </td>
             <td class="mono">{{ d.deviceId ?? '–' }}</td>
@@ -109,7 +94,7 @@
             <td [title]="d.firmware ?? ''">
               {{ shortFirmware(d.firmware) }}
               @if (d.updateStable) {
-                <span class="badge update" [title]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">{{ 'inventory.update' | t }}</span>
+                <kern-badge tone="warn" [title]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">{{ 'inventory.update' | t }}</kern-badge>
               }
             </td>
             <td class="kind">
@@ -123,15 +108,15 @@
               }
             </td>
             <td>{{ d.location ?? '' }}</td>
-            <td><span [class]="'state ' + d.state">{{ stateText(d.state) }}</span></td>
+            <td><kern-status [tone]="stateTone(d.state)">{{ stateText(d.state) }}</kern-status></td>
             <td [title]="d.lastSeen | dateTime: 'seconds'">{{ d.lastSeen | dateTime: 'compact' }}</td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="11" class="muted">{{ 'inventory.noMatch' | t }}</td>
+            <td colspan="11" class="empty">{{ 'inventory.noMatch' | t }}</td>
           </tr>
         }
       </tbody>
     </table>
-  </div>
+  </kern-table>
 }

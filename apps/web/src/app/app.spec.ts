@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
+import { kernValueOf, setKernValue } from '../testing/kern';
 import { SiteService } from './core/site.service';
 import { activateLanguage } from './core/i18n/i18n';
 import { I18N_LANGUAGES } from './core/i18n/i18n.service';
@@ -57,11 +58,10 @@ describe('App', () => {
     const site = TestBed.inject(SiteService);
     expect(site.siteId()).toBe(1);
 
-    const select = (fixture.nativeElement as HTMLElement).querySelector<HTMLSelectElement>('select[name="site"]');
-    expect([...(select?.options ?? [])].map((o) => o.textContent?.trim())).toEqual(['Standard', 'Ferienhaus']);
-    if (!select) throw new Error('no site select');
-    select.value = '2';
-    select.dispatchEvent(new Event('change'));
+    const root = fixture.nativeElement as HTMLElement;
+    expect([...root.querySelectorAll('kern-select[name="site"] option')].map((o) => o.textContent?.trim())).toEqual(['Standard', 'Ferienhaus']);
+    expect(kernValueOf(root, 'kern-select[name="site"]')).toBe('1');
+    setKernValue(root, 'kern-select[name="site"]', '2');
     expect(site.siteId()).toBe(2);
     expect(localStorage.getItem('shelly-manager.site')).toBe('2');
     localStorage.removeItem('shelly-manager.site');
@@ -74,7 +74,7 @@ describe('App', () => {
     http.expectOne('/api/health').flush({ status: 'ok' });
     http.expectOne('/api/sites').flush([]);
     await fixture.whenStable();
-    expect((fixture.nativeElement as HTMLElement).querySelector('select[name="language"]')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('kern-select[name="language"]')).toBeNull();
 
     TestBed.resetTestingModule();
     const en: Language = { code: 'en', locale: 'en-GB', name: 'English', load: async () => ({ nav: { inventory: 'Inventory' } }) };
@@ -88,15 +88,13 @@ describe('App', () => {
     TestBed.inject(HttpTestingController).expectOne('/api/sites').flush([]);
     await second.whenStable();
     const el = second.nativeElement as HTMLElement;
-    const select = el.querySelector<HTMLSelectElement>('select[name="language"]');
-    expect([...(select?.options ?? [])].map((o) => o.textContent?.trim())).toEqual(['Deutsch', 'English']);
-    if (!select) throw new Error('no language select');
-    select.value = 'en';
-    select.dispatchEvent(new Event('change'));
+    expect([...el.querySelectorAll('kern-select[name="language"] option')].map((o) => o.textContent?.trim())).toEqual(['Deutsch', 'English']);
+    setKernValue(el, 'kern-select[name="language"]', 'en');
     await new Promise((r) => setTimeout(r));
     await second.whenStable();
-    expect(el.querySelector('nav')?.textContent).toContain('Inventory');
-    expect(el.querySelector('nav')?.textContent).toContain('Scan');
+    const nav = [...el.querySelectorAll('a[slot="nav"]')].map((a) => a.textContent).join(' ');
+    expect(nav).toContain('Inventory');
+    expect(nav).toContain('Scan');
     activateLanguage('de', 'de-CH');
     localStorage.removeItem('shelly-manager.lang');
   });

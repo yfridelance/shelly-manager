@@ -46,7 +46,7 @@ Eine selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) in einem Netzw
 | Runtime | Node.js 24 LTS (mindestens 24.15, wegen Angular CLI 22; `.nvmrc`), TypeScript 6.0 strict (Angular 22 verlangt `>=6.0 <6.1`) |
 | Backend | Fastify, `@fastify/static`, Schemas mit TypeBox (`@fastify/type-provider-typebox`) |
 | DB | SQLite über `better-sqlite3`, SQL-Migrationen als nummerierte Dateien |
-| Frontend | Angular 22, Standalone Components, Signals, SCSS |
+| Frontend | Angular 22, Standalone Components, Signals, SCSS; UI-Komponenten aus `@yfridelance/kern` (eigene Web Components) |
 | Monorepo | npm Workspaces (`apps/server`, `apps/web`) |
 | Tests | Vitest (Server), Angular-Standard für Web |
 | Container | `Dockerfile` (mehrstufig, `node:24-bookworm-slim`), `docker-compose.yml`, `.devcontainer/` |
@@ -269,7 +269,7 @@ Ansichten:
 
 **Übersetzungen (i18n):** eigene kleine Lösung ohne Abhängigkeit (`apps/web/src/app/core/i18n/`, Begründung in [docs/entwicklung.md](docs/entwicklung.md#übersetzungen-i18n)). Texte nur in `apps/web/src/locale/<code>.json` (i18next-JSON-v4-Format: `{{platzhalter}}`, Plural `_one`/`_other` über `count`, `**fett**`), `de.json` ist Quelle und Fallback. Im Code nur Keys: `{{ 'key' | t }}` bzw. `t('key')`; der Typ `TranslationKey` aus `de.json` macht falsche Keys zum Build-Fehler. Datum/Zahl/Sortierung über `dateTime`-Pipe, `formatNumber`, `compareText` (Locale der Sprache). Das UI übersetzt Fehlercodes (`errors.<code>`) und zeigt nie die `message` des Servers. Neue Sprache = neue Datei + eine Zeile in `LANGUAGES`.
 
-Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Das eigene Design-System "Kern" liegt in `apps/web/src/kern/` (Tokens, `k-*`-Klassen, `kern-*`-Custom-Elements; Dark Standard, Light umschaltbar): nur dessen Tokens und Komponenten verwenden, kein UI-Framework. Die Dateien sind eine Kopie aus dem Kern-Design-System und werden dort geändert, nicht hier.
+Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Das eigene Design-System "Kern" (https://github.com/yfridelance/kern, Stencil-Web-Components, Dark Standard, Light umschaltbar) ist die Abhängigkeit `@yfridelance/kern` (gebautes Paket aus dem GitHub-Release): nur dessen Tokens und `kern-*`-Komponenten verwenden, kein UI-Framework. Fehlt etwas, wird es in Kern ergänzt und neu released, nicht in der App nachgebaut. Einbindung, Events und Test-Helfer: [docs/entwicklung.md](docs/entwicklung.md).
 
 ## 11. Testen ohne echte Geräte
 

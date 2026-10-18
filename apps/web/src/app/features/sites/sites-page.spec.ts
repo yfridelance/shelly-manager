@@ -10,6 +10,7 @@ const SITES: Site[] = [
   { id: 2, name: 'Ferienhaus', description: 'Engadin', createdAt: '2026-10-17T11:00:00.000Z', deviceCount: 0, templateCount: 0 },
 ];
 
+import { setKernValue } from '../../../testing/kern';
 describe('SitesPage', () => {
   let http: HttpTestingController;
   beforeEach(async () => {
@@ -26,7 +27,7 @@ describe('SitesPage', () => {
     http.expectOne('/api/sites').flush(SITES);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (text: string, root: ParentNode = el) => [...root.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === text);
+    const button = (text: string, root: ParentNode = el) => [...root.querySelectorAll<HTMLElement>('kern-button')].find((b) => b.textContent?.trim() === text);
     return { fixture, el, button };
   }
 
@@ -38,18 +39,16 @@ describe('SitesPage', () => {
       expect.stringContaining('Ferienhaus'),
     ]);
     expect(rows[0]?.textContent).toContain('aktuell');
-    expect([...(rows[0]?.querySelectorAll('button') ?? [])].some((b) => b.textContent?.trim() === 'Löschen')).toBe(false);
-    expect([...(rows[1]?.querySelectorAll('button') ?? [])].some((b) => b.textContent?.trim() === 'Löschen')).toBe(true);
+    expect([...(rows[0]?.querySelectorAll('kern-button') ?? [])].some((b) => b.textContent?.trim() === 'Löschen')).toBe(false);
+    expect([...(rows[1]?.querySelectorAll('kern-button') ?? [])].some((b) => b.textContent?.trim() === 'Löschen')).toBe(true);
   });
 
   it('creates a site', async () => {
-    const { fixture, el, button } = await render();
-    const name = el.querySelector<HTMLInputElement>('input[name="siteName"]');
-    if (!name) throw new Error('no name input');
-    name.value = 'Büro';
-    name.dispatchEvent(new Event('input'));
+    const { fixture, el } = await render();
+    setKernValue(el, 'kern-input[name="siteName"]', 'Büro');
     await fixture.whenStable();
-    button('Anlegen')?.click();
+    // jsdom does not upgrade kern-button: submit the form directly.
+    el.querySelector('.create form')?.dispatchEvent(new Event('submit', { cancelable: true }));
     const req = http.expectOne({ method: 'POST', url: '/api/sites' });
     expect(req.request.body).toEqual({ name: 'Büro', description: null });
     req.flush({ ...SITES[1], id: 3, name: 'Büro' });

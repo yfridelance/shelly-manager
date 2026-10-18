@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import type { Device, DeviceState } from '../../core/api.types';
@@ -20,11 +20,13 @@ import { FirmwareCheckPanel, type FirmwareCheckResult } from './firmware-check-p
 import { InventoryFilters, type SortKey } from './inventory-filters';
 import { SiteService } from '../../core/site.service';
 
+import { kernChecked, kernValue } from '../../core/kern';
 @Component({
   selector: 'app-inventory-page',
   imports: [DateTimePipe, TranslatePipe, RouterLink, FirmwareCheckPanel],
   templateUrl: './inventory-page.html',
   styleUrl: './inventory-page.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class InventoryPage {
   private readonly router = inject(Router);
@@ -116,8 +118,11 @@ export class InventoryPage {
     return this.f.sortKey() === key ? (this.f.sortAsc() ? 'ascending' : 'descending') : null;
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement | HTMLSelectElement).value;
+  protected readonly value = kernValue;
+  protected readonly checked = kernChecked;
+
+  protected stateTone(state: Device['state']): 'ok' | 'warn' | 'neutral' {
+    return state === 'active' ? 'ok' : state === 'missing' ? 'warn' : 'neutral';
   }
 
   protected setGen(value: string): void {
