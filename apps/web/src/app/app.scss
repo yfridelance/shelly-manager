@@ -1,76 +1,8 @@
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-}
-
-.brand {
-  font-weight: 600;
-}
-
-nav {
-  display: flex;
-  gap: 1rem;
-
-  a {
-    color: var(--text-muted);
-    text-decoration: none;
-
-    &.active {
-      color: var(--text);
-      font-weight: 600;
-    }
-  }
-}
-
-.spacer {
-  flex: 1;
-}
-
+// Layout of the header comes from kern-topbar; only app-specific bits live here.
 .site {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-
-  select {
-    padding: 0.2rem 0.4rem;
-  }
-}
-
-.manage {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  text-decoration: none;
-
-  &.active {
-    color: var(--text);
-    font-weight: 600;
-  }
-}
-
-.language {
-  padding: 0.2rem 0.4rem;
-  font-size: 0.85rem;
-}
-
-.health {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-
-  &.ok {
-    color: var(--ok);
-  }
-
-  &.down {
-    color: var(--error);
-  }
+  width: 11rem;
 }
 
 main {
-  padding: 1.5rem;
+  padding: var(--space-5);
 }

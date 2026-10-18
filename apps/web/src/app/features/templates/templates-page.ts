@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { Template } from '../../core/api.types';
@@ -12,22 +12,21 @@ import { SiteService } from '../../core/site.service';
 @Component({
   selector: 'app-templates-page',
   imports: [DateTimePipe, TranslatePipe, RouterLink],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
-    <div class="head">
-      <h1>{{ 'nav.templates' | t }}</h1>
-      <span class="spacer"></span>
-      <a class="button" routerLink="/templates/neu">{{ 'titles.newTemplate' | t }}</a>
-    </div>
-    <p class="muted intro">{{ 'templates.intro' | t }}</p>
+    <kern-page-header [heading]="'nav.templates' | t" [description]="'templates.intro' | t">
+      <a slot="actions" class="button" routerLink="/templates/neu">{{ 'titles.newTemplate' | t }}</a>
+    </kern-page-header>
 
     @if (message(); as m) {
-      <p class="message error" role="alert">{{ m }}</p>
+      <kern-alert tone="danger" role="alert">{{ m }}</kern-alert>
     }
 
     @if (templates.value().length === 0 && !templates.isLoading()) {
       <p class="muted">{{ 'templates.empty' | t }}</p>
     } @else {
-      <table class="data-table">
+      <kern-table>
+      <table>
         <thead>
           <tr>
             <th>{{ 'common.name' | t }}</th>
@@ -48,25 +47,24 @@ import { SiteService } from '../../core/site.service';
               <td class="wrap">{{ groupTitles(t.settings).join(', ') }}</td>
               <td>{{ t.updatedAt | dateTime }}</td>
               <td class="actions">
-                <a class="button" [routerLink]="['/templates', t.id, 'anwenden']">{{ 'templates.apply' | t }}</a>
+                <a class="button secondary sm" [routerLink]="['/templates', t.id, 'anwenden']">{{ 'templates.apply' | t }}</a>
                 @if (confirmDelete() === t.id) {
                   <span>{{ 'common.deleteQuestion' | t }}</span>
-                  <button type="button" class="danger" (click)="remove(t)">{{ 'common.yes' | t }}</button>
-                  <button type="button" class="secondary" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</button>
+                  <kern-button size="sm" variant="danger" (click)="remove(t)">{{ 'common.yes' | t }}</kern-button>
+                  <kern-button size="sm" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</kern-button>
                 } @else {
-                  <button type="button" class="link" (click)="confirmDelete.set(t.id)">{{ 'common.delete' | t }}</button>
+                  <kern-button size="sm" variant="ghost" (click)="confirmDelete.set(t.id)">{{ 'common.delete' | t }}</kern-button>
                 }
               </td>
             </tr>
           }
         </tbody>
       </table>
+      </kern-table>
     }
   `,
   styles: `
-    .head { display: flex; align-items: baseline; gap: 1rem; }
-    .spacer { flex: 1; }
-    .intro { max-width: 48rem; margin-top: 0; }
+    kern-alert { margin-bottom: var(--space-4); }
     .wrap { white-space: normal; }
     .small { font-size: 0.85rem; }
     .actions { display: flex; gap: 0.5rem; align-items: center; }

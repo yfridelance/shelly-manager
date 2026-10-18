@@ -1,58 +1,63 @@
-<div class="backdrop" (click)="close()"></div>
-<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title">
-  <h2 id="reset-title">{{ 'reset.title' | t: { device: device().name ?? formatMac(device().mac) } }}</h2>
-
-  <div class="warning">
+<kern-dialog
+  open
+  [heading]="'reset.title' | t: { device: device().name ?? formatMac(device().mac) }"
+  [dismissible]="!busy()"
+  [closeLabel]="'common.close' | t"
+  [width]="576"
+  (kernClose)="close()"
+>
+  <kern-alert tone="warn">
     <p [innerHTML]="'reset.warning' | t | emphasis"></p>
     <p [innerHTML]="'reset.apMode' | t | emphasis"></p>
-  </div>
+  </kern-alert>
   <p class="muted">{{ 'reset.snapshotHint' | t }}</p>
 
   <form (submit)="submit($event)">
-    <label class="field">
-      <span>
+    <div class="confirm-field">
+      <span class="label">
         {{ 'reset.confirmMac' | t }} <code>{{ formatMac(device().mac) }}</code>
         @if (device().name) {
           {{ 'reset.confirmOrName' | t }} <code>{{ device().name }}</code>
         }
         {{ 'reset.confirmType' | t }}
       </span>
-      <input #confirmInput name="confirm" autocomplete="off" spellcheck="false" [value]="confirmation()" (input)="confirmation.set(value($event))" />
-    </label>
+      <kern-input
+        #confirmInput
+        name="confirm"
+        mono
+        autocomplete="off"
+        [ariaLabelText]="'reset.confirmMac' | t"
+        [value]="confirmation()"
+        (kernInput)="confirmation.set(value($event))"
+      />
+    </div>
 
     @if (device().authRequired) {
       <div class="credentials">
         @if (device().gen === 1) {
-          <label class="field">
-            <span>{{ 'common.user' | t }}</span>
-            <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
-          </label>
+          <kern-input name="username" autocomplete="off" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
         }
-        <label class="field">
-          <span>{{ 'common.devicePassword' | t }}</span>
-          <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
-        </label>
+        <kern-input name="password" type="password" autocomplete="off" [label]="'common.devicePassword' | t" [value]="password()" (kernInput)="password.set(value($event))" />
       </div>
     }
 
     @if (snapshotFailure(); as reason) {
-      <div class="message error" role="alert">
+      <kern-alert tone="danger" role="alert">
         <p [innerHTML]="'reset.snapshotFailed' | t: { reason } | emphasis"></p>
-        <label class="override">
-          <input type="checkbox" name="override" [checked]="override()" (change)="override.set($any($event.target).checked)" />
+        <kern-checkbox name="override" class="override" [checked]="override()" (kernChange)="override.set(checked($event))">
           {{ 'reset.override' | t }}
-        </label>
-      </div>
+        </kern-checkbox>
+      </kern-alert>
     }
     @if (error(); as e) {
-      <p class="message error" role="alert">{{ e }}</p>
+      <kern-alert tone="danger" role="alert">{{ e }}</kern-alert>
     }
 
     <div class="buttons">
-      <button type="button" class="secondary" [disabled]="busy()" (click)="close()">{{ 'common.cancel' | t }}</button>
-      <button type="submit" class="danger" [disabled]="!canSubmit()">
+      <kern-button variant="ghost" [disabled]="busy()" (click)="close()">{{ 'common.cancel' | t }}</kern-button>
+      <kern-button type="submit" variant="danger" [busy]="busy()" [disabled]="!canSubmit()">
         {{ (busy() ? 'reset.resetting' : 'reset.submit') | t }}
-      </button>
+      </kern-button>
     </div>
   </form>
-</div>
+</kern-dialog>

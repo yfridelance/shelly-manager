@@ -1,36 +1,46 @@
-<header class="topbar">
-  <span class="brand">Shelly Manager</span>
-  <nav>
-    <a routerLink="/scan" routerLinkActive="active">{{ 'nav.scan' | t }}</a>
-    <a routerLink="/inventar" routerLinkActive="active">{{ 'nav.inventory' | t }}</a>
-    <a routerLink="/templates" routerLinkActive="active">{{ 'nav.templates' | t }}</a>
-    <a routerLink="/protokoll" routerLinkActive="active">{{ 'nav.log' | t }}</a>
-  </nav>
-  <span class="spacer"></span>
-  <label class="site">
-    <span>{{ 'header.site' | t }}</span>
-    <select name="site" [attr.aria-label]="'header.chooseSite' | t" (change)="selectSite($event)">
-      @for (s of sites.list.value(); track s.id) {
-        <option [value]="s.id" [selected]="s.id === site.siteId()">{{ s.name }}</option>
-      }
-    </select>
-  </label>
-  <a class="manage" routerLink="/standorte" routerLinkActive="active">{{ 'nav.sites' | t }}</a>
+<kern-topbar app-name="Shelly Manager" [attr.nav-label]="'header.navigation' | t">
+  <a slot="nav" routerLink="/scan" routerLinkActive="active">{{ 'nav.scan' | t }}</a>
+  <a slot="nav" routerLink="/inventar" routerLinkActive="active">{{ 'nav.inventory' | t }}</a>
+  <a slot="nav" routerLink="/templates" routerLinkActive="active">{{ 'nav.templates' | t }}</a>
+  <a slot="nav" routerLink="/protokoll" routerLinkActive="active">{{ 'nav.log' | t }}</a>
+
+  <kern-select
+    slot="end"
+    name="site"
+    size="sm"
+    class="site"
+    [attr.aria-label-text]="'header.chooseSite' | t"
+    [value]="'' + site.siteId()"
+    (kernChange)="selectSite($event)"
+  >
+    @for (s of sites.list.value(); track s.id) {
+      <option [value]="s.id">{{ s.name }}</option>
+    }
+    <kern-button slot="footer" size="sm" variant="ghost" (click)="manageSites()">{{ 'header.manageSites' | t }}</kern-button>
+  </kern-select>
   @if (i18n.languages.length > 1) {
-    <select name="language" class="language" [attr.aria-label]="'header.language' | t" (change)="selectLanguage($event)">
+    <kern-select
+      slot="end"
+      name="language"
+      size="sm"
+      [attr.aria-label-text]="'header.language' | t"
+      [value]="i18n.language()"
+      (kernChange)="selectLanguage($event)"
+    >
       @for (l of i18n.languages; track l.code) {
-        <option [value]="l.code" [selected]="l.code === i18n.language()" [attr.lang]="l.locale">{{ l.name }}</option>
+        <option [value]="l.code" [attr.lang]="l.locale">{{ l.name }}</option>
       }
-    </select>
+    </kern-select>
   }
-  <span class="health" [class]="'health ' + health.state()" data-testid="health">
+  <kern-status slot="end" [tone]="healthTone()" data-testid="health">
     @switch (health.state()) {
       @case ('ok') { {{ 'header.connected' | t }} }
       @case ('down') { {{ 'header.unreachable' | t }} }
       @default { {{ 'header.connecting' | t }} }
     }
-  </span>
-</header>
+  </kern-status>
+  <kern-theme-toggle slot="end" small [labelLight]="'header.themeLight' | t" [labelDark]="'header.themeDark' | t" />
+</kern-topbar>
 <main>
   <router-outlet />
 </main>

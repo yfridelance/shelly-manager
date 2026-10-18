@@ -1,47 +1,41 @@
 <p class="back"><a routerLink="/templates">← {{ 'nav.templates' | t }}</a></p>
-<h1>{{ (id() ? 'templateEditor.editTitle' : 'titles.newTemplate') | t }}</h1>
+<kern-page-header [heading]="(id() ? 'templateEditor.editTitle' : 'titles.newTemplate') | t" [description]="'templateEditor.intro' | t" />
 
 <form (submit)="save($event)">
   <div class="basics">
-    <label class="field">
-      <span>{{ 'common.name' | t }}</span>
-      <input name="name" required maxlength="100" [value]="name()" (input)="name.set(value($event))" />
-    </label>
-    <label class="field grow">
-      <span>{{ 'common.descriptionOptional' | t }}</span>
-      <input name="description" maxlength="2000" [value]="description()" (input)="description.set(value($event))" />
-    </label>
+    <kern-input name="name" required maxlength="100" [label]="'common.name' | t" [value]="name()" (kernInput)="name.set(value($event))" />
+    <kern-input name="description" class="grow" maxlength="2000" [label]="'common.descriptionOptional' | t" [value]="description()" (kernInput)="description.set(value($event))" />
   </div>
-  <p class="muted">{{ 'templateEditor.intro' | t }}</p>
 
   @for (g of groups; track g.id) {
-    <fieldset>
-      <legend>{{ groupTitle(g.id) }} <span class="muted">({{ groupGens(g.id) }})</span></legend>
+    <kern-card [heading]="groupTitle(g.id)">
+      <span slot="meta" class="muted">{{ groupGens(g.id) }}</span>
       @if (groupHint(g); as hint) {
         <p class="hint">{{ hint }}</p>
       }
       @for (f of g.fields; track f.key) {
         <div class="row" [class.off]="!fields()[f.key]?.on">
-          <label class="include">
-            <input type="checkbox" [attr.name]="'on:' + f.key" [checked]="fields()[f.key]?.on" (change)="toggle(f.key, checked($event))" />
+          <kern-checkbox [attr.name]="'on:' + f.key" [checked]="!!fields()[f.key]?.on" (kernChange)="toggle(f.key, checked($event))">
             {{ fieldText(f.key) }}
-          </label>
+          </kern-checkbox>
           @if (f.type === 'bool') {
-            <select [attr.name]="f.key" [attr.aria-label]="fieldText(f.key)" (change)="setValue(f.key, value($event))">
-              <option value="true" [selected]="fields()[f.key]?.value === 'true'">{{ 'common.on' | t }}</option>
-              <option value="false" [selected]="fields()[f.key]?.value === 'false'">{{ 'common.off' | t }}</option>
-            </select>
+            <kern-segmented [attr.name]="f.key" [label]="fieldText(f.key)" [value]="fields()[f.key]?.value ?? ''" (kernChange)="setValue(f.key, value($event))">
+              <option value="true">{{ 'common.on' | t }}</option>
+              <option value="false">{{ 'common.off' | t }}</option>
+            </kern-segmented>
           } @else {
-            <input
+            <kern-input
+              size="sm"
+              [mono]="f.type !== 'number'"
               [attr.name]="f.key"
               [type]="f.type === 'number' ? 'number' : 'text'"
               [attr.min]="f.min ?? null"
               [attr.max]="f.max ?? null"
               [attr.step]="f.step ?? null"
               [placeholder]="f.placeholder ?? ''"
-              [attr.aria-label]="fieldText(f.key)"
+              [ariaLabelText]="fieldText(f.key)"
               [value]="fields()[f.key]?.value ?? ''"
-              (input)="setValue(f.key, value($event))"
+              (kernInput)="setValue(f.key, value($event))"
             />
           }
           @if (fieldHint(f); as hint) {
@@ -49,89 +43,75 @@
           }
         </div>
       }
-    </fieldset>
+    </kern-card>
   }
 
-  <fieldset class="network">
-    <legend>{{ 'templateEditor.networkLegend' | t }} <span class="muted">({{ groupGens('network') }})</span></legend>
-    <p class="message warn">{{ 'templateEditor.networkWarning' | t }}</p>
+  <kern-card [heading]="'templateEditor.networkLegend' | t">
+    <span slot="meta" class="muted">{{ groupGens('network') }}</span>
+    <kern-alert tone="warn">{{ 'templateEditor.networkWarning' | t }}</kern-alert>
     <p class="hint">{{ 'templateEditor.networkHint' | t }}</p>
     @for (iface of ifaces; track iface) {
       <div class="row" [class.off]="!netOn()[iface]">
-        <label class="include">
-          <input type="checkbox" [attr.name]="'on:network.' + iface" [checked]="netOn()[iface]" (change)="toggleNet(iface, checked($event))" />
+        <kern-checkbox [attr.name]="'on:network.' + iface" [checked]="netOn()[iface]" (kernChange)="toggleNet(iface, checked($event))">
           {{ wifiLabel(iface) }}
-        </label>
-        <select [attr.name]="'network.' + iface + '.mode'" [attr.aria-label]="wifiLabel(iface) + ': ' + ('network.field.mode' | t)" (change)="setNet(iface, 'mode', value($event))">
-          <option value="dhcp" [selected]="net()[iface].mode === 'dhcp'">DHCP</option>
-          <option value="static" [selected]="net()[iface].mode === 'static'">{{ 'templateEditor.static' | t }}</option>
-        </select>
+        </kern-checkbox>
+        <kern-segmented
+          [attr.name]="'network.' + iface + '.mode'"
+          [label]="wifiLabel(iface) + ': ' + ('network.field.mode' | t)"
+          [value]="net()[iface].mode"
+          (kernChange)="setNet(iface, 'mode', value($event))"
+        >
+          <option value="dhcp">DHCP</option>
+          <option value="static">{{ 'templateEditor.static' | t }}</option>
+        </kern-segmented>
         @if (iface === 'sta1') {
           <span class="muted small">{{ 'templateEditor.sta1Hint' | t }}</span>
         }
       </div>
       @if (net()[iface].mode === 'static') {
         <div class="netgrid" [class.off]="!netOn()[iface]">
-          <label class="field">
-            <span>{{ 'templateEditor.ipFrom' | t }}</span>
-            <input [attr.name]="'network.' + iface + '.ipFrom'" placeholder="192.168.10.50" [value]="net()[iface].ipFrom ?? ''" (input)="setNet(iface, 'ipFrom', value($event))" />
-          </label>
-          <label class="field">
-            <span>{{ 'network.field.netmask' | t }}</span>
-            <input [attr.name]="'network.' + iface + '.netmask'" placeholder="255.255.255.0" [value]="net()[iface].netmask ?? ''" (input)="setNet(iface, 'netmask', value($event))" />
-          </label>
-          <label class="field">
-            <span>{{ 'templateEditor.gatewayOptional' | t }}</span>
-            <input [attr.name]="'network.' + iface + '.gateway'" placeholder="192.168.10.1" [value]="net()[iface].gateway ?? ''" (input)="setNet(iface, 'gateway', value($event))" />
-          </label>
-          <label class="field">
-            <span>{{ 'templateEditor.dnsOptional' | t }}</span>
-            <input [attr.name]="'network.' + iface + '.dns'" placeholder="192.168.10.1" [value]="net()[iface].dns ?? ''" (input)="setNet(iface, 'dns', value($event))" />
-          </label>
+          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.ipFrom'" [label]="'templateEditor.ipFrom' | t" placeholder="192.168.10.50" [value]="net()[iface].ipFrom ?? ''" (kernInput)="setNet(iface, 'ipFrom', value($event))" />
+          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.netmask'" [label]="'network.field.netmask' | t" placeholder="255.255.255.0" [value]="net()[iface].netmask ?? ''" (kernInput)="setNet(iface, 'netmask', value($event))" />
+          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.gateway'" [label]="'templateEditor.gatewayOptional' | t" placeholder="192.168.10.1" [value]="net()[iface].gateway ?? ''" (kernInput)="setNet(iface, 'gateway', value($event))" />
+          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.dns'" [label]="'templateEditor.dnsOptional' | t" placeholder="192.168.10.1" [value]="net()[iface].dns ?? ''" (kernInput)="setNet(iface, 'dns', value($event))" />
         </div>
       }
     }
-  </fieldset>
+  </kern-card>
 
-  <fieldset>
-    <legend>
-      <label class="include">
-        <input type="checkbox" name="on:script" [checked]="scriptOn()" (change)="scriptOn.set(checked($event))" />
-        {{ 'templateEditor.distributeScript' | t }} <span class="muted">({{ groupGens('script') }})</span>
-      </label>
-    </legend>
+  <kern-card [heading]="'templateEditor.distributeScript' | t">
+    <span slot="meta" class="muted">{{ groupGens('script') }}</span>
+    <kern-switch slot="actions" name="on:script" [checked]="scriptOn()" (kernChange)="scriptOn.set(checked($event))">
+      {{ 'templateEditor.includeScript' | t }}
+    </kern-switch>
     <p class="hint">{{ 'templateGroups.script.hint' | t }}</p>
     @if (scriptOn()) {
-      <div class="row">
-        <label class="include">{{ fieldText('script.name') }}</label>
-        <input name="script.name" maxlength="64" placeholder="heizung" [value]="fields()['script.name']?.value ?? ''" (input)="setValue('script.name', value($event))" />
-      </div>
-      <label class="field">
-        <span>{{ fieldText('script.code') }}</span>
-        <textarea name="script.code" rows="10" spellcheck="false" class="mono" [value]="fields()['script.code']?.value ?? ''" (input)="setValue('script.code', value($event))"></textarea>
-      </label>
-      <div class="row">
-        <label class="include">{{ fieldText('script.enable') }}</label>
-        <select name="script.enable" (change)="setValue('script.enable', value($event))">
-          <option value="true" [selected]="fields()['script.enable']?.value === 'true'">{{ 'common.on' | t }}</option>
-          <option value="false" [selected]="fields()['script.enable']?.value === 'false'">{{ 'common.off' | t }}</option>
-        </select>
-      </div>
-      <div class="row">
-        <label class="include">{{ fieldText('script.start') }}</label>
-        <select name="script.start" (change)="setValue('script.start', value($event))">
-          <option value="true" [selected]="fields()['script.start']?.value === 'true'">{{ 'common.yes' | t }}</option>
-          <option value="false" [selected]="fields()['script.start']?.value === 'false'">{{ 'common.no' | t }}</option>
-        </select>
+      <div class="script">
+        <kern-input name="script.name" mono maxlength="64" placeholder="heizung" [label]="fieldText('script.name')" [value]="fields()['script.name']?.value ?? ''" (kernInput)="setValue('script.name', value($event))" />
+        <kern-textarea name="script.code" mono [rows]="10" [label]="fieldText('script.code')" [value]="fields()['script.code']?.value ?? ''" (kernInput)="setValue('script.code', value($event))" />
+        <div class="row">
+          <span>{{ fieldText('script.enable') }}</span>
+          <kern-segmented name="script.enable" [label]="fieldText('script.enable')" [value]="fields()['script.enable']?.value ?? ''" (kernChange)="setValue('script.enable', value($event))">
+            <option value="true">{{ 'common.on' | t }}</option>
+            <option value="false">{{ 'common.off' | t }}</option>
+          </kern-segmented>
+        </div>
+        <div class="row">
+          <span>{{ fieldText('script.start') }}</span>
+          <kern-segmented name="script.start" [label]="fieldText('script.start')" [value]="fields()['script.start']?.value ?? ''" (kernChange)="setValue('script.start', value($event))">
+            <option value="true">{{ 'common.yes' | t }}</option>
+            <option value="false">{{ 'common.no' | t }}</option>
+          </kern-segmented>
+        </div>
       </div>
     }
-  </fieldset>
+  </kern-card>
 
   @if (error(); as e) {
-    <p class="message error" role="alert">{{ e }}</p>
+    <kern-alert tone="danger" role="alert">{{ e }}</kern-alert>
   }
   <div class="buttons">
-    <button type="submit" [disabled]="!canSave() || saving()">{{ 'templateEditor.saveAndPreview' | t }}</button>
+    <kern-button type="submit" variant="primary" [busy]="saving()" [disabled]="!canSave() || saving()">{{ 'templateEditor.saveAndPreview' | t }}</kern-button>
     <a class="button secondary" routerLink="/templates">{{ 'common.cancel' | t }}</a>
   </div>
 </form>

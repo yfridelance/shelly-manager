@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Device } from '../../core/api.types';
 import { DeviceApiError, DevicesApi, type Credentials } from '../../core/devices-api';
@@ -23,11 +23,13 @@ export interface FirmwareCheckResult {
  * Uses the per-device endpoint with limited parallelism; protected devices are only
  * checked when a password is given, and the password lives only for this run.
  */
+import { kernValue } from '../../core/kern';
 @Component({
   selector: 'app-firmware-check-panel',
   imports: [RouterLink, TranslatePipe],
   templateUrl: './firmware-check-panel.html',
   styleUrl: './firmware-check-panel.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class FirmwareCheckPanel {
   private readonly api = inject(DevicesApi);
@@ -120,7 +122,5 @@ export class FirmwareCheckPanel {
     }
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
+  protected readonly value = kernValue;
 }

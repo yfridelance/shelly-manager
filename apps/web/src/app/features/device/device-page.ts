@@ -1,7 +1,7 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, input, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import type { ActionEntry, Device, DeviceDetails, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
+import type { ActionEntry, Device, DeviceDetails, DeviceState, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
 import { actionDetail, actionLabel, actionSummary, unconfirmedResetText } from '../../core/action-text';
 import { compareText, t } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
@@ -10,7 +10,7 @@ import { SitesApi } from '../../core/sites-api';
 import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
 import { deviceStateText, formatMac, functionsText, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
-import { JsonTree } from '../../shared/json-tree';
+import { kernValue } from '../../core/kern';
 import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
 import { ResetDialog } from './reset-dialog';
 
@@ -18,7 +18,8 @@ type SnapshotTab = 'config' | 'status' | 'info';
 
 @Component({
   selector: 'app-device-page',
-  imports: [DateTimePipe, TranslatePipe, RouterLink, EditableField, JsonTree, ResetDialog],
+  imports: [DateTimePipe, TranslatePipe, RouterLink, EditableField, ResetDialog],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './device-page.html',
   styleUrl: './device-page.scss',
 })
@@ -289,7 +290,14 @@ export class DevicePage {
     return entries.filter((e) => e.kind === kind).length;
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+  protected readonly value = kernValue;
+
+  protected onSiteChange(value: string, current: number): void {
+    const id = Number(value);
+    if (id && id !== current) this.moveTo.set(id);
+  }
+
+  protected stateTone(state: DeviceState): 'ok' | 'warn' | 'neutral' {
+    return state === 'active' ? 'ok' : state === 'missing' ? 'warn' : 'neutral';
   }
 }

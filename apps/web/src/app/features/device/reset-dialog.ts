@@ -1,9 +1,10 @@
-import { Component, ElementRef, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, ElementRef, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import type { Device } from '../../core/api.types';
 import { DeviceApiError, DevicesApi, type FactoryResetResult } from '../../core/devices-api';
 import { t } from '../../core/i18n/i18n';
 import { EmphasisPipe, TranslatePipe } from '../../core/i18n/pipes';
 import { errorText, formatMac } from '../../core/texts';
+import { kernChecked, kernValue } from '../../core/kern';
 
 /**
  * Factory reset of exactly one device (AGENTS.md section 9): MAC or name must be typed,
@@ -14,7 +15,8 @@ import { errorText, formatMac } from '../../core/texts';
   imports: [TranslatePipe, EmphasisPipe],
   templateUrl: './reset-dialog.html',
   styleUrl: './reset-dialog.scss',
-  host: { '(document:keydown.escape)': 'close()' },
+  // kern-dialog handles Escape (blocked while the reset runs) and the backdrop.
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class ResetDialog {
   private readonly api = inject(DevicesApi);
@@ -32,7 +34,7 @@ export class ResetDialog {
   protected readonly snapshotFailure = signal<string | null>(null);
   protected readonly override = signal(false);
 
-  private readonly confirmInput = viewChild<ElementRef<HTMLInputElement>>('confirmInput');
+  private readonly confirmInput = viewChild<ElementRef<HTMLElement & { setFocus?: () => Promise<void> }>>('confirmInput');
 
   /** Typed MAC (any separators/case) or the exact device name (case-insensitive). */
   protected readonly confirmed = computed(() => {
@@ -52,7 +54,8 @@ export class ResetDialog {
   );
 
   constructor() {
-    afterNextRender(() => this.confirmInput()?.nativeElement.focus());
+    // After kern-dialog has opened (showModal moves focus to the close button first).
+    afterNextRender(() => setTimeout(() => void this.confirmInput()?.nativeElement.setFocus?.(), 50));
   }
 
   protected async submit(event: Event): Promise<void> {
@@ -86,7 +89,6 @@ export class ResetDialog {
     if (!this.busy()) this.closed.emit();
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
+  protected readonly value = kernValue;
+  protected readonly checked = kernChecked;
 }

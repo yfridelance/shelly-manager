@@ -1,58 +1,12 @@
-:root {
-  --text: #1d2125;
-  --text-muted: #5b6570;
-  --surface: #ffffff;
-  --surface-2: #f4f5f7;
-  --border: #dde1e6;
-  --ok: #1f7a3d;
-  --error: #b42318;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-size: 15px;
-  color: var(--text);
-  background: var(--surface);
-}
+// Global styles on top of Kern (@yfridelance/kern: kern.css for tokens and theme, kern-* web components).
+// Only what Kern does not cover lives here. Colors, spacing and radii come only from Kern tokens.
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #e6e8eb;
-    --text-muted: #9aa4ae;
-    --surface: #16191c;
-    --surface-2: #1f2327;
-    --border: #2f353b;
-    --ok: #4ec27a;
-    --error: #f0705f;
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-:root {
-  --accent: #1f5fbf;
-  --accent-text: #ffffff;
-  --warn: #8a5a00;
-  --warn-bg: #fff4d6;
-  --error-bg: #fdecea;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --accent: #5b9bff;
-    --accent-text: #0b1220;
-    --warn: #f0c060;
-    --warn-bg: #3a2f12;
-    --error-bg: #3d1d1a;
-  }
-}
-
-h1 {
-  font-size: 1.4rem;
-  margin: 0 0 1rem;
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
 }
 
 .muted {
@@ -60,174 +14,76 @@ h1 {
 }
 
 .mono {
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 0.9em;
-}
-
-.field {
-  display: grid;
-  gap: 0.25rem;
-
-  span {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-  }
-}
-
-input,
-select,
-textarea {
-  font: inherit;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.4rem 0.55rem;
-}
-
-button,
-a.button {
-  font: inherit;
-  display: inline-block;
-  text-decoration: none;
-  cursor: pointer;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 0.45rem 1rem;
-  background: var(--accent);
-  color: var(--accent-text);
-
-  &.secondary {
-    background: transparent;
-    color: var(--accent);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.message {
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-
-  &.error {
-    color: var(--error);
-    background: var(--error-bg);
-  }
-
-  &.warn {
-    color: var(--warn);
-    background: var(--warn-bg);
-  }
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
 
 .error-text {
-  color: var(--error);
+  color: var(--danger);
 }
 
-.status {
-  font-size: 0.85rem;
-
-  &.done {
-    color: var(--ok);
-  }
-
-  &.failed {
-    color: var(--error);
-  }
-
-  &.cancelled {
-    color: var(--warn);
-  }
-}
-
-.badge {
-  font-size: 0.75rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
+// Router links that look like kern-button (kern-button href would reload the page instead of routing).
+a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-md);
+  padding: 0 var(--space-3);
+  font: 500 14px/20px var(--font-sans);
+  white-space: nowrap;
+  text-decoration: none;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
   background: var(--accent);
-  color: var(--accent-text);
-}
+  color: var(--on-accent);
+  transition:
+    background-color 0.12s,
+    border-color 0.12s;
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-
-  th,
-  td {
-    text-align: left;
-    padding: 0.4rem 0.6rem;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
+  &:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
   }
 
-  th {
-    font-weight: 600;
-    color: var(--text-muted);
-    background: var(--surface-2);
-    position: sticky;
-    top: 0;
+  &.secondary {
+    background: var(--surface-raised);
+    border-color: var(--line-strong);
+    color: var(--text);
+
+    &:hover {
+      background: var(--hover);
+    }
   }
 
-  tbody tr:hover {
-    background: var(--surface-2);
+  &.sm {
+    height: var(--control-sm);
+    padding: 0 var(--space-2);
+    font-size: 13px;
   }
 }
 
-:root {
-  --json-string: #1a7f37;
-  --json-number: #0550ae;
-  --json-literal: #8250df;
-}
+// Inline editing (app-editable-field) keeps native fields: a <datalist> cannot reach into kern-input's shadow root.
+app-editable-field {
+  input,
+  textarea {
+    width: 100%;
+    height: var(--control-sm);
+    padding: 0 var(--space-2);
+    font: 400 13px/18px var(--font-sans);
+    color: var(--text);
+    background: var(--surface-sunken);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --json-string: #7ee2a8;
-    --json-number: #79c0ff;
-    --json-literal: #d2a8ff;
-  }
-}
-
-a {
-  color: var(--accent);
-}
-
-button.link {
-  all: unset;
-  cursor: pointer;
-  color: var(--accent);
-  font-size: 0.85rem;
-  text-decoration: underline;
-}
-
-.data-table tr.clickable {
-  cursor: pointer;
-}
-
-.state {
-  &.active {
-    color: var(--ok);
+    &:focus {
+      outline: 2px solid var(--focus);
+      outline-offset: -1px;
+      border-color: var(--focus);
+    }
   }
 
-  &.missing {
-    color: var(--warn);
+  textarea {
+    height: auto;
+    padding: var(--space-2);
   }
-
-  &.reset {
-    color: var(--text-muted);
-  }
-}
-
-.message.ok {
-  color: var(--ok);
-  background: var(--surface-2);
-}
-
-button.danger {
-  background: var(--error);
-  border-color: var(--error);
-  color: #fff;
 }

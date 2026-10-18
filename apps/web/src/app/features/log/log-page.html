@@ -1,40 +1,30 @@
-<div class="head">
-  <h1>{{ 'nav.log' | t }}</h1>
+<kern-page-header [heading]="'nav.log' | t">
   <span class="muted">{{ 'log.count' | t: { count: filtered().length } }}</span>
-  <button type="button" class="secondary" (click)="entries.reload()">{{ 'common.refresh' | t }}</button>
-</div>
+  <kern-button slot="actions" (click)="entries.reload()">{{ 'common.refresh' | t }}</kern-button>
+</kern-page-header>
 
-<div class="filters">
-  <label class="field search">
-    <span>{{ 'titles.device' | t }}</span>
-    <input type="search" [placeholder]="'log.searchPlaceholder' | t" [value]="search()" (input)="search.set(value($event))" />
-  </label>
-  <label class="field">
-    <span>{{ 'log.action' | t }}</span>
-    <select (change)="action.set(value($event))">
-      <option value="">{{ 'common.all' | t }}</option>
-      @for (a of actionTypes; track a) {
-        <option [value]="a">{{ actionText(a) }}</option>
-      }
-    </select>
-  </label>
-  <label class="field">
-    <span>{{ 'log.result' | t }}</span>
-    <select (change)="result.set(value($event))">
-      <option value="">{{ 'common.all' | t }}</option>
-      <option value="ok">{{ 'common.ok' | t }}</option>
-      <option value="error">{{ 'common.error' | t }}</option>
-    </select>
-  </label>
-</div>
+<kern-toolbar>
+  <kern-input class="search" type="search" size="sm" [label]="'titles.device' | t" [placeholder]="'log.searchPlaceholder' | t" [value]="search()" (kernInput)="search.set(value($event))" />
+  <kern-select name="action" size="sm" [label]="'log.action' | t" [value]="action()" (kernChange)="action.set(value($event))">
+    <option value="">{{ 'common.all' | t }}</option>
+    @for (a of actionTypes; track a) {
+      <option [value]="a">{{ actionText(a) }}</option>
+    }
+  </kern-select>
+  <kern-select name="result" size="sm" [label]="'log.result' | t" [value]="result()" (kernChange)="result.set(value($event))">
+    <option value="">{{ 'common.all' | t }}</option>
+    <option value="ok">{{ 'common.ok' | t }}</option>
+    <option value="error">{{ 'common.error' | t }}</option>
+  </kern-select>
+</kern-toolbar>
 
 @if (entries.error()) {
-  <p class="message error" role="alert">{{ 'log.loadError' | t }}</p>
+  <kern-alert tone="danger" role="alert">{{ 'log.loadError' | t }}</kern-alert>
 } @else if (!entries.isLoading() && entries.value().length === 0) {
   <p class="muted">{{ 'log.empty' | t }}</p>
 } @else {
-  <div class="table-wrap">
-    <table class="data-table">
+  <kern-table>
+    <table>
       <thead>
         <tr>
           <th>{{ 'log.time' | t }}</th>
@@ -48,20 +38,26 @@
       </thead>
       <tbody>
         @for (e of filtered(); track e.id) {
-          <tr [class.reset-row]="e.action === 'factory_reset' && e.result === 'ok'">
+          <tr>
             <td>{{ e.requestedAt | dateTime: 'seconds' }}</td>
             <td>
               <a [routerLink]="['/inventar', e.mac]">{{ e.deviceName ?? ('common.unnamed' | t) }}</a>
               <div class="mono muted">{{ formatMac(e.mac) }}</div>
             </td>
-            <td>{{ actionLabel(e) }}</td>
+            <td>
+              @if (e.action === 'factory_reset' && e.result === 'ok') {
+                <kern-badge tone="danger">{{ actionLabel(e) }}</kern-badge>
+              } @else {
+                {{ actionLabel(e) }}
+              }
+            </td>
             <td>
               @if (e.result === 'ok') {
-                <span class="state active">{{ 'common.ok' | t }}</span>
+                <kern-status tone="ok">{{ 'common.ok' | t }}</kern-status>
               } @else if (e.result === 'error') {
-                <span class="error-text">{{ 'common.error' | t }}</span>
+                <kern-status tone="danger">{{ 'common.error' | t }}</kern-status>
               } @else {
-                <span class="muted">{{ 'common.running' | t }}</span>
+                <kern-status tone="busy">{{ 'common.running' | t }}</kern-status>
               }
             </td>
             <td class="wrap">
@@ -76,10 +72,10 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="7" class="muted">{{ 'log.noMatch' | t }}</td>
+            <td colspan="7" class="empty">{{ 'log.noMatch' | t }}</td>
           </tr>
         }
       </tbody>
     </table>
-  </div>
+  </kern-table>
 }

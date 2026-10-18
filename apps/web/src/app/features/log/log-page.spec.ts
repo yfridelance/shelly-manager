@@ -12,6 +12,7 @@ const ENTRIES: ActionEntry[] = [
   { id: 1, mac: 'E868E7A1B2C3', deviceName: null, action: 'reboot', requestedAt: '2026-10-14T10:00:00.000Z', requestedBy: '127.0.0.1', finishedAt: '2026-10-14T10:00:00.100Z', result: 'ok', errorCode: null, error: null, details: null },
 ];
 
+import { setKernValue } from '../../../testing/kern';
 describe('LogPage', () => {
   it('shows actions with German texts, override details and filters', async () => {
     await TestBed.configureTestingModule({
@@ -34,9 +35,7 @@ describe('LogPage', () => {
     expect(rows()[2]).toContain('Zeitüberschreitung');
     expect(rows()[3]).toContain('E8:68:E7:A1:B2:C3');
 
-    const result = el.querySelectorAll('select')[1] as HTMLSelectElement;
-    result.value = 'error';
-    result.dispatchEvent(new Event('change'));
+    setKernValue(el, 'kern-select[name="result"]', 'error');
     await fixture.whenStable();
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toContain('Snapshot');

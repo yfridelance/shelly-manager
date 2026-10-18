@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import type { ScanDetails } from '../../core/api.types';
 import { ScanPage } from './scan-page';
+import { kernValueOf, setKernValue } from '../../../testing/kern';
 
 const summary = {
   id: 'scan-1', siteId: 1, range: '10.0.0.0/29', status: 'running' as const, total: 6, scanned: 0, found: 0, errors: 0,
@@ -22,10 +23,7 @@ describe('ScanPage', () => {
   });
 
   function setInput(el: HTMLElement, name: string, value: string): void {
-    const input = el.querySelector<HTMLInputElement>(`input[name="${name}"]`);
-    if (!input) throw new Error(`input ${name} missing`);
-    input.value = value;
-    input.dispatchEvent(new Event('input'));
+    setKernValue(el, `kern-input[name="${name}"]`, value);
   }
 
   it('starts a scan with credentials, clears the password and shows the results', async () => {
@@ -43,7 +41,7 @@ describe('ScanPage', () => {
     const post = http.expectOne({ method: 'POST', url: '/api/scans' });
     expect(post.request.body).toEqual({ range: '10.0.0.0/29', siteId: 1, credentials: { password: 'geheim' } });
     await fixture.whenStable();
-    expect(el.querySelector<HTMLInputElement>('input[name="password"]')?.value).toBe('');
+    expect(kernValueOf(el, 'kern-input[name="password"]')).toBe('');
     post.flush(summary);
     await fixture.whenStable();
 

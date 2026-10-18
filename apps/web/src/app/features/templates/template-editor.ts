@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import type { NetworkSettings, Template, TemplateSettings, WifiInterface } from '../../core/api.types';
@@ -18,6 +18,7 @@ import {
 } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
+import { kernChecked, kernValue } from '../../core/kern';
 
 /** Per field: included in the template, and its raw input value ('true'/'false' for booleans). */
 type FieldState = Record<string, { on: boolean; value: string }>;
@@ -45,6 +46,7 @@ function stateFromSettings(settings: TemplateSettings): FieldState {
   imports: [RouterLink, TranslatePipe],
   templateUrl: './template-editor.html',
   styleUrl: './template-editor.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class TemplateEditor {
   private readonly api = inject(TemplatesApi);
@@ -167,11 +169,6 @@ export class TemplateEditor {
     }
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
-
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
-  }
+  protected readonly value = kernValue;
+  protected readonly checked = kernChecked;
 }

@@ -5,6 +5,8 @@
   <title>Shelly Manager</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Kern theme before first paint (dark unless the user chose light) -->
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('kern-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
