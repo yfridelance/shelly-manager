@@ -26,12 +26,46 @@ Die App ist danach unter **http://localhost:8080** erreichbar.
 
 Eigenschaften des Images:
 
-- Mehrstufiger Build auf `node:24-bookworm-slim`; im Image steckt nur der Server mit seinen Produktionsabhängigkeiten
+- Mehrstufiger Build auf `node:24-bookworm-slim` für `linux/amd64` und `linux/arm64`; im Image steckt nur der Server mit seinen Produktionsabhängigkeiten
   und das gebaute Web-Frontend, dazu die Übersetzungsdateien (`apps/web/src/locale`) für die Texte des CSV-Exports.
 - Läuft als Benutzer `node`, nicht als root.
 - Die SQLite-Datenbank liegt in `/data`, gemountet als benanntes Volume `shelly-data`
   (Docker-Name: `shelly-manager_shelly-data`).
 - Datenbank-Migrationen laufen beim Start automatisch.
+
+### Fertiges Image (GHCR)
+
+Die CI baut bei jedem Push auf `master` und bei jedem Versions-Tag ein Image für `linux/amd64` und `linux/arm64`
+und legt es unter `ghcr.io/yfridelance/shelly-manager` ab. Damit braucht der Zielrechner weder den Quellcode noch
+einen Build, z.B. für Komodo, Portainer oder einen Raspberry Pi.
+
+| Tag | Inhalt |
+|---|---|
+| `latest`, `master` | neuster Stand von `master` (nur nach grünen Tests) |
+| `sha-<commit>` | ein bestimmter Commit |
+| `1.2.3`, `1.2` | Versions-Tag `v1.2.3` |
+
+`docker-compose.yml` für das fertige Image (statt `build: .`):
+
+```yaml
+services:
+  shelly-manager:
+    image: ghcr.io/yfridelance/shelly-manager:latest
+    container_name: shelly-manager
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      LOG_LEVEL: info
+    volumes:
+      - shelly-data:/data
+
+volumes:
+  shelly-data:
+```
+
+Aktualisieren mit `docker compose pull && docker compose up -d`. Für reproduzierbare Installationen statt `latest`
+einen `sha-…`- oder Versions-Tag verwenden. Port-Bindung und Zugriff von aussen: wie unten beschrieben.
 
 ### Port und Erreichbarkeit
 
@@ -152,6 +186,8 @@ unabhängig von der App bleibt. Ein Import ist nicht vorgesehen.
 git pull
 docker compose up -d --build
 ```
+
+Mit dem [fertigen Image](#fertiges-image-ghcr): `docker compose pull && docker compose up -d`.
 
 Neue Datenbank-Migrationen laufen beim Start automatisch. Ein Zurückgehen auf eine ältere Version wird nicht
 unterstützt; dafür ist das Backup da.

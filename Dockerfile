@@ -6,7 +6,9 @@
 ARG NODE_IMAGE=node:24-bookworm-slim
 
 # --- Build both workspaces ---------------------------------------------------
-FROM ${NODE_IMAGE} AS build
+# Runs on the build machine's platform: the output (JS, Angular bundle) is platform-independent,
+# so multi-arch builds do not need to emulate the slow part.
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS build
 WORKDIR /app
 # Toolchain in case better-sqlite3 has no prebuilt binary for this platform.
 RUN apt-get update \
@@ -21,9 +23,16 @@ COPY apps/web apps/web
 RUN npm run build
 
 # --- Production dependencies of the server only ------------------------------
-FROM build AS prod-deps
-RUN rm -rf node_modules apps/server/node_modules apps/web/node_modules \
-  && npm ci --omit=dev --workspace apps/server
+# Target platform: better-sqlite3 needs the native binary of the image's architecture.
+FROM ${NODE_IMAGE} AS prod-deps
+WORKDIR /app
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+COPY apps/server/package.json apps/server/
+COPY apps/web/package.json apps/web/
+RUN npm ci --omit=dev --workspace apps/server
 
 # --- Runtime -----------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime

@@ -194,11 +194,15 @@ Fehlercodes steht in [CLAUDE.md, Abschnitt 8](../CLAUDE.md#8-rest-api). Fehler h
 
 ## CI
 
-`.github/workflows/ci.yml` läuft bei Push auf `master` und bei Pull Requests:
+`.github/workflows/ci.yml` läuft bei Push auf `master`, bei Versions-Tags (`v*`) und bei Pull Requests:
 
 - `test`: Node gemäss `.nvmrc` (neustes 24.x), `npm ci`, Prüfung des nativen SQLite-Moduls,
   `npm run typecheck -w apps/server`, `npm run build`, `npm test`.
-- `docker`: Image-Build aus dem `Dockerfile` (ohne Push, mit GitHub-Actions-Cache).
+- `docker` (nach `test`): Image-Build für `linux/amd64` und `linux/arm64` mit GitHub-Actions-Cache. Bei Push auf
+  `master` und bei Tags wird es nach `ghcr.io/yfridelance/shelly-manager` gepusht (Tags siehe
+  [Betrieb](betrieb.md#fertiges-image-ghcr)), bei Pull Requests nur gebaut. Im `Dockerfile` läuft der Build-Stage
+  auf der Plattform des Runners (`--platform=$BUILDPLATFORM`, die Ausgabe ist plattformunabhängig); nur
+  `prod-deps` installiert `better-sqlite3` pro Zielarchitektur, für arm64 unter QEMU.
 
 ## Screenshots der Doku
 
