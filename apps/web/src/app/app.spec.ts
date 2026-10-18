@@ -62,6 +62,7 @@ describe('App', () => {
     expect([...root.querySelectorAll('kern-select[name="site"] option')].map((o) => o.textContent?.trim())).toEqual(['Standard', 'Ferienhaus']);
     expect(kernValueOf(root, 'kern-select[name="site"]')).toBe('1');
     setKernValue(root, 'kern-select[name="site"]', '2');
+    expect(root.querySelector('kern-select[name="site"] kern-button[slot="footer"]')?.textContent).toContain('Standorte bearbeiten');
     expect(site.siteId()).toBe(2);
     expect(localStorage.getItem('shelly-manager.site')).toBe('2');
     localStorage.removeItem('shelly-manager.site');

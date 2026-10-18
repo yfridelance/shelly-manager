@@ -35,7 +35,7 @@ Die Navigation oben hat vier Bereiche:
 | **Inventar** | Alle bekannten Geräte, Suche, Filter, Export, Firmware-Prüfung |
 | **Templates** | Einstellungen zusammenstellen und auf mehrere Geräte anwenden |
 | **Protokoll** | Alle ausgeführten Aktionen mit Ergebnis |
-| **Standort** (oben rechts) | Auswahl des Standorts, in dem du arbeitest; «Standorte» verwaltet sie |
+| **Standort** (oben rechts) | Auswahl des Standorts, in dem du arbeitest; «Standorte bearbeiten» unten in der Liste verwaltet sie |
 
 Oben rechts zeigt «Server verbunden», dass die App ihren Server erreicht. Sobald die App in mehr als einer Sprache
 vorliegt, steht daneben die Sprachauswahl; ohne Auswahl gilt die Sprache des Browsers (sonst Deutsch), und der
@@ -419,7 +419,7 @@ Standort hat sein **eigenes Inventar, eigene Templates und ein eigenes Protokoll
 
 - **Wählen:** Oben rechts in der Kopfzeile wählst du, in welchem Standort du arbeitest. Scan, Inventar, Templates,
   Protokoll und Export beziehen sich immer auf diesen Standort. Der Browser merkt sich die Wahl.
-- **Verwalten:** Unter **Standorte** legst du neue an und benennst sie um. Löschen geht nur bei leeren Standorten
+- **Verwalten:** Unter **Standorte bearbeiten** (unten in der Standort-Auswahl) legst du neue an und benennst sie um. Löschen geht nur bei leeren Standorten
   (keine Geräte, keine Templates); der letzte Standort bleibt immer bestehen. Bestehende Daten liegen im Standort
   «Standard».
 - **Scannen:** Ein Scan speichert die gefundenen Geräte im gewählten Standort. Gehört ein gefundenes Gerät schon zu

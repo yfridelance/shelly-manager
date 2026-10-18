@@ -16,8 +16,8 @@
     @for (s of sites.list.value(); track s.id) {
       <option [value]="s.id">{{ s.name }}</option>
     }
+    <kern-button slot="footer" size="sm" variant="ghost" (click)="manageSites()">{{ 'header.manageSites' | t }}</kern-button>
   </kern-select>
-  <a slot="end" class="manage" routerLink="/standorte" routerLinkActive="active">{{ 'nav.sites' | t }}</a>
   @if (i18n.languages.length > 1) {
     <kern-select
       slot="end"
