@@ -18,7 +18,9 @@
     "language": "Sprache",
     "connected": "Server verbunden",
     "unreachable": "Server nicht erreichbar",
-    "connecting": "Verbinde …"
+    "connecting": "Verbinde …",
+    "themeLight": "Zu hellem Design wechseln",
+    "themeDark": "Zu dunklem Design wechseln"
   },
   "common": {
     "user": "Benutzer",

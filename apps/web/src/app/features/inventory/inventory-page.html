@@ -109,7 +109,7 @@
             <td [title]="d.firmware ?? ''">
               {{ shortFirmware(d.firmware) }}
               @if (d.updateStable) {
-                <span class="badge" [title]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">{{ 'inventory.update' | t }}</span>
+                <span class="badge update" [title]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">{{ 'inventory.update' | t }}</span>
               }
             </td>
             <td class="kind">

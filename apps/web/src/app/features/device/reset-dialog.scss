@@ -15,7 +15,7 @@
   max-height: 84vh;
   overflow: auto;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.3);
@@ -32,8 +32,8 @@
 }
 
 .warning {
-  border-left: 4px solid var(--error);
-  background: var(--error-bg);
+  border-left: 4px solid var(--danger);
+  background: var(--danger-soft);
   padding: 0.5rem 0.9rem;
   border-radius: 4px;
 
@@ -62,7 +62,7 @@
 
 code {
   font-size: 0.9em;
-  background: var(--surface-2);
+  background: var(--surface-sunken);
   padding: 0 0.25rem;
   border-radius: 3px;
 }

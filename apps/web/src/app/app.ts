@@ -1,4 +1,4 @@
-import { Component, OnInit, effect, inject } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, OnInit, computed, effect, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HealthService } from './core/health.service';
 import { I18nService } from './core/i18n/i18n.service';
@@ -8,6 +8,8 @@ import { SiteService, SitesStore } from './core/site.service';
 @Component({
   imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslatePipe],
   selector: 'app-root',
+  // <kern-theme-toggle> is a custom element from src/kern/kern.js
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
@@ -16,6 +18,11 @@ export class App implements OnInit {
   protected readonly site = inject(SiteService);
   protected readonly sites = inject(SitesStore);
   protected readonly i18n = inject(I18nService);
+  /** Kern status modifier for the server health indicator. */
+  protected readonly healthTone = computed(() => {
+    const state = this.health.state();
+    return state === 'ok' ? 'k-status--ok' : state === 'down' ? 'k-status--danger' : 'k-status--busy';
+  });
 
   constructor() {
     // A remembered site that no longer exists: fall back to the first one.

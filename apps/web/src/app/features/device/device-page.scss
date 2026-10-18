@@ -15,7 +15,7 @@
 }
 
 .card {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
@@ -97,7 +97,7 @@
 
 .tabs {
   align-items: center;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   padding-bottom: 0.4rem;
 
   [role='tab'] {
@@ -157,7 +157,7 @@
   }
 
   tr.removed td:last-child {
-    color: var(--error);
+    color: var(--danger);
   }
 
   tr.changed td:last-child {

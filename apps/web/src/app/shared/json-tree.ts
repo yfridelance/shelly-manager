@@ -33,11 +33,11 @@ interface Entry {
     }
   `,
   styles: `
-    :host { display: block; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85rem; line-height: 1.5; }
+    :host { display: block; font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; }
     summary { cursor: pointer; }
-    .children { padding-left: 1.1rem; border-left: 1px dotted var(--border); margin-left: 0.3rem; }
+    .children { padding-left: 1.1rem; border-left: 1px dotted var(--line); margin-left: 0.3rem; }
     .leaf { padding-left: 1rem; white-space: pre-wrap; word-break: break-all; }
-    .key { color: var(--text); }
+    .key { color: var(--json-key); }
     .meta { color: var(--text-muted); }
     .v.string { color: var(--json-string); }
     .v.number { color: var(--json-number); }

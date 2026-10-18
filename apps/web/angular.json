@@ -30,7 +30,12 @@
               }
             ],
             "styles": [
+              "src/kern/tokens.css",
+              "src/kern/kern.css",
               "src/styles.scss"
+            ],
+            "scripts": [
+              "src/kern/kern.js"
             ]
           },
           "configurations": {

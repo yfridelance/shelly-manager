@@ -269,7 +269,7 @@ Ansichten:
 
 **Übersetzungen (i18n):** eigene kleine Lösung ohne Abhängigkeit (`apps/web/src/app/core/i18n/`, Begründung in [docs/entwicklung.md](docs/entwicklung.md#übersetzungen-i18n)). Texte nur in `apps/web/src/locale/<code>.json` (i18next-JSON-v4-Format: `{{platzhalter}}`, Plural `_one`/`_other` über `count`, `**fett**`), `de.json` ist Quelle und Fallback. Im Code nur Keys: `{{ 'key' | t }}` bzw. `t('key')`; der Typ `TranslationKey` aus `de.json` macht falsche Keys zum Build-Fehler. Datum/Zahl/Sortierung über `dateTime`-Pipe, `formatNumber`, `compareText` (Locale der Sprache). Das UI übersetzt Fehlercodes (`errors.<code>`) und zeigt nie die `message` des Servers. Neue Sprache = neue Datei + eine Zeile in `LANGUAGES`.
 
-Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Falls das eigene Web-Component-Design-System "Kern" verfügbar ist, dessen Komponenten verwenden; sonst schlichtes eigenes SCSS ohne UI-Framework.
+Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Das eigene Design-System "Kern" liegt in `apps/web/src/kern/` (Tokens, `k-*`-Klassen, `kern-*`-Custom-Elements; Dark Standard, Light umschaltbar): nur dessen Tokens und Komponenten verwenden, kein UI-Framework. Die Dateien sind eine Kopie aus dem Kern-Design-System und werden dort geändert, nicht hier.
 
 ## 11. Testen ohne echte Geräte
 

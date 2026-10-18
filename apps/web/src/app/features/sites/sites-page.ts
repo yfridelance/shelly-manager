@@ -76,7 +76,7 @@ import { EditableField } from '../../shared/editable-field';
   `,
   styles: `
     .intro { max-width: 52rem; margin-top: 0; }
-    tr.current td { background: var(--surface-2); }
+    tr.current td { background: var(--surface-sunken); }
     .actions { display: flex; gap: 0.5rem; align-items: center; }
     .create { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-top: 1.5rem; max-width: 52rem; }
     .create h2 { flex-basis: 100%; font-size: 1.05rem; margin: 0; }

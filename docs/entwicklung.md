@@ -55,6 +55,7 @@ apps/
       routes/                 HTTP-Routen mit TypeBox-Schemas
     test/                     Vitest; mock-shelly/ ist die Mock-Fleet
   web/                        Angular 22, Standalone Components, Signals, SCSS
+    src/kern/                 Design-System Kern: tokens.css, kern.css, kern.js (Kopie, nicht von Hand ändern)
     src/locale/               Übersetzungen: de.json (Quelle), weitere Sprachen
     src/app/
       core/                   API-Typen, API-Clients, Texte, Template-Feldliste
@@ -107,6 +108,13 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
 - Sammelabläufe («Alle auf Updates prüfen», Template anwenden) laufen im Browser mit begrenzter Parallelität über die
   Einzel-Endpunkte; so gibt es Fortschritt pro Gerät ohne Job-Verwaltung im Server.
 - Passwörter liegen nur in Formular-Signals und werden beim Absenden geleert.
+- **Design-System Kern** (`src/kern/`, eingebunden über `angular.json` → `styles`/`scripts`): Tokens als
+  CSS-Variablen (`tokens.css`, aus `tokens.json` erzeugt), Komponenten als `k-*`-Klassen (`kern.css`) und
+  `kern-*`-Custom-Elements (`kern.js`, setzt `window.Kern`). Dark ist Standard; `index.html` setzt `data-theme` vor
+  dem ersten Rendern aus `localStorage['kern-theme']`, `<kern-theme-toggle>` in der Kopfzeile schaltet um. Farben,
+  Abstände und Radien in eigenen Styles nur über Kern-Tokens (`var(--surface)`, `var(--space-4)` …). `styles.scss`
+  gleicht die bestehenden App-Klassen (`.field`, `.message`, `.data-table` …) an den Kern-Look an; neues Markup kann
+  direkt die `k-*`-Klassen nutzen. Komponenten mit `kern-*`-Elementen brauchen `CUSTOM_ELEMENTS_SCHEMA`.
 
 ## Übersetzungen (i18n)
 

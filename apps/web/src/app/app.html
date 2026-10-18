@@ -1,6 +1,6 @@
-<header class="topbar">
-  <span class="brand">Shelly Manager</span>
-  <nav>
+<header class="topbar k-topbar">
+  <span class="k-brand"><span class="k-brand__mark"></span>Shelly Manager</span>
+  <nav class="k-nav">
     <a routerLink="/scan" routerLinkActive="active">{{ 'nav.scan' | t }}</a>
     <a routerLink="/inventar" routerLinkActive="active">{{ 'nav.inventory' | t }}</a>
     <a routerLink="/templates" routerLinkActive="active">{{ 'nav.templates' | t }}</a>
@@ -23,13 +23,14 @@
       }
     </select>
   }
-  <span class="health" [class]="'health ' + health.state()" data-testid="health">
+  <span class="health" [class]="'health k-status ' + healthTone()" data-testid="health">
     @switch (health.state()) {
       @case ('ok') { {{ 'header.connected' | t }} }
       @case ('down') { {{ 'header.unreachable' | t }} }
       @default { {{ 'header.connecting' | t }} }
     }
   </span>
+  <kern-theme-toggle small [attr.label-light]="'header.themeLight' | t" [attr.label-dark]="'header.themeDark' | t"></kern-theme-toggle>
 </header>
 <main>
   <router-outlet />

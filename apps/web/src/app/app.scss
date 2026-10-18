@@ -1,31 +1,4 @@
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-}
-
-.brand {
-  font-weight: 600;
-}
-
-nav {
-  display: flex;
-  gap: 1rem;
-
-  a {
-    color: var(--text-muted);
-    text-decoration: none;
-
-    &.active {
-      color: var(--text);
-      font-weight: 600;
-    }
-  }
-}
-
+// Topbar layout comes from Kern (.k-topbar, .k-brand, .k-nav); only the app-specific parts live here.
 .spacer {
   flex: 1;
 }
@@ -33,44 +6,36 @@ nav {
 .site {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
+  gap: var(--space-2);
+  font-size: 13px;
   color: var(--text-muted);
 
   select {
-    padding: 0.2rem 0.4rem;
+    height: var(--control-sm);
+    font-size: 13px;
   }
 }
 
 .manage {
-  font-size: 0.85rem;
+  font-size: 13px;
   color: var(--text-muted);
   text-decoration: none;
 
+  &:hover,
   &.active {
     color: var(--text);
-    font-weight: 600;
   }
 }
 
 .language {
-  padding: 0.2rem 0.4rem;
-  font-size: 0.85rem;
+  height: var(--control-sm);
+  font-size: 13px;
 }
 
 .health {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-
-  &.ok {
-    color: var(--ok);
-  }
-
-  &.down {
-    color: var(--error);
-  }
+  font-size: 13px;
 }
 
 main {
-  padding: 1.5rem;
+  padding: var(--space-5);
 }
