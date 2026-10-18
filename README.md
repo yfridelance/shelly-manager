@@ -39,6 +39,9 @@ cd shelly-manager
 docker compose up -d --build
 ```
 
+Or use the prebuilt image (amd64 and arm64) without cloning, see [Operations](docs/betrieb.md#fertiges-image-ghcr):
+`ghcr.io/yfridelance/shelly-manager:latest`.
+
 Open **http://localhost:8080**, go to «Scan» and enter your network range, e.g. `192.168.1.0/24`.
 
 > The user interface and the detailed documentation are currently in **German**. The UI is ready for translation

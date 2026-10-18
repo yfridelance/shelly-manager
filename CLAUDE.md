@@ -71,6 +71,7 @@ Diese Punkte definieren einen Vertrag. **Nicht brechen**, oder Dockerfile und [d
 | Migrationen | Nummerierte SQL-Dateien in `apps/server/migrations/` (neben `src`/`dist`), laufen beim Start automatisch; das Dockerfile kopiert den Ordner mit |
 | Übersetzungen | `apps/web/src/locale/<code>.json`; der Server liest daraus die CSV-Texte (Pfad relativ zu `src`/`dist`), das Dockerfile kopiert den Ordner ins Image |
 | Container | `docker compose up -d --build` → App unter `http://localhost:8080`; Port nur auf `127.0.0.1` gebunden (kein Login); Daten im Volume `shelly-data` (`/data`); läuft als Benutzer `node` mit Healthcheck |
+| Image | CI (`.github/workflows/ci.yml`) pusht nach grünen Tests `ghcr.io/yfridelance/shelly-manager` für `linux/amd64` und `linux/arm64` (`latest`/`master`/`sha-…` von `master`, Semver von `v*`-Tags); Build-Stage im Dockerfile auf `$BUILDPLATFORM`, nur `prod-deps` pro Zielarchitektur |
 | npm | npm ≥ 11.19 blockiert Install-Scripts; native Pakete sind in `allowScripts` der Root-`package.json` freigegeben |
 
 Alle API-Routen liegen unter `/api`. In Produktion liefert Fastify das SPA aus, mit Fallback auf `index.html` für unbekannte Nicht-API-Pfade.
