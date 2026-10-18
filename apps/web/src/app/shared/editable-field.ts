@@ -17,18 +17,28 @@ import { TranslatePipe } from '../core/i18n/pipes';
         <div class="actions">
           <kern-button type="submit" size="sm" variant="primary" [disabled]="saving()">{{ 'common.save' | t }}</kern-button>
           <kern-button size="sm" variant="ghost" (click)="cancel()">{{ 'common.cancel' | t }}</kern-button>
+          @if (suggestion(); as s) {
+            @if (s !== draft()) {
+              <kern-button size="sm" variant="ghost" [title]="s" (click)="draft.set(s)">{{ 'common.insertSuggestion' | t }}</kern-button>
+            }
+          }
         </div>
       </form>
     } @else {
       <div class="view">
         <span class="value" [class.empty]="!value()">{{ value() || (placeholder() ?? ('common.notRecorded' | t)) }}</span>
         <kern-button size="sm" variant="ghost" class="edit-button" [attr.label]="'common.editLabel' | t: { label: label() }" (click)="start()">{{ 'common.edit' | t }}</kern-button>
+        @if (suggestion(); as s) {
+          @if (s !== value()) {
+            <kern-button size="sm" variant="ghost" class="suggestion" [title]="'common.suggestionHint' | t" (click)="edit(s)">{{ 'common.useSuggestion' | t: { value: s } }}</kern-button>
+          }
+        }
       </div>
     }
   `,
   styles: `
     /* The input stays native: kern-input cannot reach a <datalist> outside its shadow root. */
-    .view { display: flex; gap: var(--space-2); align-items: center; min-height: var(--control-sm); }
+    .view { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; min-height: var(--control-sm); }
     .value { white-space: pre-wrap; }
     .value.empty { color: var(--text-muted); font-style: italic; }
     .edit { display: grid; gap: var(--space-2); max-width: 36rem; }
@@ -44,6 +54,8 @@ export class EditableField {
   /** id of a <datalist> with suggestions. */
   readonly listId = input<string | null>(null);
   readonly saving = input(false);
+  /** Offered next to «Bearbeiten» and in the editor; taking it only fills the editor, saving stays a separate step. */
+  readonly suggestion = input<string | null>(null);
   readonly saved = output<string>();
 
   protected readonly editing = signal(false);
@@ -51,7 +63,12 @@ export class EditableField {
   private readonly box = viewChild<ElementRef<HTMLInputElement | HTMLTextAreaElement>>('box');
 
   protected start(): void {
-    this.draft.set(this.value() ?? '');
+    this.edit();
+  }
+
+  /** Opens the editor, optionally pre-filled with a suggestion instead of the current value (not saved yet). */
+  edit(initial?: string): void {
+    this.draft.set(initial ?? this.value() ?? '');
     this.editing.set(true);
     setTimeout(() => this.box()?.nativeElement.focus());
   }

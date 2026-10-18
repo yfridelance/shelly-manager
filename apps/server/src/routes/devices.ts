@@ -28,6 +28,8 @@ export const DeviceSchema = Type.Object({
   deviceId: Nullable(Type.String()),
   siteId: Type.Integer(),
   authRequired: Type.Boolean(),
+  /** Floor («Stockwerk»), local. */
+  floor: Nullable(Type.String()),
   location: Nullable(Type.String()),
   notes: Nullable(Type.String()),
   /** What is connected (local, free text, «Typ» in the UI). */
@@ -85,6 +87,7 @@ const LocalText = (maxLength: number) => Type.Optional(Nullable(Type.String({ ma
 const PatchBody = Type.Object(
   {
     name: LocalText(200),
+    floor: LocalText(50),
     location: LocalText(200),
     notes: LocalText(10_000),
     kind: LocalText(100),
@@ -128,6 +131,7 @@ export function toDeviceDto(row: DeviceListRow) {
     deviceId: row.device_id,
     siteId: row.site_id,
     authRequired: row.auth_required === 1,
+    floor: row.floor,
     location: row.location,
     notes: row.notes,
     kind: row.kind,
@@ -154,7 +158,7 @@ const CONFLICT_CODES = new Set(['no_ip', 'mac_mismatch', 'busy', 'snapshot_faile
 export function sendDeviceError(reply: FastifyReply, err: unknown): FastifyReply {
   if (!(err instanceof DeviceActionError)) throw err;
   const status =
-    err.code === 'not_found' ? 404 : err.code === 'confirm_mismatch' ? 400 : CONFLICT_CODES.has(err.code) ? 409 : 502;
+    err.code === 'not_found' ? 404 : err.code === 'confirm_mismatch' || err.code === 'invalid_name' ? 400 : CONFLICT_CODES.has(err.code) ? 409 : 502;
   return reply.code(status).send({ error: err.code, message: err.message, ...(err.causeCode ? { cause: err.causeCode } : {}) });
 }
 
@@ -247,6 +251,26 @@ export const deviceRoutes: FastifyPluginAsyncTypebox<{ db: Db; devices: DeviceSe
         const snapshot = getSnapshot(db, mac, id);
         if (!snapshot) throw new Error(`Snapshot ${id} vanished right after insert`);
         return reply.code(201).send(toSnapshotDto(snapshot));
+      } catch (err) {
+        return sendDeviceError(reply, err);
+      }
+    },
+  );
+
+  app.post(
+    '/devices/:mac/name',
+    {
+      schema: {
+        params: MacParams,
+        body: Type.Object({ name: Type.String({ maxLength: 200 }), credentials: CredentialsSchema }, { additionalProperties: false }),
+        response: { 200: Type.Object({ name: Type.String(), snapshotId: Nullable(Type.Integer()) }), 400: ErrorBody, 404: ErrorBody, 409: ErrorBody, 502: ErrorBody },
+      },
+    },
+    async (request, reply) => {
+      const mac = macOf(request.params.mac, reply);
+      if (!mac) return reply;
+      try {
+        return await devices.renameOnDevice(mac, request.body.name, request.body.credentials, { requestedBy: request.ip });
       } catch (err) {
         return sendDeviceError(reply, err);
       }

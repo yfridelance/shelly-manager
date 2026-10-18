@@ -1,11 +1,27 @@
 import type { Db } from '../db/database.js';
 import { finishAction, startAction, type ActionType } from '../db/actions.js';
-import { getDevice, listDevices, markReset, recordFirmwareUpdates, updateDeviceIp, upsertSeenDevice, type DeviceRow } from '../db/devices.js';
+import {
+  getDevice,
+  listDevices,
+  markReset,
+  recordDeviceName,
+  recordFirmwareUpdates,
+  updateDeviceIp,
+  upsertSeenDevice,
+  type DeviceRow,
+} from '../db/devices.js';
 import { getSnapshot, insertSnapshot } from '../db/snapshots.js';
 import type { Template } from '../db/templates.js';
 import { RpcAdapter } from '../shelly/rpc-adapter.js';
 import { assignStaticIps, checkStaticIp, type IpProblem } from '../templates/ip-plan.js';
-import { currentStaticIp, planTemplate, type NetworkChange, type PlanItem } from '../templates/planner.js';
+import {
+  currentStaticIp,
+  deviceNameStep,
+  maxDeviceNameLength,
+  planTemplate,
+  type NetworkChange,
+  type PlanItem,
+} from '../templates/planner.js';
 import type { TemplateSecrets, WifiInterface } from '../templates/settings.js';
 import { NotAShellyError } from '../shelly/errors.js';
 import { isRecord } from '../shelly/http.js';
@@ -58,6 +74,7 @@ export type DeviceActionErrorCode =
   | 'no_update'
   | 'template_failed'
   | 'ip_conflict'
+  | 'invalid_name'
   | DeviceErrorCode;
 
 export class DeviceActionError extends Error {
@@ -195,6 +212,34 @@ export class DeviceService {
   }
 
   /**
+   * Writes a name to the device (Gen1 /settings?name=, Gen2+ Sys.SetConfig device.name). Afterwards
+   * the local name equals the device name again; a snapshot documents the new state.
+   */
+  renameOnDevice(mac: string, name: string, credentials?: Credentials, ctx: ActionContext = {}): Promise<{ name: string; snapshotId: number | null }> {
+    return this.exclusive(mac, () =>
+      this.logged(mac, 'rename', ctx, async (device, details) => {
+        const target = name.trim().replace(/\s+/g, ' ');
+        details.from = device.device_name;
+        details.to = target;
+        if (!target) throw new DeviceActionError('invalid_name', 'The name must not be empty');
+        const max = maxDeviceNameLength(device.gen as ShellyGen);
+        if (target.length > max) throw new DeviceActionError('invalid_name', `The name is longer than ${max} characters`);
+        const { info, adapter } = await this.connect(device, credentials);
+        await adapter.applyConfig(deviceNameStep(info.gen, target));
+        recordDeviceName(this.db, mac, target);
+        let snapshotId: number | null = null;
+        try {
+          snapshotId = await this.snapshotUnlocked(mac, credentials, ctx);
+          details.snapshotAfterId = snapshotId;
+        } catch (err) {
+          details.snapshotAfterError = err instanceof DeviceActionError ? err.code : describeError(err).code;
+        }
+        return { name: target, snapshotId };
+      }),
+    );
+  }
+
+  /**
    * Applies a template to one device: 1. snapshot of the current state (blocks on failure, like
    * a reset), 2. plan against that fresh config, 3. send only differing settings, 4. deploy the
    * script if any, 5. reboot if required and wanted. Logged with every change (secrets masked).
@@ -223,7 +268,8 @@ export class DeviceService {
         const reserved: string[] = [];
         try {
           const assignedIps = await this.assignIps(mac, live, config, template, request.networkIps, device.ip, reserved);
-          const plan = planTemplate(live.gen, config, template.settings, { deviceId, mac, assignedIps }, request.secrets);
+          const local = { name: device.name ?? device.device_name, floor: device.floor, location: device.location, kind: device.kind };
+          const plan = planTemplate(live.gen, config, template.settings, { deviceId, mac, assignedIps, local }, request.secrets);
 
           let restartRequired = false;
           const done: string[] = [];
@@ -234,6 +280,9 @@ export class DeviceService {
           };
           try {
             for (const step of plan.steps) await run(step);
+            // A new device name becomes the local name too (like renaming a single device).
+            const renamed = plan.items.find((i) => i.key === 'device.name' && i.status === 'change');
+            if (renamed && typeof renamed.target === 'string') recordDeviceName(this.db, mac, renamed.target);
           } catch (err) {
             details.appliedSteps = done;
             const { code, message } = describeError(err);

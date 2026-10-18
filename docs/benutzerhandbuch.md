@@ -94,14 +94,15 @@ letzten (siehe [Gerätedetail](#konfiguration-und-snapshots)).
 ## 3. Inventar
 
 Die Tabelle zeigt alle Geräte des gewählten [Standorts](#13-standorte): Name, Geräte-ID, Modell, Generation, IP, MAC, Firmware,
-Typ / Funktion, Ort, Status und «zuletzt gesehen». Ein Klick auf eine Zeile öffnet die [Detailansicht](#4-gerätedetail). Ein 🔒 hinter dem
+Typ / Funktion, Ort, Status und «zuletzt gesehen». In der Spalte Ort steht das Stockwerk vor dem Raum, z.B.
+«EG · Küche». Ein Klick auf eine Zeile öffnet die [Detailansicht](#4-gerätedetail). Ein 🔒 hinter dem
 Namen bedeutet: passwortgeschützt.
 
 ![Inventar mit Geräte-ID, Ort und Update-Hinweisen](img/inventar.png)
 
-- **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Typ, Funktion, Ort, Notizen
+- **Suche:** durchsucht Name, Geräte-ID, MAC (mit oder ohne Doppelpunkte), IP, Modell, Typ, Funktion, Stockwerk, Ort, Notizen
   und Firmware.
-- **Filter:** Generation, Ort (auch «ohne Ort»), Funktion, Status (Aktiv, Vermisst, Zurückgesetzt) und
+- **Filter:** Generation, Stockwerk (sobald eines erfasst ist, auch «ohne Stockwerk»), Ort (auch «ohne Ort»), Funktion, Status (Aktiv, Vermisst, Zurückgesetzt) und
   «nur mit Firmware-Update».
 - **Typ / Funktion:** oben der **Typ**, den du in der Detailansicht festlegst (was angeschlossen ist: Licht,
   Storen, Boiler …), darunter grau die **Funktion**, die die App aus der Config des Geräts ableitet:
@@ -120,7 +121,9 @@ Namen bedeutet: passwortgeschützt.
   Messung. Die Funktion folgt jedem neuen Snapshot: Stellt jemand am Gerät das Profil um (z.B. Plus 2PM von
   Schalter auf Rollladen), zeigt der nächste Scan die neue Funktion. «–» heisst: Config noch nicht gelesen (bei
   geschützten Geräten nur mit Passwort, siehe [Scan](#2-netzwerk-scannen)).
-- **Sortieren:** Klick auf eine Spaltenüberschrift, nochmals klicken kehrt die Reihenfolge um.
+- **Sortieren:** Klick auf eine Spaltenüberschrift, nochmals klicken kehrt die Reihenfolge um. Die Spalte Ort
+  sortiert nach **Gebäude-Reihenfolge** des Stockwerks (UG/KG, EG, 1. OG, 2. OG …, DG; andere Bezeichnungen
+  alphabetisch danach), dann nach Ort.
   Filter und Sortierung bleiben erhalten, wenn du ins Detail und zurück wechselst.
 - **Geräte-ID:** Gen2+ zum Beispiel `shellyplus1pm-a8032ab12345`, Gen1 der Hostname wie `shelly1-A1B2C3`.
   Unter dieser ID erscheint das Gerät in der Shelly-App, in MQTT-Topics und im Netzwerk.
@@ -148,13 +151,27 @@ Gerät sowie «erstmals» und «zuletzt gesehen».
 
 ### Dokumentation
 
-**Name, Ort, Typ und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät**. Klick auf «Bearbeiten»,
-ändern, mit Enter (bei Notizen Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Ort (Raum, z.B.
+**Name, Stockwerk, Ort, Typ und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät** (den Namen
+kannst du zusätzlich aufs Gerät schreiben, siehe unten). Klick auf «Bearbeiten», ändern, mit Enter (bei Notizen
+Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Stockwerk schlägt die App UG, EG, OG, DG und die
+im Standort bereits verwendeten Stockwerke vor. Beim Ort (Raum, z.B.
 «Keller») schlägt die App bereits verwendete Orte des Standorts vor, beim Typ (was angeschlossen ist, z.B.
 «Storen» oder «Boiler») die bereits verwendeten Typen plus Licht, Storen und Steckdose.
 
 Unter **Gerät → Standort** lässt sich das Gerät nach einer Rückfrage in einen anderen [Standort](#13-standorte)
 verschieben.
+
+**Namensvorschlag:** Sobald Stockwerk, Ort oder Typ erfasst sind, steht neben dem Namen ein Vorschlag wie
+«Vorschlag: EG Küche Licht» (leere Teile fallen weg; heisst im Standort schon ein anderes Gerät so, wird nummeriert,
+«Keller Licht 2»). Ein Klick übernimmt ihn ins Eingabefeld, gespeichert wird erst mit «Speichern». Im Eingabefeld
+setzt «Vorschlag einsetzen» ihn wieder ein.
+
+**Name auf Gerät schreiben:** Unter dem Namen steht, ob er mit dem Namen auf dem Gerät übereinstimmt («Gleich wie
+auf dem Gerät») oder was dort steht («Auf dem Gerät: «Boiler»»). Weicht er ab, schreibt «Name auf Gerät schreiben»
+ihn nach einer Rückfrage aufs Gerät (unter diesem Namen erscheint es z.B. in der Shelly-App); bei geschützten Geräten
+steht das Passwortfeld direkt in der Rückfrage. Die App prüft vorher wie bei jeder Aktion die MAC und speichert danach
+einen Snapshot. Danach sind beide Namen gleich, die App übernimmt also spätere Umbenennungen auf dem Gerät. Gen1
+erlaubt höchstens 30 Zeichen, Gen2+ (in der App) 64.
 
 Den lokalen Namen leeren zeigt wieder den Namen, den das Gerät selbst meldet. Solange du den Namen nicht lokal
 änderst, übernimmt die App Umbenennungen auf dem Gerät automatisch.
@@ -248,6 +265,7 @@ zum Template**; alles andere bleibt auf den Geräten unverändert.
 | MQTT | aktiv, Server, Benutzer, Client-ID | ✓ | ✓ (Neustart nötig) |
 |  | Topic-Präfix | – | ✓ |
 | Shelly Cloud | Verbindung an/aus | ✓ | ✓ |
+| Gerätename | Name mit Platzhaltern | ✓ (max. 30 Zeichen) | ✓ |
 | Zeit und Koordinaten | SNTP-Server, Zeitzone, Breiten-/Längengrad | ✓ | ✓ |
 | Eco-Modus und LED | Eco-Modus | – | ✓ |
 |  | LED-Statusanzeige aus | nur manche Modelle | – |
@@ -260,6 +278,11 @@ zum Template**; alles andere bleibt auf den Geräten unverändert.
 
 - **Platzhalter:** In Client-ID und Topic-Präfix werden `{id}` (Geräte-ID) und `{mac}` pro Gerät ersetzt,
   z.B. `haus/{id}`.
+- **Gerätename:** schreibt den Namen auf jedes Gerät, z.B. `{floor} {location} {kind}` → «EG Küche Licht».
+  Platzhalter: `{name}` (aktueller Name in der App), `{floor}` (Stockwerk), `{location}` (Ort), `{kind}` (Typ),
+  `{id}`, `{mac}`. Leere Platzhalter fallen samt Leerzeichen weg. Die Vorschau zeigt pro Gerät «alt → neu»; wäre der
+  Name leer oder zu lang, wird er für dieses Gerät nicht gesetzt. Nach dem Anwenden übernimmt die App den neuen Namen
+  auch lokal. Nummeriert wird hier nicht: gleiche Namen entstehen, wenn Stockwerk, Ort und Typ gleich sind.
 - **Nicht in Templates:** SSID und WLAN-Passwort sowie das Gerätepasswort. Ein Fehler würde Geräte aus dem Netz
   werfen, und Passwörter speichert die App grundsätzlich nicht. Die IP-Einstellungen des WLANs gehören dazu, siehe
   [Netzwerk](#netzwerk-dhcp-oder-statische-ip).
@@ -311,7 +334,8 @@ festlegen, ob das Gerät seine Adresse per **DHCP** bekommt oder eine **statisch
 Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer unverändert.
 
 - **Fortlaufende Vergabe:** Beim Anwenden verteilt die App die Adressen ab «IP ab» aufsteigend auf die ausgewählten
-  Geräte, sortiert nach Ort und Name. Belegte Adressen (andere Geräte im Inventar, Gateway, Netz- und
+  Geräte, sortiert nach Stockwerk (Gebäude-Reihenfolge), Ort und Name; so bekommt jedes Stockwerk einen
+  zusammenhängenden Block. Belegte Adressen (andere Geräte im Inventar, Gateway, Netz- und
   Broadcast-Adresse) werden übersprungen. Geräte, die schon eine statische IP im Bereich haben, behalten sie; ein
   zweiter Durchlauf ändert also nichts.
 - **IP anpassen:** Die Spalte **Neue IP** zeigt die geplante Adresse pro Gerät und lässt sich ändern. Ändert sich die
@@ -343,7 +367,8 @@ Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer 
 
 ![Protokoll mit Template-Änderungen und Fehlern](img/protokoll.png)
 
-Das Protokoll listet alle Aktionen: Snapshot, Neustart, Werksreset, Firmware-Update und Template. Zu jedem Eintrag
+Das Protokoll listet alle Aktionen: Snapshot, Neustart, Werksreset, Firmware-Update, Template und «Name auf Gerät
+geschrieben» (mit altem und neuem Namen). Zu jedem Eintrag
 gehören Zeitpunkt, Gerät, Ergebnis, Details, Dauer und **Von** (die Adresse des Rechners, von dem die Aktion kam; es
 gibt keine Benutzerkonten). Filter nach Gerät, Aktion und Ergebnis; «Aktualisieren» lädt neu.
 
@@ -356,7 +381,7 @@ nachher. Passwörter erscheinen nie im Klartext; dass ein Template ein Passwort 
 
 Im Inventar oben rechts:
 
-- **Export CSV:** Übersicht für Excel mit allen Spalten des Inventars (Typ und Funktion getrennt) plus Name auf Gerät, Notizen,
+- **Export CSV:** Übersicht für Excel mit allen Spalten des Inventars (Typ und Funktion getrennt, Stockwerk und Ort getrennt) plus Name auf Gerät, Notizen,
   passwortgeschützt, erstmals/zuletzt gesehen, letzter Snapshot, Zeitpunkt des Werksresets und verfügbares
   Firmware-Update. Format: Semikolon, UTF-8 mit BOM (Umlaute bleiben in Excel korrekt), Zeiten in UTC.
   Spaltentitel und Texte (Status, Funktion) folgen der Sprache des UI.
@@ -379,7 +404,8 @@ Gerätepasswörter sind nie im Export, weil die App sie nicht speichert.
 ## 11. Ablauf beim Hausverkauf
 
 1. **Scannen**, wenn nötig mit Gerätepasswort, bis alle Geräte mit «Config gelesen» im Inventar sind.
-2. **Dokumentieren:** Ort und Notizen pro Gerät erfassen (wo es verbaut ist, was es schaltet, Sicherung …).
+2. **Dokumentieren:** Stockwerk, Ort, Typ und Notizen pro Gerät erfassen, bei Bedarf Namen daraus bilden und aufs
+   Gerät schreiben (wo es verbaut ist, was es schaltet, Sicherung …).
 3. **Exportieren:** CSV und JSON herunterladen und **ausserhalb des Laptops** ablegen.
 4. **Zurücksetzen:** Gerät für Gerät über **Werkseinstellungen …**. Die App sichert vorher jeweils automatisch die
    Config.

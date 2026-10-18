@@ -19,6 +19,7 @@ import {
 import { FirmwareCheckPanel, type FirmwareCheckResult } from './firmware-check-panel';
 import { InventoryFilters, type SortKey } from './inventory-filters';
 import { SiteService } from '../../core/site.service';
+import { compareFloor } from '../../core/floor';
 
 import { kernChecked, kernValue } from '../../core/kern';
 @Component({
@@ -38,6 +39,7 @@ export class InventoryPage {
   protected readonly functionsText = functionsText;
   protected readonly functionFilterText = functionFilterText;
   protected readonly functionFilters = FUNCTION_FILTERS;
+  protected readonly placeText = placeText;
 
   protected readonly columns: { key: SortKey; label: TranslationKey }[] = [
     { key: 'name', label: 'columns.name' },
@@ -61,12 +63,16 @@ export class InventoryPage {
   protected readonly locations = computed(() =>
     [...new Set(this.devices.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(compareText),
   );
+  protected readonly floors = computed(() =>
+    [...new Set(this.devices.value().flatMap((d) => (d.floor ? [d.floor] : [])))].sort((a, b) => compareFloor(a, b, compareText)),
+  );
   protected readonly updateCount = computed(() => this.devices.value().filter((d) => d.updateStable !== null).length);
   protected readonly gens = computed(() => [...new Set(this.devices.value().map((d) => d.gen))].sort());
 
   protected readonly filtered = computed(() => {
     const search = this.f.search().trim().toLowerCase();
     const gen = this.f.gen();
+    const floor = this.f.floor();
     const location = this.f.location();
     const state = this.f.state();
     const fn = this.f.function();
@@ -77,6 +83,7 @@ export class InventoryPage {
         (gen === null || d.gen === gen) &&
         (state === null || d.state === state) &&
         (fn === null || matchesFunction(d.functions, fn)) &&
+        (floor === null || (d.floor ?? '') === floor) &&
         (location === null || (d.location ?? '') === location) &&
         (!search || haystack(d).includes(search)),
     );
@@ -89,6 +96,7 @@ export class InventoryPage {
     () =>
       !!this.f.search() ||
       this.f.gen() !== null ||
+      this.f.floor() !== null ||
       this.f.location() !== null ||
       this.f.state() !== null ||
       this.f.function() !== null ||
@@ -129,6 +137,10 @@ export class InventoryPage {
     this.f.gen.set(value ? Number(value) : null);
   }
 
+  protected setFloor(value: string): void {
+    this.f.floor.set(value === '*' ? null : value);
+  }
+
   protected setLocation(value: string): void {
     this.f.location.set(value === '*' ? null : value);
   }
@@ -143,10 +155,15 @@ export class InventoryPage {
 }
 
 function haystack(d: Device): string {
-  return [d.name, d.deviceName, d.deviceId, d.mac, formatMac(d.mac), d.ip, d.model, d.app, d.location, d.kind, functionsText(d.functions), d.notes, d.firmware]
+  return [d.name, d.deviceName, d.deviceId, d.mac, formatMac(d.mac), d.ip, d.model, d.app, d.floor, d.location, d.kind, functionsText(d.functions), d.notes, d.firmware]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
+}
+
+/** «EG · Küche» */
+export function placeText(d: Pick<Device, 'floor' | 'location'>): string {
+  return [d.floor, d.location].filter(Boolean).join(' · ');
 }
 
 function kindSortKey(d: Device): string {
@@ -168,6 +185,9 @@ function compare(a: Device, b: Device, key: SortKey): number {
       return compareText(shortFirmware(a.firmware), shortFirmware(b.firmware));
     case 'state':
       return compareText(deviceStateText(a.state), deviceStateText(b.state));
+    case 'location':
+      // Building order: floor first (UG, EG, 1. OG … DG), then the location; empty values last.
+      return compareFloor(a.floor, b.floor, compareText) || compareText(a.location ?? '￿', b.location ?? '￿');
     case 'kind':
       // Type first, then the derived function; devices with neither last.
       return compareText(kindSortKey(a), kindSortKey(b));

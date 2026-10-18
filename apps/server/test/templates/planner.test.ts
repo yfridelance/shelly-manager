@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SECRET_MASK, planTemplate } from '../../src/templates/planner.js';
+import { SECRET_MASK, fillDeviceName, planTemplate } from '../../src/templates/planner.js';
 
 const GEN2_CONFIG = {
   ble: { enable: true, rpc: { enable: true }, observer: { enable: false } },
@@ -167,5 +167,33 @@ describe('planTemplate for Gen1', () => {
   it('sends the MQTT password as mqtt_pass', () => {
     const plan = planTemplate(1, GEN1_SETTINGS, { mqtt: { enable: true } }, ctx1, { mqttPassword: 'mqtt-geheim' });
     expect(plan.steps).toEqual([{ kind: 'gen1', path: '/settings', params: { mqtt_enable: 'true', mqtt_pass: 'mqtt-geheim' } }]);
+  });
+});
+
+describe('device name', () => {
+  const local = { name: 'Boiler', floor: null, location: 'Keller', kind: 'Licht' };
+
+  it('fills placeholders and collapses empty ones', () => {
+    expect(fillDeviceName('{floor} {location}  {kind}', { ...ctx2, local })).toBe('Keller Licht');
+    expect(fillDeviceName('{name} ({id})', { ...ctx2, local })).toBe('Boiler (plus1pm-a8032ab12345)');
+    expect(fillDeviceName('{floor}', ctx2)).toBe('');
+  });
+
+  it('plans Sys.SetConfig on Gen2+ and /settings?name= on Gen1, merged with other settings', () => {
+    const settings = { device: { name: 'EG {location} {kind}' }, eco: { ecoMode: true } };
+    const gen2 = planTemplate(2, GEN2_CONFIG, settings, { ...ctx2, local });
+    expect(gen2.steps).toEqual([{ kind: 'rpc', method: 'Sys.SetConfig', params: { config: { device: { name: 'EG Keller Licht', eco_mode: true } } } }]);
+    const gen1 = planTemplate(1, { ...GEN1_SETTINGS, name: null }, settings, { ...ctx1, local });
+    expect(gen1.steps).toEqual([{ kind: 'gen1', path: '/settings', params: { name: 'EG Keller Licht' } }]);
+    expect(gen1.items).toContainEqual({ key: 'eco.ecoMode', status: 'unsupported', target: true, reason: 'generation' });
+  });
+
+  it('keeps an equal name and limits Gen1 to 30 characters', () => {
+    expect(planTemplate(2, GEN2_CONFIG, { device: { name: '{name}' } }, { ...ctx2, local }).items).toEqual([
+      { key: 'device.name', status: 'same', current: 'Boiler', target: 'Boiler' },
+    ]);
+    const long = { device: { name: 'x'.repeat(31) } };
+    expect(planTemplate(1, { ...GEN1_SETTINGS, name: 'a' }, long, ctx1).items[0]).toMatchObject({ status: 'unsupported', reason: 'name_too_long' });
+    expect(planTemplate(2, GEN2_CONFIG, long, ctx2).items[0]).toMatchObject({ status: 'change' });
   });
 });

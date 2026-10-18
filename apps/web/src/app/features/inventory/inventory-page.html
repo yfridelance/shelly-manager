@@ -32,6 +32,15 @@
       <option [value]="g">Gen{{ g }}</option>
     }
   </kern-select>
+  @if (floors().length > 0 || f.floor() !== null) {
+    <kern-select name="floor" size="sm" [label]="'inventory.floor' | t" [value]="f.floor() ?? '*'" (kernChange)="setFloor(value($event))">
+      <option value="*">{{ 'common.all' | t }}</option>
+      <option value="">{{ 'inventory.noFloor' | t }}</option>
+      @for (fl of floors(); track fl) {
+        <option [value]="fl">{{ fl }}</option>
+      }
+    </kern-select>
+  }
   <kern-select size="sm" [label]="'columns.location' | t" [value]="f.location() ?? '*'" (kernChange)="setLocation(value($event))">
     <option value="*">{{ 'common.all' | t }}</option>
     <option value="">{{ 'inventory.noLocation' | t }}</option>
@@ -107,7 +116,7 @@
                 <span class="muted" [title]="'inventory.functionUnknown' | t">–</span>
               }
             </td>
-            <td>{{ d.location ?? '' }}</td>
+            <td>{{ placeText(d) }}</td>
             <td><kern-status [tone]="stateTone(d.state)">{{ stateText(d.state) }}</kern-status></td>
             <td [title]="d.lastSeen | dateTime: 'seconds'">{{ d.lastSeen | dateTime: 'compact' }}</td>
           </tr>

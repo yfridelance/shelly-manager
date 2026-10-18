@@ -28,7 +28,8 @@ Eine selbst gehostete Web-App, die Shelly-Geräte (Gen1 bis Gen4) in einem Netzw
 ### Über das MVP hinaus umgesetzt
 - Firmware-Updates pro Gerät: Verfügbarkeit aus dem Status (bei jedem Scan/Snapshot), explizit prüfen, Stable/Beta installieren
 - Config-Vergleich zweier Snapshots eines Geräts (erster Schritt Richtung Drift-Erkennung)
-- Templates: kuratierte Settings (MQTT, Cloud, Zeit/Koordinaten, Eco/LED, Bluetooth inkl. BLE-RPC, WLAN-AP, AP-Roaming, CoIoT, Script, Netzwerk mit fortlaufender statischer IP) mit Vorschau pro Gerät und Anwenden auf mehrere Geräte (siehe Abschnitt 14)
+- Stockwerk, Namensvorschlag aus Stockwerk/Ort/Typ und Namen aufs Gerät schreiben (einzeln oder per Template-Feld `device.name`)
+- Templates: kuratierte Settings (MQTT, Cloud, Gerätename, Zeit/Koordinaten, Eco/LED, Bluetooth inkl. BLE-RPC, WLAN-AP, AP-Roaming, CoIoT, Script, Netzwerk mit fortlaufender statischer IP) mit Vorschau pro Gerät und Anwenden auf mehrere Geräte (siehe Abschnitt 14)
 - Standorte (Mandanten ohne Login): getrennte Inventare, Templates und Protokolle; Auswahl im UI (siehe Abschnitt 15)
 
 ### Nicht im MVP (Datenmodell aber vorbereiten)
@@ -134,7 +135,7 @@ Hinweis: Im Container sieht die App nur ihr internes Netz. Keine automatische Su
 
 ## 7. Datenmodell (SQLite)
 
-Stand nach Migration 011 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
+Stand nach Migration 012 (`apps/server/migrations/`, Buchführung in `schema_migrations`):
 
 ```sql
 devices (
@@ -149,6 +150,7 @@ devices (
   site_id INTEGER NOT NULL DEFAULT 1, -- Standort (sites.id), App hält die Referenz gültig
   device_id TEXT,                -- Shelly-ID: Gen2+ `id` aus /shelly, Gen1 Hostname aus /settings (bei geschützten Gen1 erst mit Passwort); bleibt erhalten, wenn ein Scan sie nicht lesen kann
   auth_required INTEGER NOT NULL DEFAULT 0,
+  floor TEXT,                    -- «Stockwerk» (lokal, frei); Gebäude-Reihenfolge in src/devices/floor.ts (Kopie in apps/web/src/app/core/floor.ts)
   location TEXT,
   notes TEXT,
   kind TEXT,                     -- «Typ»: was angeschlossen ist (lokal, frei)
@@ -174,14 +176,14 @@ config_snapshots (
 action_log (
   id INTEGER PRIMARY KEY,
   mac TEXT NOT NULL,             -- bewusst ohne FK
-  action TEXT NOT NULL,          -- snapshot | reboot | factory_reset | firmware_update
+  action TEXT NOT NULL,          -- snapshot | reboot | factory_reset | firmware_update | rename
   requested_at TEXT NOT NULL,
   requested_by TEXT,             -- Client-Adresse (es gibt keine Benutzer)
   finished_at TEXT,
   result TEXT,                   -- ok | error
   error_code TEXT,               -- stabiler Code, das UI zeigt deutschen Text
   error TEXT,                    -- technische Meldung (Englisch)
-  details TEXT                   -- JSON, z.B. { snapshotId }, { snapshotSkipped }, { confirmed: false }, { channel, from, to }
+  details TEXT                   -- JSON, z.B. { snapshotId }, { snapshotSkipped }, { confirmed: false }, { channel, from, to }, rename: { from, to, snapshotAfterId }
 )
 ```
 
@@ -218,7 +220,8 @@ Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurd
 | GET | `/api/devices` | Liste |
 | GET | `/api/devices/:mac` | Details inkl. neustem Snapshot und Snapshot-Liste |
 | GET | `/api/devices/:mac/snapshots/:id` | Einzelner Snapshot |
-| PATCH | `/api/devices/:mac` | `location`, `notes`, `kind`, `name` (nur lokal, nicht aufs Gerät; leerer Name = Gerätename) |
+| PATCH | `/api/devices/:mac` | `floor`, `location`, `notes`, `kind`, `name` (nur lokal, nicht aufs Gerät; leerer Name = Gerätename) |
+| POST | `/api/devices/:mac/name` | Namen aufs Gerät schreiben (`{ name, credentials? }`; Gen1 ≤ 30, Gen2+ ≤ 64 Zeichen, sonst 400 `invalid_name`); danach `name = device_name`, Snapshot; Antwort `{ name, snapshotId }` |
 | POST | `/api/devices/:mac/snapshot` | Config neu einlesen (`{ credentials? }`) |
 | POST | `/api/devices/:mac/reboot` | Neustart |
 | POST | `/api/devices/:mac/factory-reset` | Reset, Body `{ confirmMac, credentials?, allowWithoutSnapshot? }`; Antwort `{ snapshotId, confirmed }` |
@@ -237,7 +240,7 @@ Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurd
 
 Fehlercodes Templates: 409 `name_taken`, 400 `empty_template`, 400 `invalid_network`, 409 `ip_conflict`, 404 `template_not_found`, 409 `snapshot_failed` (vorher), 502 `template_failed` (mit `cause`).
 
-MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`, 403 `host_not_allowed`/`origin_not_allowed` (Abschnitt 9), 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
+MACs in URLs dürfen Trennzeichen und Kleinbuchstaben enthalten. Fehler kommen als `{ error: <code>, message, cause? }`: 400 Eingabe/`confirm_mismatch`/`invalid_name`, 403 `host_not_allowed`/`origin_not_allowed` (Abschnitt 9), 404 unbekannt, 409 Sicherheitsprüfung (`mac_mismatch`, `busy`, `snapshot_failed`, `no_ip`, `no_update`), 502 Gerätefehler (`auth_required`, `auth_invalid`, `timeout`, `network`, `http`, `rpc`). Unbekannte Felder im Body werden abgelehnt.
 
 ## 9. Sicherheitsregeln (nicht verhandelbar)
 
@@ -260,8 +263,8 @@ Zusätzlich umgesetzt (beibehalten):
 
 Ansichten:
 1. **Scan:** IP-Bereich, optionale Zugangsdaten, Start/Abbruch, Fortschritt, Liste der Treffer
-2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Typ/Funktion, Ort, Status, zuletzt gesehen) des gewählten Standorts, Filter nach Gen/Ort/Funktion/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
-3. **Gerätedetail:** Infos inkl. Standort (verschieben mit Rückfrage) und Funktion, Name/Ort/Typ/Notizen (Inline-Edit), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
+2. **Inventar:** Tabelle (Name, Geräte-ID, Modell, Gen, IP, MAC, Firmware, Typ/Funktion, Ort als «Stockwerk · Ort» sortiert in Gebäude-Reihenfolge, Status, zuletzt gesehen) des gewählten Standorts, Filter nach Gen/Stockwerk/Ort/Funktion/Status und «nur mit Firmware-Update», Suche, Export-Buttons, «Alle auf Updates prüfen» (nur lesend; aktive Geräte mit IP, 6 parallel über `/firmware/check`, geschützte nur mit optionalem Passwort)
+3. **Gerätedetail:** Infos inkl. Standort (verschieben mit Rückfrage) und Funktion, Name/Stockwerk/Ort/Typ/Notizen (Inline-Edit; Namensvorschlag aus Stockwerk/Ort/Typ neben dem Namen, im Standort nummeriert; darunter Abgleich mit dem Gerätenamen und «Name auf Gerät schreiben» mit Rückfrage, Passwort inline), Config/Status/Geräteinfo als einklappbarer JSON-Baum, Snapshot-Historie mit Vergleich zweier Snapshots, Aktionen (Snapshot, Reboot mit Rückfrage, Reset-Dialog, Firmware prüfen/installieren mit Rückfrage), letzte Aktionen
 4. **Protokoll:** Aktionsliste
 5. **Templates:** Liste, Editor (nur angehakte Einstellungen gehören zum Template, Eingabe hakt automatisch an), Anwenden mit Geräteauswahl, Vorschau pro Gerät, Passwortfeldern, «bei Bedarf neu starten», Fortschritt und Ergebnis pro Gerät
 6. **Standorte:** Auswahl in der Kopfzeile (im Browser gemerkt), Verwaltung unter «Standorte»; das Gerätefeld `location` heisst im UI «Ort»
@@ -319,6 +322,7 @@ Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), 
 | `mqtt.topicPrefix` | – | `topic_prefix` |
 | MQTT-Passwort (beim Anwenden) | `mqtt_pass` | `pass` (zusammen mit `user`) |
 | `cloud.enable` | `/settings/cloud?enabled` | `Cloud.SetConfig enable` |
+| `device.name` (Platzhalter `{name}` `{floor}` `{location}` `{kind}` `{id}` `{mac}`, leere fallen weg) | `/settings?name=` (max. 30 Zeichen, Gen1-Changelog 1.9.0) | `Sys.SetConfig device.name` (Länge nicht dokumentiert, App-Grenze 64); leer/zu lang → `unsupported` `name_empty`/`name_too_long`; danach auch lokaler Name |
 | `time.sntpServer/timezone/lat/lon` | `sntp_server`, `timezone` (+`tzautodetect=false`), `lat`, `lng` | `Sys.SetConfig sntp.server`, `location.tz/lat/lon` |
 | `eco.ecoMode` | – (nicht dokumentiert) | `sys.device.eco_mode` |
 | `eco.ledStatusDisable` | `led_status_disable` (nur manche Modelle) | – |
@@ -329,7 +333,7 @@ Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), 
 | `script` | – | `Script.List/Create/Stop/PutCode (1024 B)/SetConfig/Start`, per Name, Code-Vergleich via `GetCode` |
 | `network.sta` / `network.sta1` (`mode: dhcp\|static`, `ipFrom`, `netmask`, `gateway?`, `dns?`) | `/settings/sta` bzw. `/settings/sta1` mit `ipv4_method`, `ip`, `netmask`, `gateway`, `dns` (Antwort heisst `mask`/`gw`); ohne Gateway muss die Cloud aus sein | `WiFi.SetConfig {sta\|sta1: {ipv4mode, ip, netmask, gw, nameserver}}`; Gerät verbindet sich ~1 s später neu |
 
-**Netzwerk (WLAN-IP):** SSID und WLAN-Passwort werden nie gesendet (Gen2-Doku: `pass` nur zusammen mit `ssid` nötig; Gen1 wendet `/settings/sta`-Parameter einzeln an – am echten Gerät noch zu bestätigen). Statische IPs plant `src/templates/ip-plan.ts` (`assignStaticIps`): pro Auswahl, sortiert nach Standort und Name, bestehende statische IPs im Bereich bleiben, sonst nächste freie ab `ipFrom` (belegt = IP eines anderen Geräts im Inventar, Gateway, Netz/Broadcast; während laufender Anwendungen reserviert). Beim Anwenden: angefragte IP prüfen (`ip_conflict`, auch wenn unter der Adresse etwas per HTTP antwortet), Netzwerk-Schritte zuletzt und das aktive WLAN (erkannt über die SSID im Status) ganz zuletzt, danach das Gerät unter der neuen IP suchen (MAC-Prüfung), `devices.ip` nachführen, erst dann Snapshot und Neustart. Nicht wiedergefunden: Ergebnis `network.confirmed = false`, kein Snapshot/Neustart. Wechsel auf DHCP: alte IP prüfen, sonst `ip = NULL` (neu scannen).
+**Netzwerk (WLAN-IP):** SSID und WLAN-Passwort werden nie gesendet (Gen2-Doku: `pass` nur zusammen mit `ssid` nötig; Gen1 wendet `/settings/sta`-Parameter einzeln an – am echten Gerät noch zu bestätigen). Statische IPs plant `src/templates/ip-plan.ts` (`assignStaticIps`): pro Auswahl, sortiert nach Stockwerk (Gebäude-Reihenfolge), Ort und Name, bestehende statische IPs im Bereich bleiben, sonst nächste freie ab `ipFrom` (belegt = IP eines anderen Geräts im Inventar, Gateway, Netz/Broadcast; während laufender Anwendungen reserviert). Beim Anwenden: angefragte IP prüfen (`ip_conflict`, auch wenn unter der Adresse etwas per HTTP antwortet), Netzwerk-Schritte zuletzt und das aktive WLAN (erkannt über die SSID im Status) ganz zuletzt, danach das Gerät unter der neuen IP suchen (MAC-Prüfung), `devices.ip` nachführen, erst dann Snapshot und Neustart. Nicht wiedergefunden: Ergebnis `network.confirmed = false`, kein Snapshot/Neustart. Wechsel auf DHCP: alte IP prüfen, sonst `ip = NULL` (neu scannen).
 
 Regeln: Nur Felder setzen, die die aktuelle Config des Geräts kennt (sonst `unsupported`, Grund `generation` oder `firmware`); gleiche Werte nicht senden; Platzhalter `{id}` (Gen1 Hostname, Gen2+ Geräte-ID) und `{mac}`; Gen1-Fehlermeldungen ohne Query-String.
 

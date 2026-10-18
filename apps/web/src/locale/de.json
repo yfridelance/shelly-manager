@@ -53,7 +53,10 @@
     "name": "Name",
     "description": "Beschreibung",
     "descriptionOptional": "Beschreibung (optional)",
-    "progress": "{{done}} von {{total}}"
+    "progress": "{{done}} von {{total}}",
+    "useSuggestion": "Vorschlag: {{value}}",
+    "suggestionHint": "Übernimmt den Vorschlag ins Eingabefeld; gespeichert wird erst mit «Speichern».",
+    "insertSuggestion": "Vorschlag einsetzen"
   },
   "columns": {
     "name": "Name",
@@ -64,6 +67,7 @@
     "mac": "MAC",
     "firmware": "Firmware",
     "kind": "Typ / Funktion",
+    "floor": "Stockwerk",
     "location": "Ort",
     "state": "Status",
     "lastSeen": "Zuletzt gesehen"
@@ -84,7 +88,8 @@
     "reboot": "Neustart",
     "factory_reset": "Werksreset",
     "firmware_update": "Firmware-Update",
-    "apply_template": "Template"
+    "apply_template": "Template",
+    "rename": "Name auf Gerät geschrieben"
   },
   "errors": {
     "generic": "Fehler",
@@ -106,6 +111,7 @@
     "mac_mismatch": "Unter dieser IP antwortet ein anderes Gerät. Bitte neu scannen.",
     "busy": "Auf diesem Gerät läuft bereits eine Aktion",
     "confirm_mismatch": "Bestätigung stimmt nicht mit der MAC überein",
+    "invalid_name": "Ungültiger Name (leer oder zu lang: Gen1 höchstens 30, Gen2+ höchstens 64 Zeichen)",
     "snapshot_failed": "Snapshot vorher fehlgeschlagen, nichts geändert",
     "no_update": "Auf diesem Kanal ist kein neueres Firmware-Update verfügbar",
     "template_failed": "Template konnte nicht vollständig angewendet werden",
@@ -163,7 +169,8 @@
     "snapshotError": "Snapshot: {{reason}}",
     "dhcpUnknown": "auf DHCP umgestellt, neue IP unbekannt – bitte neu scannen",
     "dhcpSame": "auf DHCP umgestellt, weiterhin unter {{ip}}",
-    "ipUnreachable": "{{text}} (dort nicht erreichbar – bitte neu scannen)"
+    "ipUnreachable": "{{text}} (dort nicht erreichbar – bitte neu scannen)",
+    "renamed": "«{{from}}» → «{{to}}»"
   },
   "scan": {
     "title": "Netzwerk-Scan",
@@ -200,9 +207,11 @@
     "exportJsonHint": "Inkl. neuster Config pro Gerät",
     "exportAllSnapshots": "JSON mit allen Snapshots",
     "search": "Suche",
-    "searchPlaceholder": "Name, Geräte-ID, MAC, IP, Modell, Typ, Notizen …",
+    "searchPlaceholder": "Name, Geräte-ID, MAC, IP, Modell, Stockwerk, Ort, Typ, Notizen …",
     "generation": "Generation",
     "noLocation": "(ohne Ort)",
+    "floor": "Stockwerk",
+    "noFloor": "(ohne Stockwerk)",
     "function": "Funktion",
     "onlyUpdates": "nur mit Firmware-Update ({{count}})",
     "resetFilter": "Filter zurücksetzen",
@@ -245,10 +254,12 @@
     "nameOnDevice": "Name auf Gerät",
     "firstSeen": "Erstmals gesehen",
     "documentation": "Dokumentation",
-    "documentationHint": "Wird nur hier gespeichert, nicht auf dem Gerät.",
+    "documentationHint": "Wird nur hier gespeichert. Den Namen kannst du zusätzlich aufs Gerät schreiben.",
     "kind": "Typ",
     "kindHint": "Was angeschlossen ist, z.B. Licht, Storen, Boiler, Steckdose",
     "kindSuggestions": "Licht, Storen, Steckdose",
+    "floor": "Stockwerk",
+    "floorHint": "z.B. UG, EG, 1. OG, DG; sortiert wird nach Gebäude-Reihenfolge. Zusammen mit Ort und Typ ergibt es den Namensvorschlag.",
     "notes": "Notizen",
     "actions": "Aktionen",
     "isReset": "Dieses Gerät wurde auf Werkseinstellungen zurückgesetzt und ist nicht mehr im Netz. Wird es wieder eingerichtet, erscheint es beim nächsten Scan erneut als aktiv.",
@@ -259,6 +270,10 @@
     "rebooting": "Startet neu …",
     "reboot": "Neu starten",
     "factoryReset": "Werkseinstellungen …",
+    "writeName": "Name auf Gerät schreiben",
+    "writeNameQuestion": "«{{name}}» auf das Gerät schreiben?",
+    "writeNameConfirm": "Ja, schreiben",
+    "writingName": "Schreibt …",
     "passwordHint": "Passwortgeschützt: Das Passwort wird nur für die nächste Aktion verwendet und nicht gespeichert.",
     "recentActions": "Letzte Aktionen",
     "fullLog": "Ganzes Protokoll",
@@ -306,6 +321,8 @@
     "snapshotFailed": "Snapshot fehlgeschlagen: {{error}}",
     "rebootDone": "Neustart ausgelöst. Das Gerät ist in einigen Sekunden wieder erreichbar.",
     "rebootFailed": "Neustart fehlgeschlagen: {{error}}",
+    "writeNameDone": "Name «{{name}}» auf das Gerät geschrieben.",
+    "writeNameFailed": "Name schreiben fehlgeschlagen: {{error}}",
     "firmware": {
       "installed": "Installiert:",
       "updateAvailable": "Update verfügbar:",
@@ -332,7 +349,10 @@
       "done": "Gerät wurde auf Werkseinstellungen zurückgesetzt und startet jetzt im AP-Modus.",
       "snapshotSaved": "Die Config wurde vorher gesichert.",
       "noSnapshot": "Es wurde kein Snapshot gesichert (Override)."
-    }
+    },
+    "nameSynced": "Gleich wie auf dem Gerät",
+    "nameDiffers": "Auf dem Gerät: «{{name}}»",
+    "nameMissingOnDevice": "Auf dem Gerät noch ohne Namen"
   },
   "reset": {
     "title": "Werkseinstellungen: {{device}}",
@@ -385,7 +405,7 @@
     "intro": "Nur angehakte Einstellungen gehören zum Template; eine Eingabe hakt die Einstellung automatisch an. Alles andere bleibt auf den Geräten unverändert.",
     "networkLegend": "Netzwerk (WLAN)",
     "networkWarning": "Achtung: Falsche Netzwerkwerte machen Geräte unerreichbar; dann hilft nur der Werksreset am Gerät. Zuerst an einem Gerät testen. SSID und WLAN-Passwort werden nie verändert.",
-    "networkHint": "Bei «Statisch» verteilt die App die Adressen ab «IP ab» aufsteigend (nach Ort und Name) und überspringt belegte. Geräte, die schon eine statische IP im Bereich haben, behalten sie. Beim Anwenden lässt sich die IP pro Gerät ändern.",
+    "networkHint": "Bei «Statisch» verteilt die App die Adressen ab «IP ab» aufsteigend (nach Stockwerk, Ort und Name) und überspringt belegte. Geräte, die schon eine statische IP im Bereich haben, behalten sie. Beim Anwenden lässt sich die IP pro Gerät ändern.",
     "static": "Statisch",
     "sta1Hint": "Nur Geräte mit eingerichtetem zweitem WLAN.",
     "ipFrom": "IP ab",
@@ -450,6 +470,11 @@
       "title": "Shelly Cloud",
       "gens": "Gen1 und Gen2+"
     },
+    "device": {
+      "title": "Gerätename",
+      "gens": "Gen1 und Gen2+",
+      "hint": "Schreibt den Namen auf das Gerät; der Name in der App übernimmt ihn. Platzhalter {name} (aktueller Name), {floor} (Stockwerk), {location} (Ort), {kind} (Typ), {id}, {mac}; leere Platzhalter fallen weg. Gen1 erlaubt höchstens 30 Zeichen."
+    },
     "time": {
       "title": "Zeit und Koordinaten",
       "gens": "Gen1 und Gen2+",
@@ -500,6 +525,9 @@
     "cloud": {
       "enable": "Cloud-Verbindung"
     },
+    "device": {
+      "name": "Name"
+    },
     "time": {
       "sntpServer": "SNTP-Server",
       "timezone": "Zeitzone",
@@ -539,6 +567,9 @@
     "mqtt": {
       "clientId": "Gen1: auch Topic-ID («shellies/<id>/…»). Platzhalter {id}, {mac}.",
       "topicPrefix": "Nur Gen2+. Platzhalter {id}, {mac}."
+    },
+    "device": {
+      "name": "z.B. {floor} {location} {kind}"
     }
   },
   "templateValue": {
@@ -573,7 +604,9 @@
     "inactive": "auf dem Gerät nicht eingerichtet",
     "no_ip": "keine freie IP im Bereich",
     "gateway_cloud": "ohne Gateway muss bei Gen1 zuerst die Cloud aus sein",
-    "firmware": "von Modell/Firmware nicht unterstützt"
+    "firmware": "von Modell/Firmware nicht unterstützt",
+    "name_empty": "Name wäre leer (Stockwerk, Ort und Typ fehlen)",
+    "name_too_long": "Name zu lang für dieses Gerät"
   },
   "plan": {
     "same": "{{label}}: bereits {{value}}",
@@ -593,6 +626,7 @@
       "ip": "IP",
       "mac": "MAC",
       "firmware": "Firmware",
+      "floor": "Stockwerk",
       "location": "Ort",
       "kind": "Typ",
       "notes": "Notizen",

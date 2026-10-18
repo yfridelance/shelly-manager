@@ -64,6 +64,11 @@
 
     <kern-card [heading]="'device.documentation' | t">
       <p class="hint">{{ 'device.documentationHint' | t }}</p>
+      <datalist id="floor-suggestions">
+        @for (f of floorSuggestions(); track f) {
+          <option [value]="f"></option>
+        }
+      </datalist>
       <datalist id="location-suggestions">
         @for (l of locationSuggestions(); track l) {
           <option [value]="l"></option>
@@ -76,7 +81,46 @@
       </datalist>
       <div class="doc-field">
         <h3>{{ 'columns.name' | t }}</h3>
-        <app-editable-field [label]="'columns.name' | t" [value]="d.name" [saving]="saving()" (saved)="saveField('name', $event)" />
+        <app-editable-field
+          [label]="'columns.name' | t"
+          [value]="d.name"
+          [suggestion]="nameSuggestion()"
+          [saving]="saving()"
+          (saved)="saveField('name', $event)"
+        />
+        @if (d.name && d.state !== 'reset') {
+          <div class="device-name">
+            @if (d.name === d.deviceName) {
+              <span class="muted">{{ 'device.nameSynced' | t }}</span>
+            } @else if (confirmWriteName()) {
+              <form class="confirm" (submit)="$event.preventDefault(); writeName()">
+                <span>{{ 'device.writeNameQuestion' | t: { name: d.name } }}</span>
+                @if (d.authRequired) {
+                  @if (d.gen === 1) {
+                    <kern-input name="username" size="sm" autocomplete="off" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
+                  }
+                  <kern-input name="name-password" size="sm" type="password" autocomplete="off" [label]="'common.devicePassword' | t" [value]="password()" (kernInput)="password.set(value($event))" />
+                }
+                <kern-button type="submit" size="sm" variant="primary" [disabled]="d.authRequired && !password()">{{ 'device.writeNameConfirm' | t }}</kern-button>
+                <kern-button size="sm" variant="ghost" (click)="confirmWriteName.set(false)">{{ 'common.cancel' | t }}</kern-button>
+              </form>
+            } @else {
+              <span class="muted">{{ d.deviceName ? ('device.nameDiffers' | t: { name: d.deviceName }) : ('device.nameMissingOnDevice' | t) }}</span>
+              <kern-button
+                size="sm"
+                [busy]="running() === 'name'"
+                [disabled]="running() !== null || !d.ip"
+                (click)="confirmWriteName.set(true)"
+              >
+                {{ (running() === 'name' ? 'device.writingName' : 'device.writeName') | t }}
+              </kern-button>
+            }
+          </div>
+        }
+      </div>
+      <div class="doc-field">
+        <h3 [title]="'device.floorHint' | t">{{ 'device.floor' | t }}</h3>
+        <app-editable-field [label]="'device.floor' | t" listId="floor-suggestions" [value]="d.floor" [saving]="saving()" (saved)="saveField('floor', $event)" />
       </div>
       <div class="doc-field">
         <h3>{{ 'columns.location' | t }}</h3>

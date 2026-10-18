@@ -11,6 +11,8 @@ import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult }
 import { deviceStateText, formatMac, functionsText, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { kernValue } from '../../core/kern';
+import { COMMON_FLOORS, compareFloor } from '../../core/floor';
+import { suggestDeviceName } from '../../core/device-name';
 import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
 import { ResetDialog } from './reset-dialog';
 
@@ -39,7 +41,7 @@ export class DevicePage {
 
   protected readonly details = httpResource<DeviceDetails>(() => `/api/devices/${encodeURIComponent(this.mac())}`);
   protected readonly device = computed(() => this.details.hasValue() ? this.details.value().device : null);
-  // Suggestions for «Ort» and «Typ» come from the devices of the same site.
+  // Suggestions for «Stockwerk», «Ort» and «Typ» come from the devices of the same site.
   protected readonly locations = httpResource<Device[]>(
     () => (this.device() ? `/api/devices?site=${this.device()?.siteId}` : undefined),
     { defaultValue: [] },
@@ -50,6 +52,16 @@ export class DevicePage {
   protected readonly locationSuggestions = computed(() =>
     [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(compareText),
   );
+  protected readonly floorSuggestions = computed(() =>
+    [...new Set([...COMMON_FLOORS, ...this.locations.value().flatMap((d) => (d.floor ? [d.floor] : []))])].sort((a, b) =>
+      compareFloor(a, b, compareText),
+    ),
+  );
+  /** «EG Küche Licht» from floor, location and kind; numbered if the site already has it. */
+  protected readonly nameSuggestion = computed(() => {
+    const d = this.device();
+    return d ? suggestDeviceName(d, this.locations.value()) : null;
+  });
   protected readonly kindSuggestions = computed(() =>
     [
       ...new Set([
@@ -109,7 +121,8 @@ export class DevicePage {
   protected readonly message = signal<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   // Device actions. The password lives only until the next request is sent.
-  protected readonly running = signal<'snapshot' | 'reboot' | 'firmware' | null>(null);
+  protected readonly running = signal<'snapshot' | 'reboot' | 'firmware' | 'name' | null>(null);
+  protected readonly confirmWriteName = signal(false);
   /** Channel waiting for the user's confirmation before the update starts. */
   protected readonly confirmUpdate = signal<FirmwareChannel | null>(null);
   protected readonly username = signal('admin');
@@ -129,11 +142,31 @@ export class DevicePage {
     try {
       const updated = await this.api.update(device.mac, { [field]: value });
       this.details.update((d) => (d ? { ...d, device: updated } : d));
-      if (field === 'location' || field === 'kind') this.locations.reload();
+      if (field !== 'notes') this.locations.reload();
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.saveFailed', { error: (err as DeviceApiError).message }) });
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** Writes the local name to the device (after a confirmation in the UI). */
+  protected async writeName(): Promise<void> {
+    const device = this.device();
+    if (!device?.name) return;
+    this.confirmWriteName.set(false);
+    const credentials = this.takeCredentials(device);
+    this.running.set('name');
+    this.message.set(null);
+    try {
+      const { name } = await this.api.writeName(device.mac, device.name, credentials);
+      this.details.reload();
+      this.message.set({ kind: 'ok', text: t('device.writeNameDone', { name }) });
+    } catch (err) {
+      this.message.set({ kind: 'error', text: t('device.writeNameFailed', { error: (err as DeviceApiError).message }) });
+    } finally {
+      this.running.set(null);
+      this.recentActions.reload();
     }
   }
 
