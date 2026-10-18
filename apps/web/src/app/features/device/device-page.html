@@ -1,11 +1,11 @@
-<p class="back"><a routerLink="/inventar">← Inventar</a></p>
+<p class="back"><a routerLink="/inventar">← {{ 'nav.inventory' | t }}</a></p>
 
 @if (details.error()) {
-  <p class="message error" role="alert">Gerät {{ mac() }} wurde nicht gefunden.</p>
+  <p class="message error" role="alert">{{ 'device.notFound' | t: { mac: mac() } }}</p>
 } @else if (device(); as d) {
   <header class="title">
-    <h1>{{ d.name ?? '(ohne Namen)' }}</h1>
-    <span [class]="'state ' + d.state">{{ stateText[d.state] }}</span>
+    <h1>{{ d.name ?? ('common.unnamed' | t) }}</h1>
+    <span [class]="'state ' + d.state">{{ stateText(d.state) }}</span>
   </header>
 
   @if (message(); as m) {
@@ -14,35 +14,35 @@
 
   <div class="columns">
     <section class="card">
-      <h2>Gerät</h2>
+      <h2>{{ 'titles.device' | t }}</h2>
       <dl class="facts">
-        <dt>Geräte-ID</dt>
+        <dt>{{ 'columns.deviceId' | t }}</dt>
         <dd class="mono">
           @if (d.deviceId) {
             {{ d.deviceId }}
           } @else {
-            <span class="muted" title="Gen1 meldet die ID nur in /settings; bei geschützten Geräten erst nach «Config neu einlesen» mit Passwort.">noch unbekannt</span>
+            <span class="muted" [title]="'device.deviceIdUnknown' | t">{{ 'device.unknownYet' | t }}</span>
           }
         </dd>
-        <dt>MAC</dt>
+        <dt>{{ 'columns.mac' | t }}</dt>
         <dd class="mono">{{ formatMac(d.mac) }}</dd>
-        <dt>Standort</dt>
+        <dt>{{ 'header.site' | t }}</dt>
         <dd>
           @if (moveTo(); as target) {
             <span class="confirm">
-              Nach «{{ sites.name(target) }}» verschieben?
-              <button type="button" (click)="moveDevice()">Ja, verschieben</button>
-              <button type="button" class="secondary" (click)="moveTo.set(null)">Abbrechen</button>
+              {{ 'device.moveQuestion' | t: { site: sites.name(target) } }}
+              <button type="button" (click)="moveDevice()">{{ 'device.moveConfirm' | t }}</button>
+              <button type="button" class="secondary" (click)="moveTo.set(null)">{{ 'common.cancel' | t }}</button>
             </span>
           } @else {
-            <select name="site" aria-label="Standort des Geräts" (change)="moveTo.set(+value($event))">
+            <select name="site" [attr.aria-label]="'device.siteOfDevice' | t" (change)="moveTo.set(+value($event))">
               @for (s of sites.list.value(); track s.id) {
                 <option [value]="s.id" [selected]="s.id === d.siteId">{{ s.name }}</option>
               }
             </select>
           }
         </dd>
-        <dt>IP</dt>
+        <dt>{{ 'columns.ip' | t }}</dt>
         <dd class="mono">
           @if (d.ip) {
             <a [href]="'http://' + d.ip" target="_blank" rel="noopener">{{ d.ip }}</a>
@@ -50,34 +50,34 @@
             –
           }
         </dd>
-        <dt>Modell</dt>
+        <dt>{{ 'columns.model' | t }}</dt>
         <dd>{{ d.model ?? '–' }} @if (d.app) { <span class="muted">({{ d.app }})</span> }</dd>
-        <dt>Funktion</dt>
+        <dt>{{ 'inventory.function' | t }}</dt>
         <dd>
           @if (d.functions) {
             {{ functionsText(d.functions) || '–' }}
           } @else {
-            <span class="muted" title="Wird aus der Config abgeleitet; bei geschützten Geräten erst nach «Config neu einlesen» mit Passwort.">noch unbekannt</span>
+            <span class="muted" [title]="'device.functionUnknown' | t">{{ 'device.unknownYet' | t }}</span>
           }
         </dd>
-        <dt>Generation</dt>
+        <dt>{{ 'inventory.generation' | t }}</dt>
         <dd>Gen{{ d.gen }}</dd>
-        <dt>Firmware</dt>
+        <dt>{{ 'columns.firmware' | t }}</dt>
         <dd [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</dd>
-        <dt>Schutz</dt>
-        <dd>{{ d.authRequired ? 'Passwortgeschützt' : 'Offen' }}</dd>
-        <dt>Name auf Gerät</dt>
+        <dt>{{ 'scan.protection' | t }}</dt>
+        <dd>{{ (d.authRequired ? 'common.passwordProtected' : 'device.unprotected') | t }}</dd>
+        <dt>{{ 'device.nameOnDevice' | t }}</dt>
         <dd>{{ d.deviceName ?? '–' }}</dd>
-        <dt>Erstmals gesehen</dt>
-        <dd>{{ d.firstSeen | date: 'dd.MM.yyyy HH:mm' }}</dd>
-        <dt>Zuletzt gesehen</dt>
-        <dd>{{ d.lastSeen | date: 'dd.MM.yyyy HH:mm' }}</dd>
+        <dt>{{ 'device.firstSeen' | t }}</dt>
+        <dd>{{ d.firstSeen | dateTime }}</dd>
+        <dt>{{ 'columns.lastSeen' | t }}</dt>
+        <dd>{{ d.lastSeen | dateTime }}</dd>
       </dl>
     </section>
 
     <section class="card">
-      <h2>Dokumentation</h2>
-      <p class="hint">Wird nur hier gespeichert, nicht auf dem Gerät.</p>
+      <h2>{{ 'device.documentation' | t }}</h2>
+      <p class="hint">{{ 'device.documentationHint' | t }}</p>
       <datalist id="location-suggestions">
         @for (l of locationSuggestions(); track l) {
           <option [value]="l"></option>
@@ -89,13 +89,13 @@
         }
       </datalist>
       <div class="doc-field">
-        <h3>Name</h3>
-        <app-editable-field label="Name" [value]="d.name" [saving]="saving()" (saved)="saveField('name', $event)" />
+        <h3>{{ 'columns.name' | t }}</h3>
+        <app-editable-field [label]="'columns.name' | t" [value]="d.name" [saving]="saving()" (saved)="saveField('name', $event)" />
       </div>
       <div class="doc-field">
-        <h3>Ort</h3>
+        <h3>{{ 'columns.location' | t }}</h3>
         <app-editable-field
-          label="Ort"
+          [label]="'columns.location' | t"
           listId="location-suggestions"
           [value]="d.location"
           [saving]="saving()"
@@ -103,45 +103,42 @@
         />
       </div>
       <div class="doc-field">
-        <h3 title="Was angeschlossen ist, z.B. Licht, Storen, Boiler, Steckdose">Typ</h3>
-        <app-editable-field label="Typ" listId="kind-suggestions" [value]="d.kind" [saving]="saving()" (saved)="saveField('kind', $event)" />
+        <h3 [title]="'device.kindHint' | t">{{ 'device.kind' | t }}</h3>
+        <app-editable-field [label]="'device.kind' | t" listId="kind-suggestions" [value]="d.kind" [saving]="saving()" (saved)="saveField('kind', $event)" />
       </div>
       <div class="doc-field">
-        <h3>Notizen</h3>
-        <app-editable-field label="Notizen" [multiline]="true" [value]="d.notes" [saving]="saving()" (saved)="saveField('notes', $event)" />
+        <h3>{{ 'device.notes' | t }}</h3>
+        <app-editable-field [label]="'device.notes' | t" [multiline]="true" [value]="d.notes" [saving]="saving()" (saved)="saveField('notes', $event)" />
       </div>
     </section>
   </div>
 
   <section class="card">
-    <h2>Aktionen</h2>
+    <h2>{{ 'device.actions' | t }}</h2>
     @if (d.state === 'reset') {
-      <p class="message warn">
-        Dieses Gerät wurde auf Werkseinstellungen zurückgesetzt und ist nicht mehr im Netz. Wird es wieder eingerichtet,
-        erscheint es beim nächsten Scan erneut als aktiv.
-      </p>
+      <p class="message warn">{{ 'device.isReset' | t }}</p>
     } @else {
       <form class="actions" (submit)="$event.preventDefault(); takeSnapshot()">
         @if (d.authRequired) {
           @if (d.gen === 1) {
             <label class="field">
-              <span>Benutzer</span>
+              <span>{{ 'common.user' | t }}</span>
               <input name="username" autocomplete="off" [value]="username()" (input)="username.set(value($event))" />
             </label>
           }
           <label class="field">
-            <span>Gerätepasswort</span>
+            <span>{{ 'common.devicePassword' | t }}</span>
             <input name="password" type="password" autocomplete="off" [value]="password()" (input)="password.set(value($event))" />
           </label>
         }
         <button type="submit" [disabled]="running() !== null || !d.ip || (d.authRequired && !password())">
-          {{ running() === 'snapshot' ? 'Liest …' : 'Config neu einlesen' }}
+          {{ (running() === 'snapshot' ? 'device.reading' : 'device.readConfig') | t }}
         </button>
         @if (confirmReboot()) {
           <span class="confirm">
-            Wirklich neu starten?
-            <button type="button" (click)="reboot()">Ja, neu starten</button>
-            <button type="button" class="secondary" (click)="confirmReboot.set(false)">Abbrechen</button>
+            {{ 'device.rebootQuestion' | t }}
+            <button type="button" (click)="reboot()">{{ 'device.rebootConfirm' | t }}</button>
+            <button type="button" class="secondary" (click)="confirmReboot.set(false)">{{ 'common.cancel' | t }}</button>
           </span>
         } @else {
           <button
@@ -150,35 +147,35 @@
             [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
             (click)="confirmReboot.set(true)"
           >
-            {{ running() === 'reboot' ? 'Startet neu …' : 'Neu starten' }}
+            {{ (running() === 'reboot' ? 'device.rebooting' : 'device.reboot') | t }}
           </button>
         }
         <span class="spacer"></span>
         <button type="button" class="danger" [disabled]="running() !== null || !d.ip" (click)="resetOpen.set(true)">
-          Werkseinstellungen …
+          {{ 'device.factoryReset' | t }}
         </button>
       </form>
       @if (d.authRequired) {
-        <p class="hint">Passwortgeschützt: Das Passwort wird nur für die nächste Aktion verwendet und nicht gespeichert.</p>
+        <p class="hint">{{ 'device.passwordHint' | t }}</p>
       }
 
       <div class="firmware">
-        <h3>Firmware</h3>
+        <h3>{{ 'columns.firmware' | t }}</h3>
         <p>
-          Installiert: <span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span>
+          {{ 'device.firmware.installed' | t }} <span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span>
           @if (d.updateStable) {
-            · <strong class="update">Update verfügbar: <span [title]="d.updateStable">{{ shortFirmware(d.updateStable) }}</span></strong>
+            · <strong class="update">{{ 'device.firmware.updateAvailable' | t }} <span [title]="d.updateStable">{{ shortFirmware(d.updateStable) }}</span></strong>
           }
           @if (d.updateBeta) {
-            · Beta: <span [title]="d.updateBeta">{{ shortFirmware(d.updateBeta) }}</span>
+            · {{ 'device.firmware.beta' | t }} <span [title]="d.updateBeta">{{ shortFirmware(d.updateBeta) }}</span>
           }
           @if (d.updateCheckedAt) {
             @if (!d.updateStable && !d.updateBeta) {
-              · aktuell
+              · {{ 'device.firmware.current' | t }}
             }
-            <span class="muted">&nbsp;(Stand {{ d.updateCheckedAt | date: 'dd.MM.yyyy HH:mm' }})</span>
+            <span class="muted">&nbsp;({{ 'device.firmware.checkedAt' | t: { time: (d.updateCheckedAt | dateTime) } }})</span>
           } @else {
-            <span class="muted">&nbsp;· noch nicht geprüft</span>
+            <span class="muted">&nbsp;· {{ 'device.firmware.notChecked' | t }}</span>
           }
         </p>
         <div class="actions">
@@ -188,14 +185,13 @@
             [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
             (click)="checkFirmware()"
           >
-            {{ running() === 'firmware' ? 'Bitte warten …' : 'Auf Updates prüfen' }}
+            {{ (running() === 'firmware' ? 'device.firmware.wait' : 'device.firmware.check') | t }}
           </button>
           @if (confirmUpdate(); as channel) {
             <span class="confirm">
-              {{ channel === 'beta' ? 'Beta' : 'Update' }}
-              {{ shortFirmware(channel === 'beta' ? d.updateBeta : d.updateStable) }} installieren? Das Gerät startet danach neu.
-              <button type="button" (click)="installUpdate(channel)">Ja, installieren</button>
-              <button type="button" class="secondary" (click)="confirmUpdate.set(null)">Abbrechen</button>
+              {{ (channel === 'beta' ? 'device.firmware.installBetaQuestion' : 'device.firmware.installQuestion') | t: { version: shortFirmware(channel === 'beta' ? d.updateBeta : d.updateStable) } }}
+              <button type="button" (click)="installUpdate(channel)">{{ 'device.firmware.installConfirm' | t }}</button>
+              <button type="button" class="secondary" (click)="confirmUpdate.set(null)">{{ 'common.cancel' | t }}</button>
             </span>
           } @else {
             @if (d.updateStable) {
@@ -204,7 +200,7 @@
                 [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
                 (click)="confirmUpdate.set('stable')"
               >
-                Update installieren
+                {{ 'device.firmware.install' | t }}
               </button>
             }
             @if (d.updateBeta) {
@@ -214,7 +210,7 @@
                 [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
                 (click)="confirmUpdate.set('beta')"
               >
-                Beta installieren
+                {{ 'device.firmware.installBeta' | t }}
               </button>
             }
           }
@@ -223,30 +219,30 @@
     }
 
     @if (recentActions.value().length > 0) {
-      <h3>Letzte Aktionen</h3>
+      <h3>{{ 'device.recentActions' | t }}</h3>
       <table class="data-table compact">
         <tbody>
           @for (a of recentActions.value(); track a.id) {
             <tr>
-              <td>{{ a.requestedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
+              <td>{{ a.requestedAt | dateTime: 'seconds' }}</td>
               <td>{{ actionLabel(a) }}</td>
               <td [title]="actionDetail(a) || (a.error ?? '')">
                 @if (a.result === 'ok') {
-                  <span class="state active">OK</span>
+                  <span class="state active">{{ 'common.ok' | t }}</span>
                   @if (actionSummary(a); as summary) {
                     <span class="muted"> · {{ summary }}</span>
                   }
                 } @else if (a.result === 'error') {
                   <span class="error-text">{{ actionSummary(a) }}</span>
                 } @else {
-                  <span class="muted">läuft</span>
+                  <span class="muted">{{ 'common.running' | t }}</span>
                 }
               </td>
             </tr>
           }
         </tbody>
       </table>
-      <p><a routerLink="/protokoll">Ganzes Protokoll</a></p>
+      <p><a routerLink="/protokoll">{{ 'device.fullLog' | t }}</a></p>
     }
   </section>
 
@@ -256,35 +252,35 @@
 
   <section class="card">
     <div class="section-head">
-      <h2>Konfiguration</h2>
+      <h2>{{ 'device.configuration' | t }}</h2>
       @if (details.value()?.snapshots; as snaps) {
         @if (snaps.length > 0) {
           <label class="field inline">
-            <span>Snapshot</span>
+            <span>{{ 'device.snapshot' | t }}</span>
             <select (change)="selectSnapshot(value($event))">
               @for (s of snaps; track s.id; let first = $first) {
                 <option [value]="first ? '' : s.id" [selected]="first ? selectedId() === null : selectedId() === s.id">
-                  {{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}{{ first ? ' (neuster)' : '' }}{{ s.confirmedAt ? ' – bestätigt bis ' + (s.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }}{{ s.hasConfig ? '' : ' – ohne Config' }}
+                  {{ s.takenAt | dateTime: 'seconds' }}{{ first ? ' ' + ('device.newest' | t) : '' }}{{ s.confirmedAt ? ' – ' + ('device.confirmedUntil' | t: { time: (s.confirmedAt | dateTime) }) : '' }}{{ s.hasConfig ? '' : ' – ' + ('device.withoutConfig' | t) }}
                 </option>
               }
             </select>
           </label>
           @if (snaps.length > 1) {
             <label class="field inline">
-              <span>Vergleichen mit</span>
+              <span>{{ 'device.compareWith' | t }}</span>
               <select name="compare" (change)="selectCompare(value($event))">
                 <option value="" [selected]="compareId() === null">–</option>
                 @for (s of snaps; track s.id) {
                   @if (s.id !== shownId()) {
                     <option [value]="s.id" [selected]="compareId() === s.id">
-                      {{ s.takenAt | date: 'dd.MM.yyyy HH:mm:ss' }}{{ s.confirmedAt ? ' – bestätigt bis ' + (s.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }}
+                      {{ s.takenAt | dateTime: 'seconds' }}{{ s.confirmedAt ? ' – ' + ('device.confirmedUntil' | t: { time: (s.confirmedAt | dateTime) }) : '' }}
                     </option>
                   }
                 }
               </select>
             </label>
           }
-          <span class="muted">{{ snaps.length }} {{ snaps.length === 1 ? 'Snapshot' : 'Snapshots' }}</span>
+          <span class="muted">{{ 'device.snapshotCount' | t: { count: snaps.length } }}</span>
         }
       }
     </div>
@@ -292,18 +288,17 @@
 
     @if (snapshot(); as s) {
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'config'" (click)="tab.set('config')">Config</button>
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'status'" (click)="tab.set('status')">Status</button>
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'info'" (click)="tab.set('info')">Geräteinfo</button>
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'config'" (click)="tab.set('config')">{{ 'device.tab.config' | t }}</button>
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'status'" (click)="tab.set('status')">{{ 'device.tab.status' | t }}</button>
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'info'" (click)="tab.set('info')">{{ 'device.tab.info' | t }}</button>
         <span class="spacer"></span>
-        <button type="button" class="link" (click)="openDepth.set(99)">Alles aufklappen</button>
-        <button type="button" class="link" (click)="openDepth.set(1)">Zuklappen</button>
-        <button type="button" class="link" (click)="copyShown()">JSON kopieren</button>
+        <button type="button" class="link" (click)="openDepth.set(99)">{{ 'device.expandAll' | t }}</button>
+        <button type="button" class="link" (click)="openDepth.set(1)">{{ 'device.collapse' | t }}</button>
+        <button type="button" class="link" (click)="copyShown()">{{ 'device.copyJson' | t }}</button>
       </div>
       @if (s.confirmedAt && compareId() === null) {
         <p class="muted snapshot-confirmed">
-          Config gelesen am {{ s.takenAt | date: 'dd.MM.yyyy HH:mm' }}, unverändert bestätigt bis {{ s.confirmedAt | date: 'dd.MM.yyyy HH:mm' }}.
-          Der Status stammt vom {{ s.confirmedAt | date: 'dd.MM.yyyy HH:mm' }}.
+          {{ 'device.snapshotConfirmed' | t: { taken: (s.takenAt | dateTime), confirmed: (s.confirmedAt | dateTime) } }}
         </p>
       }
       <div class="json" role="tabpanel">
@@ -311,13 +306,11 @@
           @if (comparison(); as c) {
             <p class="diff-summary">
               @if (c.entries.length === 0) {
-                Keine Unterschiede zwischen {{ c.before.takenAt | date: 'dd.MM.yyyy HH:mm' }} und {{ c.after.takenAt | date: 'dd.MM.yyyy HH:mm' }}.
+                {{ 'device.diff.none' | t: { before: (c.before.takenAt | dateTime), after: (c.after.takenAt | dateTime) } }}
               } @else {
-                {{ c.entries.length }} {{ c.entries.length === 1 ? 'Unterschied' : 'Unterschiede' }}:
-                {{ countKind(c.entries, 'changed') }} geändert, {{ countKind(c.entries, 'added') }} neu,
-                {{ countKind(c.entries, 'removed') }} entfernt
+                {{ 'device.diff.summary' | t: { count: c.entries.length, changed: countKind(c.entries, 'changed'), added: countKind(c.entries, 'added'), removed: countKind(c.entries, 'removed') } }}
                 @if (tab() === 'status') {
-                  <span class="muted">(Status enthält auch Laufzeitwerte wie Uptime oder Leistung)</span>
+                  <span class="muted">{{ 'device.diff.statusHint' | t }}</span>
                 }
               }
             </p>
@@ -325,42 +318,42 @@
               <table class="data-table diff">
                 <thead>
                   <tr>
-                    <th>Pfad</th>
-                    <th>Vorher ({{ c.before.takenAt | date: 'dd.MM.yyyy HH:mm' }}{{ c.before.confirmedAt ? ', bestätigt bis ' + (c.before.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }})</th>
-                    <th>Nachher ({{ c.after.takenAt | date: 'dd.MM.yyyy HH:mm' }}{{ c.after.confirmedAt ? ', bestätigt bis ' + (c.after.confirmedAt | date: 'dd.MM.yyyy HH:mm') : '' }})</th>
+                    <th>{{ 'device.diff.path' | t }}</th>
+                    <th>{{ 'device.diff.before' | t }} ({{ c.before.takenAt | dateTime }}{{ c.before.confirmedAt ? ', ' + ('device.confirmedUntil' | t: { time: (c.before.confirmedAt | dateTime) }) : '' }})</th>
+                    <th>{{ 'device.diff.after' | t }} ({{ c.after.takenAt | dateTime }}{{ c.after.confirmedAt ? ', ' + ('device.confirmedUntil' | t: { time: (c.after.confirmedAt | dateTime) }) : '' }})</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (e of c.entries; track e.path) {
                     <tr [class]="e.kind">
-                      <td class="mono">{{ e.path || '(gesamt)' }}</td>
+                      <td class="mono">{{ e.path || ('device.diff.whole' | t) }}</td>
                       <td class="mono">{{ formatDiffValue(e.before) }}</td>
                       <td class="mono">{{ formatDiffValue(e.after) }}</td>
-                      <td>{{ diffKindText[e.kind] }}</td>
+                      <td>{{ diffKindText(e.kind) }}</td>
                     </tr>
                   }
                 </tbody>
               </table>
             }
           } @else {
-            <p class="muted">Lädt Vergleich …</p>
+            <p class="muted">{{ 'device.diff.loading' | t }}</p>
           }
         } @else if (shown() === null) {
-          <p class="muted">Für diesen Snapshot wurde keine {{ tab() === 'config' ? 'Config' : 'Status' }} gelesen.</p>
+          <p class="muted">{{ (tab() === 'config' ? 'device.noConfigRead' : 'device.noStatusRead') | t }}</p>
         } @else {
           <app-json-tree [value]="shown()" [openDepth]="openDepth()" />
         }
       </div>
     } @else {
       <p class="muted">
-        Noch kein Snapshot vorhanden.
+        {{ 'device.noSnapshot' | t }}
         @if (d.authRequired) {
-          Das Gerät ist passwortgeschützt: Passwort unter «Aktionen» eingeben und Config einlesen.
+          {{ 'device.noSnapshotProtected' | t }}
         }
       </p>
     }
   </section>
 } @else {
-  <p class="muted">Lädt …</p>
+  <p class="muted">{{ 'common.loading' | t }}</p>
 }

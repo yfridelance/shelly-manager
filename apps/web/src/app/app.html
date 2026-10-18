@@ -1,26 +1,33 @@
 <header class="topbar">
   <span class="brand">Shelly Manager</span>
   <nav>
-    <a routerLink="/scan" routerLinkActive="active">Scan</a>
-    <a routerLink="/inventar" routerLinkActive="active">Inventar</a>
-    <a routerLink="/templates" routerLinkActive="active">Templates</a>
-    <a routerLink="/protokoll" routerLinkActive="active">Protokoll</a>
+    <a routerLink="/scan" routerLinkActive="active">{{ 'nav.scan' | t }}</a>
+    <a routerLink="/inventar" routerLinkActive="active">{{ 'nav.inventory' | t }}</a>
+    <a routerLink="/templates" routerLinkActive="active">{{ 'nav.templates' | t }}</a>
+    <a routerLink="/protokoll" routerLinkActive="active">{{ 'nav.log' | t }}</a>
   </nav>
   <span class="spacer"></span>
   <label class="site">
-    <span>Standort</span>
-    <select name="site" aria-label="Standort wählen" (change)="selectSite($event)">
+    <span>{{ 'header.site' | t }}</span>
+    <select name="site" [attr.aria-label]="'header.chooseSite' | t" (change)="selectSite($event)">
       @for (s of sites.list.value(); track s.id) {
         <option [value]="s.id" [selected]="s.id === site.siteId()">{{ s.name }}</option>
       }
     </select>
   </label>
-  <a class="manage" routerLink="/standorte" routerLinkActive="active">Standorte</a>
+  <a class="manage" routerLink="/standorte" routerLinkActive="active">{{ 'nav.sites' | t }}</a>
+  @if (i18n.languages.length > 1) {
+    <select name="language" class="language" [attr.aria-label]="'header.language' | t" (change)="selectLanguage($event)">
+      @for (l of i18n.languages; track l.code) {
+        <option [value]="l.code" [selected]="l.code === i18n.language()" [attr.lang]="l.locale">{{ l.name }}</option>
+      }
+    </select>
+  }
   <span class="health" [class]="'health ' + health.state()" data-testid="health">
     @switch (health.state()) {
-      @case ('ok') { Server verbunden }
-      @case ('down') { Server nicht erreichbar }
-      @default { Verbinde … }
+      @case ('ok') { {{ 'header.connected' | t }} }
+      @case ('down') { {{ 'header.unreachable' | t }} }
+      @default { {{ 'header.connecting' | t }} }
     }
   </span>
 </header>

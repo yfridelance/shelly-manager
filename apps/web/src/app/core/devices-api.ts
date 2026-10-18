@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { ApiError, Device, FirmwareChannel, LocalDeviceFields, Snapshot } from './api.types';
+import { t } from './i18n/i18n';
 import { errorText } from './texts';
 
 export interface Credentials {
@@ -9,7 +10,7 @@ export interface Credentials {
   password: string;
 }
 
-/** Error of a device call with the server's code and a German text for the UI. */
+/** Error of an API call with the server's code and a translated text for the UI. */
 export class DeviceApiError extends Error {
   constructor(
     readonly code: string,
@@ -79,13 +80,12 @@ export class DevicesApi {
 export function toDeviceApiError(err: unknown): DeviceApiError {
   if (err instanceof HttpErrorResponse) {
     const body = err.error as (Partial<ApiError> & { cause?: string }) | null;
-    if (body?.error) {
-      // Known codes get our German text; otherwise the server's (German) message.
-      const known = errorText(body.error);
-      return new DeviceApiError(body.error, known === body.error && body.message ? body.message : known, body.cause);
-    }
-    if (err.status === 0) return new DeviceApiError('offline', 'Server nicht erreichbar.');
-    return new DeviceApiError('http', `Anfrage fehlgeschlagen (HTTP ${err.status}).`);
+    // Fastify's own validation errors carry no code of ours ("Bad Request").
+    const code = typeof body?.error === 'string' && /^[a-z_]+$/.test(body.error) ? body.error : err.status === 400 ? 'invalid_input' : null;
+    // Always our translated text for the code, never the server's message (German only).
+    if (code) return new DeviceApiError(code, errorText(code), body?.cause);
+    if (err.status === 0) return new DeviceApiError('offline', errorText('offline'));
+    return new DeviceApiError('http_status', t('errors.httpStatus', { status: err.status }));
   }
-  return new DeviceApiError('unknown', 'Unbekannter Fehler.');
+  return new DeviceApiError('unknown', t('errors.unexpected'));
 }

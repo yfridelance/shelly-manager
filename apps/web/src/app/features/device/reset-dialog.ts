@@ -1,6 +1,8 @@
 import { Component, ElementRef, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import type { Device } from '../../core/api.types';
 import { DeviceApiError, DevicesApi, type FactoryResetResult } from '../../core/devices-api';
+import { t } from '../../core/i18n/i18n';
+import { EmphasisPipe, TranslatePipe } from '../../core/i18n/pipes';
 import { errorText, formatMac } from '../../core/texts';
 
 /**
@@ -9,6 +11,7 @@ import { errorText, formatMac } from '../../core/texts';
  */
 @Component({
   selector: 'app-reset-dialog',
+  imports: [TranslatePipe, EmphasisPipe],
   templateUrl: './reset-dialog.html',
   styleUrl: './reset-dialog.scss',
   host: { '(document:keydown.escape)': 'close()' },
@@ -72,7 +75,7 @@ export class ResetDialog {
       if (e.code === 'snapshot_failed') {
         this.snapshotFailure.set(errorText(e.causeCode));
       } else {
-        this.error.set(`Reset fehlgeschlagen: ${e.message}`);
+        this.error.set(t('reset.failed', { error: e.message }));
       }
     } finally {
       this.busy.set(false);

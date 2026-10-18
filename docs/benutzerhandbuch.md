@@ -37,7 +37,9 @@ Die Navigation oben hat vier Bereiche:
 | **Protokoll** | Alle ausgeführten Aktionen mit Ergebnis |
 | **Standort** (oben rechts) | Auswahl des Standorts, in dem du arbeitest; «Standorte» verwaltet sie |
 
-Oben rechts zeigt «Server verbunden», dass die App ihren Server erreicht.
+Oben rechts zeigt «Server verbunden», dass die App ihren Server erreicht. Sobald die App in mehr als einer Sprache
+vorliegt, steht daneben die Sprachauswahl; ohne Auswahl gilt die Sprache des Browsers (sonst Deutsch), und der
+Browser merkt sich die Wahl.
 
 Ein paar Grundsätze, die überall gelten:
 
@@ -356,6 +358,7 @@ Im Inventar oben rechts:
 - **Export CSV:** Übersicht für Excel mit allen Spalten des Inventars (Typ und Funktion getrennt) plus Name auf Gerät, Notizen,
   passwortgeschützt, erstmals/zuletzt gesehen, letzter Snapshot, Zeitpunkt des Werksresets und verfügbares
   Firmware-Update. Format: Semikolon, UTF-8 mit BOM (Umlaute bleiben in Excel korrekt), Zeiten in UTC.
+  Spaltentitel und Texte (Status, Funktion) folgen der Sprache des UI.
 - **Export JSON:** alle Geräte mit der neusten Config, dem Status und der Geräteinfo, unverändert wie vom Gerät.
 - **JSON mit allen Snapshots:** zusätzlich die ganze Snapshot-Historie.
 

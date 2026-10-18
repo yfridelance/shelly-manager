@@ -1,7 +1,8 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ApiError, ScanDetails, ScanDeviceResult, ScanSummary } from '../../core/api.types';
+import type { ScanDetails, ScanDeviceResult, ScanSummary } from '../../core/api.types';
+import { toDeviceApiError } from '../../core/devices-api';
 
 export interface ScanCredentials {
   username?: string;
@@ -115,11 +116,5 @@ function parse<T>(event: Event): T {
 }
 
 function messageOf(err: unknown): string {
-  if (err instanceof HttpErrorResponse) {
-    const body = err.error as Partial<ApiError> | null;
-    if (body && typeof body.message === 'string') return body.message;
-    if (err.status === 0) return 'Server nicht erreichbar.';
-    return `Anfrage fehlgeschlagen (HTTP ${err.status}).`;
-  }
-  return 'Unbekannter Fehler.';
+  return toDeviceApiError(err).message;
 }

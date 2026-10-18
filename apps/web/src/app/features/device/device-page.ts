@@ -1,13 +1,14 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
-import { actionDetail, actionLabel, actionSummary } from '../../core/action-text';
+import { actionDetail, actionLabel, actionSummary, unconfirmedResetText } from '../../core/action-text';
+import { compareText, t } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
 import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult } from '../../core/devices-api';
-import { DEVICE_STATE_TEXT, UNCONFIRMED_RESET_TEXT, formatMac, functionsText, shortFirmware } from '../../core/texts';
+import { deviceStateText, formatMac, functionsText, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { JsonTree } from '../../shared/json-tree';
 import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
@@ -17,7 +18,7 @@ type SnapshotTab = 'config' | 'status' | 'info';
 
 @Component({
   selector: 'app-device-page',
-  imports: [DatePipe, RouterLink, EditableField, JsonTree, ResetDialog],
+  imports: [DateTimePipe, TranslatePipe, RouterLink, EditableField, JsonTree, ResetDialog],
   templateUrl: './device-page.html',
   styleUrl: './device-page.scss',
 })
@@ -27,7 +28,7 @@ export class DevicePage {
   /** Route parameter (component input binding). */
   readonly mac = input.required<string>();
 
-  protected readonly stateText = DEVICE_STATE_TEXT;
+  protected readonly stateText = deviceStateText;
   protected readonly actionLabel = actionLabel;
   protected readonly actionSummary = actionSummary;
   protected readonly actionDetail = actionDetail;
@@ -46,10 +47,15 @@ export class DevicePage {
   private readonly sitesApi = inject(SitesApi);
   protected readonly moveTo = signal<number | null>(null);
   protected readonly locationSuggestions = computed(() =>
-    [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(),
+    [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(compareText),
   );
   protected readonly kindSuggestions = computed(() =>
-    [...new Set(['Licht', 'Storen', 'Steckdose', ...this.locations.value().flatMap((d) => (d.kind ? [d.kind] : []))])].sort(),
+    [
+      ...new Set([
+        ...t('device.kindSuggestions').split(',').map((k) => k.trim()).filter(Boolean),
+        ...this.locations.value().flatMap((d) => (d.kind ? [d.kind] : [])),
+      ]),
+    ].sort(compareText),
   );
 
   // Snapshot history: null = latest.
@@ -89,7 +95,7 @@ export class DevicePage {
     return { before, after, entries: diffJson(before[this.tab()], after[this.tab()]) };
   });
   protected readonly formatDiffValue = formatDiffValue;
-  protected readonly diffKindText: Record<DiffEntry['kind'], string> = { added: 'neu', removed: 'entfernt', changed: 'geändert' };
+  protected readonly diffKindText = (kind: DiffEntry['kind']): string => t(`device.diff.${kind}`);
 
   protected readonly tab = signal<SnapshotTab>('config');
   protected readonly openDepth = signal(1);
@@ -124,7 +130,7 @@ export class DevicePage {
       this.details.update((d) => (d ? { ...d, device: updated } : d));
       if (field === 'location' || field === 'kind') this.locations.reload();
     } catch (err) {
-      this.message.set({ kind: 'error', text: `Speichern fehlgeschlagen: ${(err as DeviceApiError).message}` });
+      this.message.set({ kind: 'error', text: t('device.saveFailed', { error: (err as DeviceApiError).message }) });
     } finally {
       this.saving.set(false);
     }
@@ -149,9 +155,9 @@ export class DevicePage {
       await this.sitesApi.moveDevice(device.mac, target);
       this.details.reload();
       this.sites.list.reload();
-      this.message.set({ kind: 'ok', text: `Gerät nach «${this.sites.name(target)}» verschoben.` });
+      this.message.set({ kind: 'ok', text: t('device.moved', { site: this.sites.name(target) }) });
     } catch (err) {
-      this.message.set({ kind: 'error', text: `Verschieben fehlgeschlagen: ${(err as DeviceApiError).message}` });
+      this.message.set({ kind: 'error', text: t('device.moveFailed', { error: (err as DeviceApiError).message }) });
     }
   }
 
@@ -166,9 +172,9 @@ export class DevicePage {
       this.selectedId.set(null);
       this.compareId.set(null);
       this.details.reload();
-      this.message.set({ kind: 'ok', text: 'Config wurde neu eingelesen.' });
+      this.message.set({ kind: 'ok', text: t('device.snapshotDone') });
     } catch (err) {
-      this.message.set({ kind: 'error', text: `Snapshot fehlgeschlagen: ${(err as DeviceApiError).message}` });
+      this.message.set({ kind: 'error', text: t('device.snapshotFailed', { error: (err as DeviceApiError).message }) });
     } finally {
       this.running.set(null);
       this.recentActions.reload();
@@ -184,9 +190,9 @@ export class DevicePage {
     this.message.set(null);
     try {
       await this.api.reboot(device.mac, credentials);
-      this.message.set({ kind: 'ok', text: 'Neustart ausgelöst. Das Gerät ist in einigen Sekunden wieder erreichbar.' });
+      this.message.set({ kind: 'ok', text: t('device.rebootDone') });
     } catch (err) {
-      this.message.set({ kind: 'error', text: `Neustart fehlgeschlagen: ${(err as DeviceApiError).message}` });
+      this.message.set({ kind: 'error', text: t('device.rebootFailed', { error: (err as DeviceApiError).message }) });
     } finally {
       this.running.set(null);
       this.recentActions.reload();
@@ -207,13 +213,13 @@ export class DevicePage {
       this.message.set({
         kind: 'ok',
         text: result.stable
-          ? `Firmware-Update verfügbar: ${shortFirmware(result.stable)}.`
+          ? t('device.firmware.available', { version: shortFirmware(result.stable) })
           : result.beta
-            ? `Firmware ist aktuell; Beta ${shortFirmware(result.beta)} verfügbar.`
-            : 'Firmware ist aktuell.',
+            ? t('device.firmware.currentWithBeta', { version: shortFirmware(result.beta) })
+            : t('device.firmware.isCurrent'),
       });
     } catch (err) {
-      this.message.set({ kind: 'error', text: `Prüfung fehlgeschlagen: ${(err as DeviceApiError).message}` });
+      this.message.set({ kind: 'error', text: t('device.firmware.checkFailed', { error: (err as DeviceApiError).message }) });
     } finally {
       this.running.set(null);
     }
@@ -230,10 +236,10 @@ export class DevicePage {
       const { version } = await this.api.updateFirmware(device.mac, channel, credentials);
       this.message.set({
         kind: 'ok',
-        text: `Update auf ${shortFirmware(version)} gestartet. Das Gerät installiert die Firmware und startet neu; danach Config neu einlesen, um die neue Version zu sehen.`,
+        text: t('device.firmware.started', { version: shortFirmware(version) }),
       });
     } catch (err) {
-      this.message.set({ kind: 'error', text: `Firmware-Update fehlgeschlagen: ${(err as DeviceApiError).message}` });
+      this.message.set({ kind: 'error', text: t('device.firmware.updateFailed', { error: (err as DeviceApiError).message }) });
     } finally {
       this.running.set(null);
       this.recentActions.reload();
@@ -247,11 +253,10 @@ export class DevicePage {
     this.recentActions.reload();
     this.message.set({
       kind: 'ok',
-      text:
-        (result.confirmed === false
-          ? `${UNCONFIRMED_RESET_TEXT}. Das Gerät hat die Verbindung ohne Bestätigung getrennt und startet vermutlich im AP-Modus. `
-          : 'Gerät wurde auf Werkseinstellungen zurückgesetzt und startet jetzt im AP-Modus. ') +
-        (result.snapshotId !== null ? 'Die Config wurde vorher gesichert.' : 'Es wurde kein Snapshot gesichert (Override).'),
+      text: [
+        result.confirmed === false ? t('device.reset.unconfirmed', { text: unconfirmedResetText() }) : t('device.reset.done'),
+        result.snapshotId !== null ? t('device.reset.snapshotSaved') : t('device.reset.noSnapshot'),
+      ].join(' '),
     });
   }
 
@@ -262,7 +267,7 @@ export class DevicePage {
 
   protected async copyShown(): Promise<void> {
     await navigator.clipboard.writeText(JSON.stringify(this.shown(), null, 2));
-    this.message.set({ kind: 'ok', text: 'JSON in die Zwischenablage kopiert.' });
+    this.message.set({ kind: 'ok', text: t('device.copied') });
   }
 
   protected selectSnapshot(value: string): void {

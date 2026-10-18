@@ -1,92 +1,60 @@
-import type { DeviceErrorCode, DeviceFunctions, DeviceState, ScanStatus } from './api.types';
+import type { DeviceFunctions, DeviceState, ScanStatus } from './api.types';
+import { t, translate, translateOptional } from './i18n/i18n';
 
-export const SCAN_STATUS_TEXT: Record<ScanStatus, string> = {
-  running: 'Läuft',
-  done: 'Abgeschlossen',
-  failed: 'Fehlgeschlagen',
-  cancelled: 'Abgebrochen',
-};
-
-export const DEVICE_STATE_TEXT: Record<DeviceState, string> = {
-  active: 'Aktiv',
-  missing: 'Vermisst',
-  reset: 'Zurückgesetzt',
-};
-
-/** Error codes of device actions: device errors plus checks done before contacting the device. */
-export const ACTION_ERROR_TEXT: Record<string, string> = {
-  not_found: 'Gerät nicht im Inventar',
-  no_ip: 'Keine IP-Adresse bekannt',
-  mac_mismatch: 'Unter dieser IP antwortet ein anderes Gerät. Bitte neu scannen.',
-  busy: 'Auf diesem Gerät läuft bereits eine Aktion',
-  confirm_mismatch: 'Bestätigung stimmt nicht mit der MAC überein',
-  snapshot_failed: 'Snapshot vorher fehlgeschlagen, nichts geändert',
-  no_update: 'Auf diesem Kanal ist kein neueres Firmware-Update verfügbar',
-  template_failed: 'Template konnte nicht vollständig angewendet werden',
-  template_not_found: 'Template nicht gefunden',
-  ip_conflict: 'Die geplante IP ist nicht verfügbar',
-  invalid_network: 'Netzwerkeinstellungen ungültig',
-};
-
-/** Factory reset whose command broke off, but the device was gone when probed again. */
-export const UNCONFIRMED_RESET_TEXT = 'Reset vermutlich erfolgreich – Gerät nicht mehr erreichbar';
-
-export const ACTION_TEXT: Record<string, string> = {
-  snapshot: 'Snapshot',
-  reboot: 'Neustart',
-  factory_reset: 'Werksreset',
-  firmware_update: 'Firmware-Update',
-  apply_template: 'Template',
-};
-
-export function errorText(code: string | null | undefined): string {
-  if (!code) return 'Fehler';
-  return DEVICE_ERROR_TEXT[code as DeviceErrorCode] ?? ACTION_ERROR_TEXT[code] ?? code;
+export function scanStatusText(s: ScanStatus): string {
+  return t(`scanStatus.${s}`);
 }
 
-export const DEVICE_ERROR_TEXT: Record<DeviceErrorCode, string> = {
-  auth_required: 'Zugangsdaten erforderlich',
-  auth_invalid: 'Zugangsdaten falsch',
-  timeout: 'Zeitüberschreitung',
-  network: 'Nicht erreichbar',
-  not_shelly: 'Kein Shelly',
-  http: 'HTTP-Fehler',
-  rpc: 'Gerätefehler',
-  internal: 'Interner Fehler',
-};
+export const DEVICE_STATES: readonly DeviceState[] = ['active', 'missing', 'reset'];
 
-/** "A8032AB12345" -> "A8:03:2A:B1:23:45" */
-/** "2× Schalter · Messung"; same wording as the CSV export (server: describeFunctions). */
+export function deviceStateText(s: DeviceState): string {
+  return t(`deviceState.${s}`);
+}
+
+/**
+ * Text for an error code of the API: device errors, checks done before contacting the device and
+ * input errors. The UI never shows the server's `message` (German, not translated); unknown codes
+ * get a generic text with the code.
+ */
+export function errorText(code: string | null | undefined): string {
+  if (!code) return t('errors.generic');
+  return translateOptional(`errors.${code}`) ?? t('errors.unknown', { code });
+}
+
+/** Action types of the log, in the order of the filter. */
+export const ACTION_TYPES = ['snapshot', 'reboot', 'factory_reset', 'firmware_update', 'apply_template'] as const;
+
+export function actionTypeText(action: string): string {
+  return translateOptional(`actionType.${action}`) ?? action;
+}
+
+/** "2× Schalter · Messung"; same wording as the CSV export (server reads the same locale files). */
 export function functionsText(f: DeviceFunctions | null): string {
   if (!f) return '';
-  const n = (count: number, label: string): string[] => (count === 0 ? [] : [count > 1 ? `${count}× ${label}` : label]);
+  const n = (count: number, label: string): string[] =>
+    count === 0 ? [] : [count > 1 ? translate('functions.count', { count, label }) : label];
   const outputs = f.switch + f.cover + f.light;
   const parts = [
-    ...n(f.cover, 'Rollladen'),
-    ...n(f.switch, 'Schalter'),
-    ...n(f.light, 'Licht'),
-    ...(f.meter > 0 ? ['Energiezähler'] : []),
-    ...n(f.sensor, 'Sensor'),
+    ...n(f.cover, t('functions.cover')),
+    ...n(f.switch, t('functions.switch')),
+    ...n(f.light, t('functions.light')),
+    ...(f.meter > 0 ? [t('functions.meter')] : []),
+    ...n(f.sensor, t('functions.sensor')),
     // Inputs only describe the device when it has nothing else (i3, Plus i4).
-    ...(outputs + f.meter + f.sensor === 0 ? n(f.input, 'Eingang') : []),
+    ...(outputs + f.meter + f.sensor === 0 ? n(f.input, t('functions.input')) : []),
   ];
-  if (f.metering && f.meter === 0) parts.push('Messung');
+  if (f.metering && f.meter === 0) parts.push(t('functions.metering'));
   return parts.join(' · ');
 }
 
 /** Inventory filter by function; "unknown" = config not read yet. */
 export type FunctionFilter = 'switch' | 'cover' | 'light' | 'meter' | 'sensor' | 'input' | 'metering' | 'unknown';
 
-export const FUNCTION_FILTER_TEXT: Record<FunctionFilter, string> = {
-  switch: 'Schalter',
-  cover: 'Rollladen',
-  light: 'Licht',
-  meter: 'Energiezähler',
-  sensor: 'Sensor',
-  input: 'nur Eingänge',
-  metering: 'mit Messung',
-  unknown: 'unbekannt',
-};
+export const FUNCTION_FILTERS: readonly FunctionFilter[] = ['switch', 'cover', 'light', 'meter', 'sensor', 'input', 'metering', 'unknown'];
+
+export function functionFilterText(f: FunctionFilter): string {
+  return t(`functionFilter.${f}`);
+}
 
 export function matchesFunction(f: DeviceFunctions | null, filter: FunctionFilter): boolean {
   if (filter === 'unknown') return f === null;
@@ -96,6 +64,7 @@ export function matchesFunction(f: DeviceFunctions | null, filter: FunctionFilte
   return f[filter] > 0;
 }
 
+/** "A8032AB12345" -> "A8:03:2A:B1:23:45" */
 export function formatMac(mac: string): string {
   return mac.match(/.{2}/g)?.join(':') ?? mac;
 }

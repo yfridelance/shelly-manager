@@ -39,6 +39,8 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/apps/server/package.json apps/server/
 COPY --from=build /app/apps/server/dist apps/server/dist
 COPY --from=build /app/apps/server/migrations apps/server/migrations
+# Texts of the CSV export (same files as the UI translations).
+COPY --from=build /app/apps/web/src/locale apps/web/src/locale
 COPY --from=build /app/apps/web/dist/web/browser /app/web
 # The named volume inherits this ownership on first use.
 RUN mkdir -p /data && chown node:node /data

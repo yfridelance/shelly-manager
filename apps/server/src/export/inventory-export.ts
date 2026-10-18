@@ -3,6 +3,7 @@ import { listDevices, type DeviceListRow } from '../db/devices.js';
 import { listSites } from '../db/sites.js';
 import { toCsv } from './csv.js';
 import { describeFunctions, type DeviceFunctions } from '../devices/functions.js';
+import { translator } from './locale.js';
 
 interface SnapshotJsonRow {
   id: number;
@@ -103,36 +104,40 @@ export function buildJsonExport(db: Db, options: { allSnapshots: boolean; now: s
   };
 }
 
-const STATE_TEXT: Record<string, string> = { active: 'Aktiv', missing: 'Vermisst', reset: 'Zurückgesetzt' };
+const CSV_COLUMNS = [
+  'site',
+  'name',
+  'deviceName',
+  'deviceId',
+  'model',
+  'app',
+  'functions',
+  'gen',
+  'ip',
+  'mac',
+  'firmware',
+  'location',
+  'kind',
+  'notes',
+  'state',
+  'authRequired',
+  'firstSeen',
+  'lastSeen',
+  'lastSnapshot',
+  'factoryReset',
+  'updateStable',
+] as const;
 
-/** Overview as CSV with German headers (opened in Excel by humans). Times stay ISO 8601 UTC. */
-export function buildCsvExport(db: Db, siteId?: number): string {
+/**
+ * Overview as CSV for humans (Excel), headers and labels in the UI language (`lang`, default German,
+ * texts from the web locale files). Times stay ISO 8601 UTC.
+ */
+export function buildCsvExport(db: Db, siteId?: number, lang?: string): string {
+  const t = translator(lang);
   const resets = resetTimes(db);
   const sites = new Map(listSites(db).map((s) => [s.id, s.name]));
   return toCsv(
-    [
-      'Standort',
-      'Name',
-      'Name auf Gerät',
-      'Geräte-ID',
-      'Modell',
-      'App',
-      'Funktion',
-      'Generation',
-      'IP',
-      'MAC',
-      'Firmware',
-      'Ort',
-      'Typ',
-      'Notizen',
-      'Status',
-      'Passwortgeschützt',
-      'Erstmals gesehen (UTC)',
-      'Zuletzt gesehen (UTC)',
-      'Letzter Snapshot (UTC)',
-      'Werksreset (UTC)',
-      'Firmware-Update verfügbar',
-    ],
+    CSV_COLUMNS.map((c) => t(`export.csv.${c}`)),
     listDevices(db, siteId).map((d) => [
       sites.get(d.site_id) ?? String(d.site_id),
       d.name ?? d.device_name,
@@ -140,7 +145,7 @@ export function buildCsvExport(db: Db, siteId?: number): string {
       d.device_id,
       d.model,
       d.app,
-      describeFunctions(functionsOf(d)),
+      describeFunctions(functionsOf(d), t),
       d.gen,
       d.ip,
       formatMac(d.mac),
@@ -148,8 +153,8 @@ export function buildCsvExport(db: Db, siteId?: number): string {
       d.location,
       d.kind,
       d.notes,
-      STATE_TEXT[d.state] ?? d.state,
-      d.auth_required === 1 ? 'ja' : 'nein',
+      t(`deviceState.${d.state}`),
+      t(d.auth_required === 1 ? 'export.csv.yes' : 'export.csv.no'),
       d.first_seen,
       d.last_seen,
       d.last_snapshot_at,

@@ -1,12 +1,15 @@
 import { Component, computed, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import type { Device, DeviceState } from '../../core/api.types';
+import { compareText, currentLanguage, type TranslationKey } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import {
-  DEVICE_STATE_TEXT,
-  FUNCTION_FILTER_TEXT,
+  DEVICE_STATES,
+  FUNCTION_FILTERS,
+  deviceStateText,
   formatMac,
+  functionFilterText,
   functionsText,
   ipSortKey,
   matchesFunction,
@@ -17,44 +20,44 @@ import { FirmwareCheckPanel, type FirmwareCheckResult } from './firmware-check-p
 import { InventoryFilters, type SortKey } from './inventory-filters';
 import { SiteService } from '../../core/site.service';
 
-const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
-
 @Component({
   selector: 'app-inventory-page',
-  imports: [DatePipe, RouterLink, FirmwareCheckPanel],
+  imports: [DateTimePipe, TranslatePipe, RouterLink, FirmwareCheckPanel],
   templateUrl: './inventory-page.html',
   styleUrl: './inventory-page.scss',
 })
 export class InventoryPage {
   private readonly router = inject(Router);
   protected readonly f = inject(InventoryFilters);
-  protected readonly stateText = DEVICE_STATE_TEXT;
-  protected readonly states = Object.keys(DEVICE_STATE_TEXT) as DeviceState[];
+  protected readonly stateText = deviceStateText;
+  protected readonly states = DEVICE_STATES;
   protected readonly formatMac = formatMac;
   protected readonly shortFirmware = shortFirmware;
   protected readonly functionsText = functionsText;
-  protected readonly functionFilterText = FUNCTION_FILTER_TEXT;
-  protected readonly functionFilters = Object.keys(FUNCTION_FILTER_TEXT) as FunctionFilter[];
+  protected readonly functionFilterText = functionFilterText;
+  protected readonly functionFilters = FUNCTION_FILTERS;
 
-  protected readonly columns: { key: SortKey; label: string }[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'deviceId', label: 'Geräte-ID' },
-    { key: 'model', label: 'Modell' },
-    { key: 'gen', label: 'Gen' },
-    { key: 'ip', label: 'IP' },
-    { key: 'mac', label: 'MAC' },
-    { key: 'firmware', label: 'Firmware' },
-    { key: 'kind', label: 'Typ / Funktion' },
-    { key: 'location', label: 'Ort' },
-    { key: 'state', label: 'Status' },
-    { key: 'lastSeen', label: 'Zuletzt gesehen' },
+  protected readonly columns: { key: SortKey; label: TranslationKey }[] = [
+    { key: 'name', label: 'columns.name' },
+    { key: 'deviceId', label: 'columns.deviceId' },
+    { key: 'model', label: 'columns.model' },
+    { key: 'gen', label: 'columns.gen' },
+    { key: 'ip', label: 'columns.ip' },
+    { key: 'mac', label: 'columns.mac' },
+    { key: 'firmware', label: 'columns.firmware' },
+    { key: 'kind', label: 'columns.kind' },
+    { key: 'location', label: 'columns.location' },
+    { key: 'state', label: 'columns.state' },
+    { key: 'lastSeen', label: 'columns.lastSeen' },
   ];
 
   protected readonly site = inject(SiteService);
+  /** CSV headers and labels follow the UI language. */
+  protected readonly language = currentLanguage;
   protected readonly devices = httpResource<Device[]>(() => `/api/devices?site=${this.site.siteId()}`, { defaultValue: [] });
 
   protected readonly locations = computed(() =>
-    [...new Set(this.devices.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(collator.compare),
+    [...new Set(this.devices.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(compareText),
   );
   protected readonly updateCount = computed(() => this.devices.value().filter((d) => d.updateStable !== null).length);
   protected readonly gens = computed(() => [...new Set(this.devices.value().map((d) => d.gen))].sort());
@@ -155,16 +158,16 @@ function compare(a: Device, b: Device, key: SortKey): number {
       return a.lastSeen.localeCompare(b.lastSeen);
     case 'name':
       // Unnamed devices last, ordered by MAC.
-      return collator.compare(a.name ?? `￿${a.mac}`, b.name ?? `￿${b.mac}`);
+      return compareText(a.name ?? `￿${a.mac}`, b.name ?? `￿${b.mac}`);
     case 'firmware':
-      return collator.compare(shortFirmware(a.firmware), shortFirmware(b.firmware));
+      return compareText(shortFirmware(a.firmware), shortFirmware(b.firmware));
     case 'state':
-      return collator.compare(DEVICE_STATE_TEXT[a.state], DEVICE_STATE_TEXT[b.state]);
+      return compareText(deviceStateText(a.state), deviceStateText(b.state));
     case 'kind':
       // Type first, then the derived function; devices with neither last.
-      return collator.compare(kindSortKey(a), kindSortKey(b));
+      return compareText(kindSortKey(a), kindSortKey(b));
     default:
       // Empty values last.
-      return collator.compare(a[key] ?? '￿', b[key] ?? '￿');
+      return compareText(a[key] ?? '￿', b[key] ?? '￿');
   }
 }

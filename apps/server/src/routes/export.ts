@@ -27,10 +27,21 @@ export const exportRoutes: FastifyPluginAsyncTypebox<{ db: Db; now?: () => strin
     },
   );
 
-  app.get('/export.csv', { schema: { querystring: SiteQuery } }, async (request, reply) =>
-    reply
-      .header('Content-Type', 'text/csv; charset=utf-8')
-      .header('Content-Disposition', `attachment; filename="${fileName('csv')}"`)
-      .send(buildCsvExport(db, request.query.site)),
+  app.get(
+    '/export.csv',
+    {
+      schema: {
+        querystring: Type.Object({
+          ...SiteQuery.properties,
+          // UI language for headers and labels; unknown languages fall back to German.
+          lang: Type.Optional(Type.String({ pattern: '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$' })),
+        }),
+      },
+    },
+    async (request, reply) =>
+      reply
+        .header('Content-Type', 'text/csv; charset=utf-8')
+        .header('Content-Disposition', `attachment; filename="${fileName('csv')}"`)
+        .send(buildCsvExport(db, request.query.site, request.query.lang)),
   );
 };

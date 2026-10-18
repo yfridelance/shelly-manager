@@ -2,6 +2,8 @@ import { Component, DestroyRef, computed, inject, input, output, signal } from '
 import { RouterLink } from '@angular/router';
 import type { Device } from '../../core/api.types';
 import { DeviceApiError, DevicesApi, type Credentials } from '../../core/devices-api';
+import { t } from '../../core/i18n/i18n';
+import { TranslatePipe } from '../../core/i18n/pipes';
 import { shortFirmware } from '../../core/texts';
 
 const CONCURRENCY = 6;
@@ -23,7 +25,7 @@ export interface FirmwareCheckResult {
  */
 @Component({
   selector: 'app-firmware-check-panel',
-  imports: [RouterLink],
+  imports: [RouterLink, TranslatePipe],
   templateUrl: './firmware-check-panel.html',
   styleUrl: './firmware-check-panel.scss',
 })
@@ -106,7 +108,7 @@ export class FirmwareCheckPanel {
 
   private async checkOne(device: Device, password: string, username: string): Promise<FirmwareCheckResult> {
     const base = { mac: device.mac, name: device.name, stable: null, beta: null, checkedAt: null, error: null };
-    if (device.authRequired && !password) return { ...base, outcome: 'skipped', error: 'Passwortgeschützt – kein Passwort angegeben' };
+    if (device.authRequired && !password) return { ...base, outcome: 'skipped', error: t('firmwareCheck.skippedNoPassword') };
     const credentials: Credentials | undefined = device.authRequired
       ? { password, ...(device.gen === 1 && username ? { username } : {}) }
       : undefined;

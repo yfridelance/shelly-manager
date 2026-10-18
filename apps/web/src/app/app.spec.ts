@@ -4,6 +4,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { SiteService } from './core/site.service';
+import { activateLanguage } from './core/i18n/i18n';
+import { I18N_LANGUAGES } from './core/i18n/i18n.service';
+import { LANGUAGES, type Language } from './core/i18n/languages';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -62,5 +65,39 @@ describe('App', () => {
     expect(site.siteId()).toBe(2);
     expect(localStorage.getItem('shelly-manager.site')).toBe('2');
     localStorage.removeItem('shelly-manager.site');
+  });
+
+  it('shows the language switcher only with more than one language and switches without reload', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/api/health').flush({ status: 'ok' });
+    http.expectOne('/api/sites').flush([]);
+    await fixture.whenStable();
+    expect((fixture.nativeElement as HTMLElement).querySelector('select[name="language"]')).toBeNull();
+
+    TestBed.resetTestingModule();
+    const en: Language = { code: 'en', locale: 'en-GB', name: 'English', load: async () => ({ nav: { inventory: 'Inventory' } }) };
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: I18N_LANGUAGES, useValue: [LANGUAGES[0], en] }],
+    }).compileComponents();
+    const second = TestBed.createComponent(App);
+    second.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne('/api/health').flush({ status: 'ok' });
+    TestBed.inject(HttpTestingController).expectOne('/api/sites').flush([]);
+    await second.whenStable();
+    const el = second.nativeElement as HTMLElement;
+    const select = el.querySelector<HTMLSelectElement>('select[name="language"]');
+    expect([...(select?.options ?? [])].map((o) => o.textContent?.trim())).toEqual(['Deutsch', 'English']);
+    if (!select) throw new Error('no language select');
+    select.value = 'en';
+    select.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r));
+    await second.whenStable();
+    expect(el.querySelector('nav')?.textContent).toContain('Inventory');
+    expect(el.querySelector('nav')?.textContent).toContain('Scan');
+    activateLanguage('de', 'de-CH');
+    localStorage.removeItem('shelly-manager.lang');
   });
 });

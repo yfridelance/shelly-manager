@@ -68,6 +68,7 @@ Diese Punkte definieren einen Vertrag. **Nicht brechen**, oder Dockerfile und [d
 | Health | `GET /api/health` → 200 `{ status: "ok" }` |
 | Dev-Proxy | Angular leitet `/api` auf `http://localhost:3000` weiter (`proxy.conf.json`), SSE inklusive |
 | Migrationen | Nummerierte SQL-Dateien in `apps/server/migrations/` (neben `src`/`dist`), laufen beim Start automatisch; das Dockerfile kopiert den Ordner mit |
+| Übersetzungen | `apps/web/src/locale/<code>.json`; der Server liest daraus die CSV-Texte (Pfad relativ zu `src`/`dist`), das Dockerfile kopiert den Ordner ins Image |
 | Container | `docker compose up -d --build` → App unter `http://localhost:8080`; Port nur auf `127.0.0.1` gebunden (kein Login); Daten im Volume `shelly-data` (`/data`); läuft als Benutzer `node` mit Healthcheck |
 | npm | npm ≥ 11.19 blockiert Install-Scripts; native Pakete sind in `allowScripts` der Root-`package.json` freigegeben |
 
@@ -227,7 +228,7 @@ Zeitstempel als ISO 8601 UTC. Geräte nie löschen, wenn sie zurückgesetzt wurd
 | GET/PUT/DELETE | `/api/templates/:id` | Template lesen / ändern / löschen |
 | POST | `/api/templates/:id/preview` | Vorschau pro Gerät (`{ macs? }`, Default alle aktiven) aus dem neusten Snapshot, ohne Gerätezugriff; mit geplanten statischen IPs (`assignedIps`) für genau diese Auswahl |
 | POST | `/api/devices/:mac/apply-template` | Template anwenden (`{ templateId, credentials?, secrets?: { mqttPassword?, apPassword? }, rebootIfRequired?, network?: { sta?, sta1? } }`; Antwort u.a. `network: { ip, confirmed }`) |
-| GET | `/api/export.json` / `/api/export.csv` | Export (`?snapshots=all` für alle Snapshots) |
+| GET | `/api/export.json` / `/api/export.csv` | Export (`?snapshots=all` für alle Snapshots; CSV: `?lang=` für Spaltentitel und Texte, Default/Fallback Deutsch) |
 | GET | `/api/actions` | Aktionsprotokoll (`?mac=`, `?site=`, `?limit=`) |
 | GET/POST | `/api/sites` | Standorte auflisten (mit Anzahl Geräte/Templates) / anlegen |
 | GET/PUT/DELETE | `/api/sites/:id` | lesen / umbenennen / löschen (nur leer; 409 `site_not_empty`, `last_site`) |
@@ -264,6 +265,9 @@ Ansichten:
 4. **Protokoll:** Aktionsliste
 5. **Templates:** Liste, Editor (nur angehakte Einstellungen gehören zum Template, Eingabe hakt automatisch an), Anwenden mit Geräteauswahl, Vorschau pro Gerät, Passwortfeldern, «bei Bedarf neu starten», Fortschritt und Ergebnis pro Gerät
 6. **Standorte:** Auswahl in der Kopfzeile (im Browser gemerkt), Verwaltung unter «Standorte»; das Gerätefeld `location` heisst im UI «Ort»
+7. **Sprache:** Umschalter in der Kopfzeile ab zwei Sprachen, ohne Reload; Default Browsersprache, sonst Deutsch, im Browser gemerkt
+
+**Übersetzungen (i18n):** eigene kleine Lösung ohne Abhängigkeit (`apps/web/src/app/core/i18n/`, Begründung in [docs/entwicklung.md](docs/entwicklung.md#übersetzungen-i18n)). Texte nur in `apps/web/src/locale/<code>.json` (i18next-JSON-v4-Format: `{{platzhalter}}`, Plural `_one`/`_other` über `count`, `**fett**`), `de.json` ist Quelle und Fallback. Im Code nur Keys: `{{ 'key' | t }}` bzw. `t('key')`; der Typ `TranslationKey` aus `de.json` macht falsche Keys zum Build-Fehler. Datum/Zahl/Sortierung über `dateTime`-Pipe, `formatNumber`, `compareText` (Locale der Sprache). Das UI übersetzt Fehlercodes (`errors.<code>`) und zeigt nie die `message` des Servers. Neue Sprache = neue Datei + eine Zeile in `LANGUAGES`.
 
 Design schlicht und funktional; Tabellen müssen auf Laptop-Breite gut lesbar sein. Falls das eigene Web-Component-Design-System "Kern" verfügbar ist, dessen Komponenten verwenden; sonst schlichtes eigenes SCSS ohne UI-Framework.
 
@@ -297,7 +301,7 @@ Stand: Alle sechs Phasen sind umgesetzt und abgenommen (getestet gegen den Mock;
 
 ## 13. Konventionen
 
-- Code und Bezeichner auf Englisch, UI-Texte auf Deutsch (Schweizer Schreibweise, kein ß).
+- Code und Bezeichner auf Englisch, UI-Texte nur in den Locale-Dateien; Quelle Deutsch (Schweizer Schreibweise, kein ß). Neue Fehlercodes des Servers brauchen einen Text unter `errors.<code>` in `de.json`.
 - TypeScript `strict`, keine `any` ohne Kommentar.
 - Kleine, fokussierte Module; Adapter, Scan, DB und HTTP-Routen getrennt.
 - Rohe Geräte-Antworten unverändert speichern; Normalisierung nur in eigenen Feldern.
@@ -306,7 +310,7 @@ Stand: Alle sechs Phasen sind umgesetzt und abgenommen (getestet gegen den Mock;
 
 ## 14. Templates (kuratierte Settings)
 
-Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), Anwenden in `DeviceService.applyTemplate`, Labels und Feldliste im UI in `apps/web/src/app/core/template-fields.ts` (Keys müssen mit dem Planer übereinstimmen).
+Code: `apps/server/src/templates/` (Schema `settings.ts`, Planer `planner.ts`), Anwenden in `DeviceService.applyTemplate`, Feldliste im UI in `apps/web/src/app/core/template-fields.ts` (Keys müssen mit dem Planer übereinstimmen), Labels unter `templateFields.<key>` in `apps/web/src/locale/de.json`.
 
 | Template-Feld | Gen1 (`/settings…`) | Gen2+ |
 |---|---|---|

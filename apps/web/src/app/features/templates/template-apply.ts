@@ -1,11 +1,12 @@
 import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import type { ApplyTemplateResult, Device, Template, TemplatePreview, WifiInterface } from '../../core/api.types';
 import { ipChangeText } from '../../core/action-text';
 import type { DeviceApiError } from '../../core/devices-api';
-import { WIFI_LABEL, describeSettings, itemText } from '../../core/template-fields';
+import { t } from '../../core/i18n/i18n';
+import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
+import { describeSettings, itemText, wifiLabel } from '../../core/template-fields';
 import { errorText, formatMac } from '../../core/texts';
 import { TemplatesApi, type ApplyRequest } from '../../core/templates-api';
 
@@ -24,7 +25,7 @@ interface RowResult {
  */
 @Component({
   selector: 'app-template-apply',
-  imports: [DatePipe, RouterLink],
+  imports: [DateTimePipe, TranslatePipe, RouterLink],
   templateUrl: './template-apply.html',
   styleUrl: './template-apply.scss',
 })
@@ -45,7 +46,7 @@ export class TemplateApply {
   protected readonly lines = computed(() => (this.template.hasValue() ? describeSettings(this.template.value().settings) : []));
   protected readonly needsMqttPassword = computed(() => this.template.hasValue() && this.template.value().settings.mqtt !== undefined);
   protected readonly needsApPassword = computed(() => this.template.hasValue() && this.template.value().settings.wifiAp?.enable === true);
-  protected readonly wifiLabel = WIFI_LABEL;
+  protected readonly wifiLabel = wifiLabel;
   /** WLAN interfaces with static addressing in this template (each gets an IP column). */
   protected readonly staticIfaces = computed<WifiInterface[]>(() => {
     const net = this.template.hasValue() ? this.template.value().settings.network : undefined;
@@ -118,24 +119,25 @@ export class TemplateApply {
     const iface = this.staticIfaces()[0] ?? 'sta';
     const rows = this.selectedDevices().map((d) => [d.name ?? '', d.deviceId ?? '', formatMac(d.mac), this.plannedIp(d.mac, iface)]);
     const cell = (v: string) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    const csv = '\uFEFF' + [['Name', 'Geräte-ID', 'MAC', 'IP'], ...rows].map((r) => r.map(cell).join(';')).join('\r\n') + '\r\n';
+    const header = [t('columns.name'), t('columns.deviceId'), t('columns.mac'), t('columns.ip')];
+    const csv = '\uFEFF' + [header, ...rows].map((r) => r.map(cell).join(';')).join('\r\n') + '\r\n';
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dhcp-reservierungen-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${t('templateApply.reservationsFile')}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   protected summary(mac: string): { text: string; kind: 'change' | 'same' | 'unknown' | 'unsupported' } {
     const p = this.previews()[mac];
-    if (!p || p.basedOn === null) return { text: 'kein Snapshot, wird beim Anwenden ermittelt', kind: 'unknown' };
+    if (!p || p.basedOn === null) return { text: t('templateApply.noSnapshot'), kind: 'unknown' };
     const changes = p.items.filter((i) => i.status === 'change').length;
     const unsupported = p.items.filter((i) => i.status === 'unsupported').length;
     const parts: string[] = [];
-    if (changes > 0) parts.push(`${changes} ${changes === 1 ? 'Änderung' : 'Änderungen'}`);
-    if (unsupported > 0) parts.push(`${unsupported} nicht unterstützt`);
-    if (parts.length === 0) return { text: 'keine Änderung', kind: 'same' };
+    if (changes > 0) parts.push(t('templateApply.changes', { count: changes }));
+    if (unsupported > 0) parts.push(t('templateApply.unsupported', { count: unsupported }));
+    if (parts.length === 0) return { text: t('templateApply.noChange'), kind: 'same' };
     return { text: parts.join(', '), kind: changes > 0 ? 'change' : 'unsupported' };
   }
 
@@ -233,18 +235,18 @@ export class TemplateApply {
 }
 
 function resultText(r: ApplyTemplateResult): string {
-  if (r.changed === 0) return 'keine Änderung nötig';
-  const parts = [`${r.changed} ${r.changed === 1 ? 'Einstellung' : 'Einstellungen'} geändert`];
+  if (r.changed === 0) return t('action.noChangeNeeded');
+  const parts = [t('templateApply.settingsChanged', { count: r.changed })];
   if (r.network) {
     parts.push(
       r.network.ip === null
         ? ipChangeText({ from: null, to: null, confirmed: false, dhcp: true })
         : r.network.confirmed
-          ? `jetzt unter ${r.network.ip}`
-          : `unter ${r.network.ip} nicht erreichbar – bitte neu scannen`,
+          ? t('templateApply.nowAt', { ip: r.network.ip })
+          : t('templateApply.unreachableAt', { ip: r.network.ip }),
     );
   }
-  if (r.rebooted) parts.push('neu gestartet');
-  else if (r.restartRequired) parts.push('Neustart nötig');
+  if (r.rebooted) parts.push(t('action.rebooted'));
+  else if (r.restartRequired) parts.push(t('action.restartRequired'));
   return parts.join(', ');
 }

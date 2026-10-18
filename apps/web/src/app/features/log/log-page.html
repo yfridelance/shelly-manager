@@ -1,67 +1,67 @@
 <div class="head">
-  <h1>Protokoll</h1>
-  <span class="muted">{{ filtered().length }} Einträge</span>
-  <button type="button" class="secondary" (click)="entries.reload()">Aktualisieren</button>
+  <h1>{{ 'nav.log' | t }}</h1>
+  <span class="muted">{{ 'log.count' | t: { count: filtered().length } }}</span>
+  <button type="button" class="secondary" (click)="entries.reload()">{{ 'common.refresh' | t }}</button>
 </div>
 
 <div class="filters">
   <label class="field search">
-    <span>Gerät</span>
-    <input type="search" placeholder="Name, MAC oder Adresse" [value]="search()" (input)="search.set(value($event))" />
+    <span>{{ 'titles.device' | t }}</span>
+    <input type="search" [placeholder]="'log.searchPlaceholder' | t" [value]="search()" (input)="search.set(value($event))" />
   </label>
   <label class="field">
-    <span>Aktion</span>
+    <span>{{ 'log.action' | t }}</span>
     <select (change)="action.set(value($event))">
-      <option value="">Alle</option>
+      <option value="">{{ 'common.all' | t }}</option>
       @for (a of actionTypes; track a) {
-        <option [value]="a">{{ actionText[a] }}</option>
+        <option [value]="a">{{ actionText(a) }}</option>
       }
     </select>
   </label>
   <label class="field">
-    <span>Ergebnis</span>
+    <span>{{ 'log.result' | t }}</span>
     <select (change)="result.set(value($event))">
-      <option value="">Alle</option>
-      <option value="ok">OK</option>
-      <option value="error">Fehler</option>
+      <option value="">{{ 'common.all' | t }}</option>
+      <option value="ok">{{ 'common.ok' | t }}</option>
+      <option value="error">{{ 'common.error' | t }}</option>
     </select>
   </label>
 </div>
 
 @if (entries.error()) {
-  <p class="message error" role="alert">Protokoll konnte nicht geladen werden.</p>
+  <p class="message error" role="alert">{{ 'log.loadError' | t }}</p>
 } @else if (!entries.isLoading() && entries.value().length === 0) {
-  <p class="muted">Noch keine Aktionen ausgeführt.</p>
+  <p class="muted">{{ 'log.empty' | t }}</p>
 } @else {
   <div class="table-wrap">
     <table class="data-table">
       <thead>
         <tr>
-          <th>Zeitpunkt</th>
-          <th>Gerät</th>
-          <th>Aktion</th>
-          <th>Ergebnis</th>
-          <th>Details</th>
-          <th>Dauer</th>
-          <th>Von</th>
+          <th>{{ 'log.time' | t }}</th>
+          <th>{{ 'titles.device' | t }}</th>
+          <th>{{ 'log.action' | t }}</th>
+          <th>{{ 'log.result' | t }}</th>
+          <th>{{ 'log.details' | t }}</th>
+          <th>{{ 'log.duration' | t }}</th>
+          <th>{{ 'log.by' | t }}</th>
         </tr>
       </thead>
       <tbody>
         @for (e of filtered(); track e.id) {
           <tr [class.reset-row]="e.action === 'factory_reset' && e.result === 'ok'">
-            <td>{{ e.requestedAt | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
+            <td>{{ e.requestedAt | dateTime: 'seconds' }}</td>
             <td>
-              <a [routerLink]="['/inventar', e.mac]">{{ e.deviceName ?? '(ohne Namen)' }}</a>
+              <a [routerLink]="['/inventar', e.mac]">{{ e.deviceName ?? ('common.unnamed' | t) }}</a>
               <div class="mono muted">{{ formatMac(e.mac) }}</div>
             </td>
             <td>{{ actionLabel(e) }}</td>
             <td>
               @if (e.result === 'ok') {
-                <span class="state active">OK</span>
+                <span class="state active">{{ 'common.ok' | t }}</span>
               } @else if (e.result === 'error') {
-                <span class="error-text">Fehler</span>
+                <span class="error-text">{{ 'common.error' | t }}</span>
               } @else {
-                <span class="muted">läuft</span>
+                <span class="muted">{{ 'common.running' | t }}</span>
               }
             </td>
             <td class="wrap">
@@ -76,7 +76,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="7" class="muted">Keine Einträge passen zum Filter.</td>
+            <td colspan="7" class="muted">{{ 'log.noMatch' | t }}</td>
           </tr>
         }
       </tbody>
