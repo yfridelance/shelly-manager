@@ -152,17 +152,13 @@
         <kern-progress [max]="total()" [value]="doneCount()" />
         <span>{{ 'common.progress' | t: { done: doneCount(), total: total() } }}</span>
         <kern-button (click)="cancel()">{{ 'common.cancel' | t }}</kern-button>
-      } @else if (confirming()) {
-        <span>{{ 'templateApply.confirm' | t: { name: t.name, count: selectedDevices().length } }}</span>
-        <kern-button variant="primary" (click)="run()">{{ 'templateApply.confirmYes' | t }}</kern-button>
-        <kern-button variant="ghost" (click)="confirming.set(false)">{{ 'common.cancel' | t }}</kern-button>
       } @else {
         @if (staticIfaces().length > 0) {
           <kern-button [disabled]="selectedDevices().length === 0" (click)="exportReservations()">
             {{ 'templateApply.exportReservations' | t }}
           </kern-button>
         }
-        <kern-button variant="primary" [disabled]="selectedDevices().length === 0" (click)="confirming.set(true)">
+        <kern-button variant="primary" [disabled]="selectedDevices().length === 0" (click)="confirmAndRun()">
           {{ 'templateApply.applyTo' | t: { count: selectedDevices().length } }}
         </kern-button>
       }

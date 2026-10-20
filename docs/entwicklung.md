@@ -126,6 +126,10 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`), Sortierköpfe in Tabellen,
     die Tabs im Gerätedetail (eine gemeinsame JSON-Ansicht) und Router-Links mit Button-Optik (`a.button` in
     `styles.scss`, weil `kern-button href` die Seite neu laden würde).
+  - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit
+    übersetzten Labels aufruft; Fehler bleiben als `kern-alert` auf der Seite. Der Reset-Dialog bleibt eigen (MAC oder
+    Gerätename, Override, AP-Hinweis). In Specs `provideFeedbackStub()` aus `src/testing/feedback.ts`: beantwortet
+    Rückfragen mit `answer` und merkt sich Fragen und Toasts (in jsdom würde `confirm()` nie fertig).
   - Farben, Abstände und Radien in eigenen Styles nur über Kern-Tokens (`var(--surface)`, `var(--space-4)` …).
   - Tests (jsdom) kennen die Kern-Elemente nicht: `src/testing/kern.ts` setzt Werte und feuert die Kern-Events
     (`setKernValue`, `setKernChecked`, `fill`, `toggleNamed`); `src/testing/setup.ts` lässt Klicks auf

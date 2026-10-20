@@ -8,6 +8,7 @@ import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { groupTitles } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
+import { Feedback } from '../../core/feedback';
 
 @Component({
   selector: 'app-templates-page',
@@ -48,13 +49,7 @@ import { SiteService } from '../../core/site.service';
               <td>{{ t.updatedAt | dateTime }}</td>
               <td class="actions">
                 <a class="button secondary sm" [routerLink]="['/templates', t.id, 'anwenden']">{{ 'templates.apply' | t }}</a>
-                @if (confirmDelete() === t.id) {
-                  <span>{{ 'common.deleteQuestion' | t }}</span>
-                  <kern-button size="sm" variant="danger" (click)="remove(t)">{{ 'common.yes' | t }}</kern-button>
-                  <kern-button size="sm" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</kern-button>
-                } @else {
-                  <kern-button size="sm" variant="ghost" (click)="confirmDelete.set(t.id)">{{ 'common.delete' | t }}</kern-button>
-                }
+                <kern-button size="sm" variant="ghost" (click)="remove(t)">{{ 'common.delete' | t }}</kern-button>
               </td>
             </tr>
           }
@@ -67,22 +62,25 @@ import { SiteService } from '../../core/site.service';
     kern-alert { margin-bottom: var(--space-4); }
     .wrap { white-space: normal; }
     .small { font-size: 0.85rem; }
-    .actions { display: flex; gap: 0.5rem; align-items: center; }
+    .actions { display: flex; gap: var(--space-2); align-items: center; }
   `,
 })
 export class TemplatesPage {
   private readonly api = inject(TemplatesApi);
   private readonly site = inject(SiteService);
   protected readonly templates = httpResource<Template[]>(() => `/api/templates?site=${this.site.siteId()}`, { defaultValue: [] });
-  protected readonly confirmDelete = signal<number | null>(null);
+  private readonly feedback = inject(Feedback);
   protected readonly message = signal<string | null>(null);
   protected readonly groupTitles = groupTitles;
 
   protected async remove(template: Template): Promise<void> {
-    this.confirmDelete.set(null);
+    const ok = await this.feedback.confirm({ heading: t('common.deleteNamed', { name: template.name }), confirmLabel: t('common.delete'), danger: true });
+    if (!ok) return;
     try {
       await this.api.delete(template.id);
+      this.message.set(null);
       this.templates.reload();
+      this.feedback.success(t('templates.deleted', { name: template.name }));
     } catch (err) {
       this.message.set(t('templates.deleteFailed', { error: (err as DeviceApiError).message }));
     }

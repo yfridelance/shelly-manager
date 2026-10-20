@@ -6,6 +6,8 @@ import type { Device, Template, TemplatePreview } from '../../core/api.types';
 import { itemText } from '../../core/template-fields';
 import { TemplateApply } from './template-apply';
 import { TemplateEditor } from './template-editor';
+import { FeedbackStub, provideFeedbackStub } from '../../../testing/feedback';
+import { Feedback } from '../../core/feedback';
 
 const tick = () => new Promise((r) => setTimeout(r));
 
@@ -47,7 +49,7 @@ describe('TemplateEditor', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TemplateEditor],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideFeedbackStub()],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -133,7 +135,7 @@ describe('TemplateApply', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TemplateApply],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideFeedbackStub()],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -174,11 +176,14 @@ describe('TemplateApply', () => {
     fill(el, 'mqttPassword', 'mqtt-geheim');
     await fixture.whenStable();
 
+    const feedback = TestBed.inject(Feedback) as FeedbackStub;
+    feedback.answer = false;
     button('Auf 2 Geräte anwenden')?.click();
-    await fixture.whenStable();
+    await tick();
     http.expectNone({ method: 'POST', url: (u: string) => u.includes('apply-template') } as never);
-    expect(el.textContent).toContain('Template «Haus-Standard» auf 2 Geräte anwenden?');
-    button('Ja, anwenden')?.click();
+    expect(feedback.questions.at(-1)).toMatchObject({ heading: 'Template «Haus-Standard» auf 2 Geräte anwenden?', confirmLabel: 'Ja, anwenden' });
+    feedback.answer = true;
+    button('Auf 2 Geräte anwenden')?.click();
     await tick();
 
     const boiler = http.expectOne('/api/devices/A8032AB12345/apply-template');
@@ -207,7 +212,7 @@ describe('network templates in the UI', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TemplateEditor, TemplateApply],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideFeedbackStub()],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -283,9 +288,9 @@ describe('network templates in the UI', () => {
     expect([...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].some((b) => b.textContent?.includes('Export für DHCP-Reservierung'))).toBe(true);
 
     [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('Auf 2 Geräte anwenden'))?.click();
-    await fixture.whenStable();
-    [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('Ja, anwenden'))?.click();
     await tick();
+    // Network templates repeat the warning in the confirmation.
+    expect((TestBed.inject(Feedback) as FeedbackStub).questions.at(-1)?.message).toContain('IP');
     const boiler = http.expectOne('/api/devices/A8032AB12345/apply-template');
     const licht = http.expectOne('/api/devices/E868E7A1B2C3/apply-template');
     expect(boiler.request.body).toMatchObject({ network: { sta: '192.168.10.50' } });

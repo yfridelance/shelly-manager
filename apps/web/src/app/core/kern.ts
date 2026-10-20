@@ -21,6 +21,7 @@ import { defineCustomElement as switchEl } from '@yfridelance/kern/components/ke
 import { defineCustomElement as tabPanel } from '@yfridelance/kern/components/kern-tab-panel.js';
 import { defineCustomElement as table } from '@yfridelance/kern/components/kern-table.js';
 import { defineCustomElement as tabs } from '@yfridelance/kern/components/kern-tabs.js';
+import { defineCustomElement as toast } from '@yfridelance/kern/components/kern-toast.js';
 import { defineCustomElement as textarea } from '@yfridelance/kern/components/kern-textarea.js';
 import { defineCustomElement as themeToggle } from '@yfridelance/kern/components/kern-theme-toggle.js';
 import { defineCustomElement as toolbar } from '@yfridelance/kern/components/kern-toolbar.js';
@@ -31,7 +32,7 @@ export function defineKern(): void {
   initTheme();
   for (const define of [
     alert, badge, button, card, checkbox, copy, dialog, input, json, kv, kvItem, pageHeader, progress, segmented,
-    select, signal, spinner, status, switchEl, tabPanel, table, tabs, textarea, themeToggle, toolbar, topbar,
+    select, signal, spinner, status, switchEl, tabPanel, table, tabs, textarea, themeToggle, toast, toolbar, topbar,
   ]) {
     define();
   }

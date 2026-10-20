@@ -62,13 +62,6 @@ h3 {
   }
 }
 
-.confirm {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-
 .recent {
   max-width: 40rem;
   margin-bottom: var(--space-2);
@@ -164,11 +157,4 @@ h3 {
   align-items: center;
   margin-top: var(--space-1);
   font-size: var(--text-sm);
-
-  .confirm {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: end;
-  }
 }

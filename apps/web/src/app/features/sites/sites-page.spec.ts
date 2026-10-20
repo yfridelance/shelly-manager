@@ -11,14 +11,18 @@ const SITES: Site[] = [
 ];
 
 import { setKernValue } from '../../../testing/kern';
+import { FeedbackStub, provideFeedbackStub } from '../../../testing/feedback';
+import { Feedback } from '../../core/feedback';
 describe('SitesPage', () => {
   let http: HttpTestingController;
+  let feedback: FeedbackStub;
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SitesPage],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideFeedbackStub()],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
+    feedback = TestBed.inject(Feedback) as FeedbackStub;
   });
 
   async function render() {
@@ -55,20 +59,25 @@ describe('SitesPage', () => {
     await new Promise((r) => setTimeout(r));
     http.expectOne('/api/sites').flush([...SITES, { ...SITES[1], id: 3, name: 'Büro' }]);
     await fixture.whenStable();
-    expect(el.textContent).toContain('Standort «Büro» angelegt.');
+    expect(feedback.toasts).toContain('Standort «Büro» angelegt.');
   });
 
   it('deletes an empty site after confirmation', async () => {
     const { fixture, el, button } = await render();
     const row = el.querySelectorAll('tbody tr')[1] as HTMLElement;
+    feedback.answer = false;
     button('Löschen', row)?.click();
-    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
     http.expectNone({ method: 'DELETE' });
-    button('Ja', row)?.click();
+    expect(feedback.questions.at(-1)).toMatchObject({ heading: '«Ferienhaus» löschen?', danger: true });
+    feedback.answer = true;
+    button('Löschen', row)?.click();
+    await new Promise((r) => setTimeout(r));
     http.expectOne({ method: 'DELETE', url: '/api/sites/2' }).flush(null);
     await new Promise((r) => setTimeout(r));
+    TestBed.tick();
     http.expectOne('/api/sites').flush([SITES[0]]);
     await fixture.whenStable();
-    expect(el.textContent).toContain('Standort «Ferienhaus» gelöscht.');
+    expect(feedback.toasts).toContain('Standort «Ferienhaus» gelöscht.');
   });
 });

@@ -9,7 +9,7 @@
   </kern-page-header>
 
   @if (message(); as m) {
-    <kern-alert class="message" [tone]="m.kind === 'error' ? 'danger' : 'ok'" [attr.role]="m.kind === 'error' ? 'alert' : 'status'">{{ m.text }}</kern-alert>
+    <kern-alert class="message" [tone]="m.kind === 'error' ? 'danger' : 'warn'" role="alert">{{ m.text }}</kern-alert>
   }
 
   <div class="columns">
@@ -24,19 +24,11 @@
         </kern-kv-item>
         <kern-kv-item [label]="'columns.mac' | t"><kern-copy [label]="'device.copy' | t">{{ formatMac(d.mac) }}</kern-copy></kern-kv-item>
         <kern-kv-item [label]="'header.site' | t">
-          @if (moveTo(); as target) {
-            <span class="confirm">
-              {{ 'device.moveQuestion' | t: { site: sites.name(target) } }}
-              <kern-button size="sm" variant="primary" (click)="moveDevice()">{{ 'device.moveConfirm' | t }}</kern-button>
-              <kern-button size="sm" variant="ghost" (click)="moveTo.set(null)">{{ 'common.cancel' | t }}</kern-button>
-            </span>
-          } @else {
-            <kern-select name="site" size="sm" class="site" [attr.aria-label-text]="'device.siteOfDevice' | t" [value]="'' + d.siteId" (kernChange)="onSiteChange(value($event), d.siteId)">
-              @for (s of sites.list.value(); track s.id) {
-                <option [value]="s.id">{{ s.name }}</option>
-              }
-            </kern-select>
-          }
+          <kern-select name="site" size="sm" class="site" [attr.aria-label-text]="'device.siteOfDevice' | t" [value]="'' + d.siteId" (kernChange)="onSiteChange($event, d.siteId)">
+            @for (s of sites.list.value(); track s.id) {
+              <option [value]="s.id">{{ s.name }}</option>
+            }
+          </kern-select>
         </kern-kv-item>
         <kern-kv-item [label]="'columns.ip' | t" mono>
           @if (d.ip) {
@@ -92,28 +84,19 @@
           <div class="device-name">
             @if (d.name === d.deviceName) {
               <span class="muted">{{ 'device.nameSynced' | t }}</span>
-            } @else if (confirmWriteName()) {
-              <form class="confirm" (submit)="$event.preventDefault(); writeName()">
-                <span>{{ 'device.writeNameQuestion' | t: { name: d.name } }}</span>
-                @if (d.authRequired) {
-                  @if (d.gen === 1) {
-                    <kern-input name="username" size="sm" autocomplete="off" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
-                  }
-                  <kern-input name="name-password" size="sm" type="password" autocomplete="off" [label]="'common.devicePassword' | t" [value]="password()" (kernInput)="password.set(value($event))" />
-                }
-                <kern-button type="submit" size="sm" variant="primary" [disabled]="d.authRequired && !password()">{{ 'device.writeNameConfirm' | t }}</kern-button>
-                <kern-button size="sm" variant="ghost" (click)="confirmWriteName.set(false)">{{ 'common.cancel' | t }}</kern-button>
-              </form>
             } @else {
               <span class="muted">{{ d.deviceName ? ('device.nameDiffers' | t: { name: d.deviceName }) : ('device.nameMissingOnDevice' | t) }}</span>
               <kern-button
                 size="sm"
                 [busy]="running() === 'name'"
-                [disabled]="running() !== null || !d.ip"
-                (click)="confirmWriteName.set(true)"
+                [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+                (click)="writeName()"
               >
                 {{ (running() === 'name' ? 'device.writingName' : 'device.writeName') | t }}
               </kern-button>
+              @if (d.authRequired) {
+                <span class="muted">{{ 'device.writeNamePasswordHint' | t }}</span>
+              }
             }
           </div>
         }
@@ -157,21 +140,13 @@
         <kern-button type="submit" [busy]="running() === 'snapshot'" [disabled]="running() !== null || !d.ip || (d.authRequired && !password())">
           {{ (running() === 'snapshot' ? 'device.reading' : 'device.readConfig') | t }}
         </kern-button>
-        @if (confirmReboot()) {
-          <span class="confirm">
-            {{ 'device.rebootQuestion' | t }}
-            <kern-button variant="primary" (click)="reboot()">{{ 'device.rebootConfirm' | t }}</kern-button>
-            <kern-button variant="ghost" (click)="confirmReboot.set(false)">{{ 'common.cancel' | t }}</kern-button>
-          </span>
-        } @else {
-          <kern-button
-            [busy]="running() === 'reboot'"
-            [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
-            (click)="confirmReboot.set(true)"
-          >
-            {{ (running() === 'reboot' ? 'device.rebooting' : 'device.reboot') | t }}
-          </kern-button>
-        }
+        <kern-button
+          [busy]="running() === 'reboot'"
+          [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+          (click)="reboot()"
+        >
+          {{ (running() === 'reboot' ? 'device.rebooting' : 'device.reboot') | t }}
+        </kern-button>
         <span class="spacer"></span>
         <kern-button variant="danger" [disabled]="running() !== null || !d.ip" (click)="resetOpen.set(true)">
           {{ 'device.factoryReset' | t }}
@@ -208,31 +183,23 @@
           >
             {{ (running() === 'firmware' ? 'device.firmware.wait' : 'device.firmware.check') | t }}
           </kern-button>
-          @if (confirmUpdate(); as channel) {
-            <span class="confirm">
-              {{ (channel === 'beta' ? 'device.firmware.installBetaQuestion' : 'device.firmware.installQuestion') | t: { version: shortFirmware(channel === 'beta' ? d.updateBeta : d.updateStable) } }}
-              <kern-button variant="primary" (click)="installUpdate(channel)">{{ 'device.firmware.installConfirm' | t }}</kern-button>
-              <kern-button variant="ghost" (click)="confirmUpdate.set(null)">{{ 'common.cancel' | t }}</kern-button>
-            </span>
-          } @else {
-            @if (d.updateStable) {
-              <kern-button
-                variant="primary"
-                [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
-                (click)="confirmUpdate.set('stable')"
-              >
-                {{ 'device.firmware.install' | t }}
-              </kern-button>
-            }
-            @if (d.updateBeta) {
-              <kern-button
-                variant="ghost"
-                [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
-                (click)="confirmUpdate.set('beta')"
-              >
-                {{ 'device.firmware.installBeta' | t }}
-              </kern-button>
-            }
+          @if (d.updateStable) {
+            <kern-button
+              variant="primary"
+              [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+              (click)="installUpdate('stable')"
+            >
+              {{ 'device.firmware.install' | t }}
+            </kern-button>
+          }
+          @if (d.updateBeta) {
+            <kern-button
+              variant="ghost"
+              [disabled]="running() !== null || !d.ip || (d.authRequired && !password())"
+              (click)="installUpdate('beta')"
+            >
+              {{ 'device.firmware.installBeta' | t }}
+            </kern-button>
           }
         </div>
       </div>

@@ -169,7 +169,7 @@ setzt «Vorschlag einsetzen» ihn wieder ein.
 **Name auf Gerät schreiben:** Unter dem Namen steht, ob er mit dem Namen auf dem Gerät übereinstimmt («Gleich wie
 auf dem Gerät») oder was dort steht («Auf dem Gerät: «Boiler»»). Weicht er ab, schreibt «Name auf Gerät schreiben»
 ihn nach einer Rückfrage aufs Gerät (unter diesem Namen erscheint es z.B. in der Shelly-App); bei geschützten Geräten
-steht das Passwortfeld direkt in der Rückfrage. Die App prüft vorher wie bei jeder Aktion die MAC und speichert danach
+zuerst das Passwort unter **Aktionen** eingeben. Die App prüft vorher wie bei jeder Aktion die MAC und speichert danach
 einen Snapshot. Danach sind beide Namen gleich, die App übernimmt also spätere Umbenennungen auf dem Gerät. Gen1
 erlaubt höchstens 30 Zeichen, Gen2+ (in der App) 64.
 
@@ -412,6 +412,9 @@ Gerätepasswörter sind nie im Export, weil die App sie nicht speichert.
 5. **Abschluss-Export:** nochmals CSV und JSON exportieren; sie enthalten nun den Zeitpunkt jedes Werksresets.
 
 ## 12. Meldungen und Fehlerbehebung
+
+Rückfragen erscheinen als Dialog. Erfolgsmeldungen erscheinen kurz unten rechts und verschwinden von selbst; Fehler
+bleiben als Hinweis auf der Seite stehen, bis die nächste Aktion startet.
 
 | Meldung | Bedeutung / Abhilfe |
 |---|---|

@@ -35,6 +35,7 @@
     "edit": "Bearbeiten",
     "delete": "Löschen",
     "deleteQuestion": "Löschen?",
+    "deleteNamed": "«{{name}}» löschen?",
     "yes": "Ja",
     "no": "Nein",
     "all": "Alle",
@@ -273,6 +274,7 @@
     "writeName": "Name auf Gerät schreiben",
     "writeNameQuestion": "«{{name}}» auf das Gerät schreiben?",
     "writeNameConfirm": "Ja, schreiben",
+    "writeNamePasswordHint": "Passwort unten bei den Aktionen eingeben.",
     "writingName": "Schreibt …",
     "passwordHint": "Passwortgeschützt: Das Passwort wird nur für die nächste Aktion verwendet und nicht gespeichert.",
     "recentActions": "Letzte Aktionen",
@@ -398,7 +400,8 @@
     "settings": "Einstellungen",
     "changed": "Geändert",
     "apply": "Anwenden",
-    "deleteFailed": "Löschen fehlgeschlagen: {{error}}"
+    "deleteFailed": "Löschen fehlgeschlagen: {{error}}",
+    "deleted": "Template «{{name}}» gelöscht."
   },
   "templateEditor": {
     "editTitle": "Template bearbeiten",
