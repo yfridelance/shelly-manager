@@ -22,6 +22,12 @@ code {
   color: var(--danger);
 }
 
+// Path above a detail page (Inventar › Gerät).
+kern-breadcrumb.back {
+  display: block;
+  margin: 0 0 var(--space-2);
+}
+
 // Router links that look like kern-button (kern-button href would reload the page instead of routing).
 a.button {
   display: inline-flex;

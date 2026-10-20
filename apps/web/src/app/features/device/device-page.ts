@@ -1,9 +1,10 @@
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, input, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, DeviceState, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
 import { actionDetail, actionLabel, actionSummary, unconfirmedResetText } from '../../core/action-text';
-import { compareText, t } from '../../core/i18n/i18n';
+import { compareText, t, type TranslationKey } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
@@ -21,7 +22,7 @@ type SnapshotTab = 'config' | 'status' | 'info';
 
 @Component({
   selector: 'app-device-page',
-  imports: [DateTimePipe, TranslatePipe, RouterLink, EditableField, ResetDialog],
+  imports: [DateTimePipe, TranslatePipe, RouterLink, NgTemplateOutlet, EditableField, ResetDialog],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './device-page.html',
   styleUrl: './device-page.scss',
@@ -111,6 +112,11 @@ export class DevicePage {
   protected readonly formatDiffValue = formatDiffValue;
   protected readonly diffKindText = (kind: DiffEntry['kind']): string => t(`device.diff.${kind}`);
 
+  protected readonly views = [
+    { name: 'config', label: 'device.tab.config' },
+    { name: 'status', label: 'device.tab.status' },
+    { name: 'info', label: 'device.tab.info' },
+  ] as const satisfies readonly { name: SnapshotTab; label: TranslationKey }[];
   protected readonly tab = signal<SnapshotTab>('config');
   protected readonly openDepth = signal(1);
   protected readonly shown = computed(() => {
@@ -315,6 +321,11 @@ export class DevicePage {
   protected async copyShown(): Promise<void> {
     await navigator.clipboard.writeText(JSON.stringify(this.shown(), null, 2));
     this.feedback.success(t('device.copied'));
+  }
+
+  protected onTab(event: Event): void {
+    const name = kernValue(event) as SnapshotTab;
+    if (this.views.some((v) => v.name === name)) this.tab.set(name);
   }
 
   protected selectSnapshot(value: string): void {

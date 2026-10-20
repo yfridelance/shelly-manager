@@ -1,4 +1,7 @@
-<p class="back"><a routerLink="/templates">← {{ 'nav.templates' | t }}</a></p>
+<kern-breadcrumb class="back" [label]="'common.breadcrumb' | t">
+  <a routerLink="/templates">{{ 'nav.templates' | t }}</a>
+  <span>{{ (id() ? 'templateEditor.editTitle' : 'titles.newTemplate') | t }}</span>
+</kern-breadcrumb>
 <kern-page-header [heading]="(id() ? 'templateEditor.editTitle' : 'titles.newTemplate') | t" [description]="'templateEditor.intro' | t" />
 
 <form (submit)="save($event)">

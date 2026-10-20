@@ -1,6 +1,6 @@
 <kern-page-header [heading]="'nav.log' | t">
   <span class="muted">{{ 'log.count' | t: { count: filtered().length } }}</span>
-  <kern-button slot="actions" (click)="entries.reload()">{{ 'common.refresh' | t }}</kern-button>
+  <kern-button slot="actions" (click)="entries.reload()"><kern-icon name="refresh" /> {{ 'common.refresh' | t }}</kern-button>
 </kern-page-header>
 
 <kern-toolbar>

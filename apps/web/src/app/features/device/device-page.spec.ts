@@ -392,6 +392,18 @@ describe('DevicePage', () => {
     ]);
   });
 
+  it('switches between config, status and device info with kern-tabs', async () => {
+    const latest = { id: 2, takenAt: '2026-10-15T08:00:00.000Z', confirmedAt: null, info: { id: 'x' }, config: { ws: { enable: true } }, status: { uptime: 5 } };
+    const { fixture, el } = await render({ ...DETAILS, latestSnapshot: latest, snapshots: [{ id: 2, takenAt: latest.takenAt, confirmedAt: null, hasConfig: true }] });
+    const json = () => (el.querySelector('kern-json') as (Element & { data?: unknown }) | null)?.data;
+    expect([...el.querySelectorAll('kern-tab-panel')].map((p) => p.getAttribute('label'))).toEqual(['Config', 'Status', 'Geräteinfo']);
+    expect(json()).toEqual({ ws: { enable: true } });
+    el.querySelector('kern-tabs')?.dispatchEvent(new CustomEvent('kernTabChange', { detail: { value: 'status' } }));
+    await fixture.whenStable();
+    expect(json()).toEqual({ uptime: 5 });
+    expect(el.querySelectorAll('kern-json')).toHaveLength(1);
+  });
+
   it('names the template and summarizes the outcome in the recent actions', async () => {
     const fixture = TestBed.createComponent(DevicePage);
     fixture.componentRef.setInput('mac', DETAILS.device.mac);
@@ -421,7 +433,7 @@ describe('DevicePage', () => {
     const text = rows.map((r) => r.textContent?.replace(/\s+/g, ' ').trim());
     expect(text[0]).toContain('Template «test»');
     expect(text[0]).toContain('OK · 2 geändert, neu gestartet');
-    expect(rows[0]?.querySelector('td:last-child')?.getAttribute('title')).toContain('Access-Point an: Aus → Ein');
+    expect((rows[0]?.querySelector('td:last-child kern-tooltip') as (Element & { text?: string }) | null)?.text).toContain('Access-Point an: Aus → Ein');
     expect(text[1]).toContain('Template «test»');
     expect(text[1]).toContain('Template konnte nicht vollständig angewendet werden');
   });

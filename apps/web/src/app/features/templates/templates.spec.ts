@@ -201,8 +201,8 @@ describe('TemplateApply', () => {
     await tick();
     await fixture.whenStable();
 
-    expect(rows()[0]).toContain('✓ 2 Einstellungen geändert, neu gestartet');
-    expect(rows()[1]).toContain('✗ Snapshot vorher fehlgeschlagen, nichts geändert: Zugangsdaten falsch');
+    expect(rows()[0]).toContain('2 Einstellungen geändert, neu gestartet');
+    expect(rows()[1]).toContain('Snapshot vorher fehlgeschlagen, nichts geändert: Zugangsdaten falsch');
     expect(el.textContent?.replace(/\s+/g, ' ')).toContain('1 von 2 erfolgreich · 1 mit Fehler');
   });
 });
@@ -302,7 +302,7 @@ describe('network templates in the UI', () => {
     await tick();
     await fixture.whenStable();
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent?.replace(/\s+/g, ' ') ?? '');
-    expect(rows[0]).toContain('✓ 5 Einstellungen geändert, jetzt unter 192.168.10.50');
-    expect(rows[1]).toContain('✗ 4 Einstellungen geändert, unter 192.168.10.80 nicht erreichbar – bitte neu scannen');
+    expect(rows[0]).toContain('5 Einstellungen geändert, jetzt unter 192.168.10.50');
+    expect(rows[1]).toContain('4 Einstellungen geändert, unter 192.168.10.80 nicht erreichbar – bitte neu scannen');
   });
 });

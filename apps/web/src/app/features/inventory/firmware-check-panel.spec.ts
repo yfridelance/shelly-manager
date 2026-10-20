@@ -44,8 +44,8 @@ describe('Inventory: check all devices for firmware updates', () => {
     const el = fixture.nativeElement as HTMLElement;
     const button = (text: string) => [...el.querySelectorAll<HTMLElement>('kern-button')].find((b) => b.textContent?.includes(text));
     // jsdom does not upgrade kern-button, so a submit button cannot submit its form: send the submit directly.
-    const submit = () => el.querySelector('section.panel form')?.dispatchEvent(new Event('submit', { cancelable: true }));
-    const panel = () => el.querySelector<HTMLElement>('section.panel');
+    const submit = () => el.querySelector('kern-card.panel form')?.dispatchEvent(new Event('submit', { cancelable: true }));
+    const panel = () => el.querySelector<HTMLElement>('kern-card.panel');
     return { fixture, el, button, panel, submit };
   }
 
@@ -82,7 +82,7 @@ describe('Inventory: check all devices for firmware updates', () => {
     expect(panel()?.querySelectorAll('.problems li')).toHaveLength(2);
     // The row got its badge without reloading the list.
     const boilerRow = [...el.querySelectorAll('tbody tr')].find((r) => r.textContent?.includes('Boiler'));
-    expect(boilerRow?.querySelector('kern-badge')?.getAttribute('title')).toBe('Update auf 1.5.0 verfügbar');
+    expect((boilerRow?.querySelector('kern-badge')?.closest('kern-tooltip') as (Element & { text?: string }) | null)?.text).toBe('Update auf 1.5.0 verfügbar');
 
     button('Nur Geräte mit Update anzeigen')?.click();
     await fixture.whenStable();
@@ -93,7 +93,7 @@ describe('Inventory: check all devices for firmware updates', () => {
     const { fixture, el, button, submit } = await render();
     button('Alle auf Updates prüfen')?.click();
     await fixture.whenStable();
-    setKernValue(el, 'section.panel kern-input[name="password"]', 'geheim');
+    setKernValue(el, 'kern-card.panel kern-input[name="password"]', 'geheim');
     await fixture.whenStable();
     submit();
     await tick();
@@ -111,8 +111,8 @@ describe('Inventory: check all devices for firmware updates', () => {
     }
     await tick();
     await fixture.whenStable();
-    expect(el.querySelector('section.panel kern-input[name="password"]')).toBeNull();
-    expect(el.querySelector('section.panel')?.textContent).toContain('Zugangsdaten falsch');
-    expect(el.querySelector('section.panel')?.textContent?.replace(/\s+/g, ' ')).toContain('0 mit Update, 3 aktuell · 1 Fehler');
+    expect(el.querySelector('kern-card.panel kern-input[name="password"]')).toBeNull();
+    expect(el.querySelector('kern-card.panel')?.textContent).toContain('Zugangsdaten falsch');
+    expect(el.querySelector('kern-card.panel')?.textContent?.replace(/\s+/g, ' ')).toContain('0 mit Update, 3 aktuell · 1 Fehler');
   });
 });

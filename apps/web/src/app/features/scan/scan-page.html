@@ -87,7 +87,9 @@
               <td>{{ d.gen }}</td>
               <td class="mono">{{ formatMac(d.mac) }}</td>
               <td>{{ (d.authRequired ? 'scan.protected' : 'scan.open') | t }}</td>
-              <td [class.error-text]="d.snapshot === 'error'" [title]="d.error ?? ''">{{ snapshotText(d) }}</td>
+              <td [class.error-text]="d.snapshot === 'error'">
+                <kern-tooltip [text]="d.error ?? ''" [disabled]="!d.error"><span [attr.tabindex]="d.error ? 0 : null">{{ snapshotText(d) }}</span></kern-tooltip>
+              </td>
               <td>
                 @if (d.created) {
                   <kern-badge tone="accent">{{ 'scan.new' | t }}</kern-badge>

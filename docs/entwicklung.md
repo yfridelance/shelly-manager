@@ -131,9 +131,13 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
     App sortiert selbst (Gebäude-Reihenfolge der Stockwerke) und setzt `sorted`; nie `internal`, sonst ordnet Kern die
     von Angular gerenderten Zeilen um. Lange Listen (Protokoll) blättern mit einer eigenen `kern-pagination` und
     `slice()` in der Komponente.
-  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`),
-    die Tabs im Gerätedetail (eine gemeinsame JSON-Ansicht) und Router-Links mit Button-Optik (`a.button` in
-    `styles.scss`, weil `kern-button href` die Seite neu laden würde).
+  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`) und Router-Links mit
+    Button-Optik (`a.button` in `styles.scss`, weil `kern-button href` die Seite neu laden würde). Router-Links in
+    `kern-breadcrumb` sind normale `<a routerLink>`-Kinder und routen ohne Reload.
+  - Hinweise über `kern-tooltip` statt `title` (Auslöser ohne eigene Fokussierbarkeit mit `tabindex="0"`), Icons über
+    `kern-icon` statt eigener SVGs oder Unicode-Zeichen.
+  - `kern-tab-panel` mit `[attr.name]`/`[attr.label]` binden, nicht als Property: kern-tabs liest die Attribute, wenn
+    die Panels eingefügt werden, und bemerkt spätere Änderungen an ihnen nicht (Kern 0.7.0).
   - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit
     übersetzten Labels aufruft; Fehler bleiben als `kern-alert` auf der Seite. Der Reset-Dialog bleibt eigen (MAC oder
     Gerätename, Override, AP-Hinweis). In Specs `provideFeedbackStub()` aus `src/testing/feedback.ts`: beantwortet

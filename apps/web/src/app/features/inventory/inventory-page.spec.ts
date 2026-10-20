@@ -149,7 +149,7 @@ describe('InventoryPage', () => {
 
   it('marks and filters devices with a firmware update', async () => {
     const { fixture, el, names } = await render();
-    expect(el.querySelector('tbody tr:nth-child(2) kern-badge')?.getAttribute('title')).toBe('Update auf v1.14.1 verfügbar');
+    expect((el.querySelector('tbody tr:nth-child(2) kern-badge')?.closest('kern-tooltip') as (Element & { text?: string }) | null)?.text).toBe('Update auf v1.14.1 verfügbar');
     expect(el.textContent).toContain('nur mit Firmware-Update (1)');
     TestBed.inject(InventoryFilters).onlyUpdates.set(true);
     await fixture.whenStable();

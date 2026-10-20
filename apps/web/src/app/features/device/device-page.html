@@ -1,8 +1,10 @@
-<p class="back"><a routerLink="/inventar">← {{ 'nav.inventory' | t }}</a></p>
-
 @if (details.error()) {
   <kern-alert tone="danger" role="alert">{{ 'device.notFound' | t: { mac: mac() } }}</kern-alert>
 } @else if (device(); as d) {
+  <kern-breadcrumb class="back" [label]="'common.breadcrumb' | t">
+    <a routerLink="/inventar">{{ 'nav.inventory' | t }}</a>
+    <span>{{ d.name ?? ('common.unnamed' | t) }}</span>
+  </kern-breadcrumb>
   <kern-page-header [heading]="d.name ?? ('common.unnamed' | t)">
     <kern-status [tone]="stateTone(d.state)">{{ stateText(d.state) }}</kern-status>
     <kern-badge>Gen{{ d.gen }}</kern-badge>
@@ -19,7 +21,7 @@
           @if (d.deviceId) {
             <kern-copy [label]="'device.copy' | t">{{ d.deviceId }}</kern-copy>
           } @else {
-            <span class="muted" [title]="'device.deviceIdUnknown' | t">{{ 'device.unknownYet' | t }}</span>
+            <kern-tooltip [text]="'device.deviceIdUnknown' | t"><span class="muted" tabindex="0">{{ 'device.unknownYet' | t }}</span></kern-tooltip>
           }
         </kern-kv-item>
         <kern-kv-item [label]="'columns.mac' | t"><kern-copy [label]="'device.copy' | t">{{ formatMac(d.mac) }}</kern-copy></kern-kv-item>
@@ -32,7 +34,7 @@
         </kern-kv-item>
         <kern-kv-item [label]="'columns.ip' | t" mono>
           @if (d.ip) {
-            <a [href]="'http://' + d.ip" target="_blank" rel="noopener">{{ d.ip }}</a>
+            <kern-link [href]="'http://' + d.ip" external [labelExternal]="'common.opensInNewTab' | t">{{ d.ip }}</kern-link>
           } @else {
             –
           }
@@ -42,11 +44,13 @@
           @if (d.functions) {
             {{ functionsText(d.functions) || '–' }}
           } @else {
-            <span class="muted" [title]="'device.functionUnknown' | t">{{ 'device.unknownYet' | t }}</span>
+            <kern-tooltip [text]="'device.functionUnknown' | t"><span class="muted" tabindex="0">{{ 'device.unknownYet' | t }}</span></kern-tooltip>
           }
         </kern-kv-item>
         <kern-kv-item [label]="'inventory.generation' | t">Gen{{ d.gen }}</kern-kv-item>
-        <kern-kv-item [label]="'columns.firmware' | t" mono><span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span></kern-kv-item>
+        <kern-kv-item [label]="'columns.firmware' | t" mono>
+          <kern-tooltip [text]="d.firmware ?? ''" [disabled]="!d.firmware"><span tabindex="0">{{ shortFirmware(d.firmware) }}</span></kern-tooltip>
+        </kern-kv-item>
         <kern-kv-item [label]="'scan.protection' | t">{{ (d.authRequired ? 'common.passwordProtected' : 'device.unprotected') | t }}</kern-kv-item>
         <kern-kv-item [label]="'device.nameOnDevice' | t">{{ d.deviceName ?? '–' }}</kern-kv-item>
         <kern-kv-item [label]="'device.firstSeen' | t">{{ d.firstSeen | dateTime }}</kern-kv-item>
@@ -102,7 +106,10 @@
         }
       </div>
       <div class="doc-field">
-        <h3 [title]="'device.floorHint' | t">{{ 'device.floor' | t }}</h3>
+        <h3>
+          {{ 'device.floor' | t }}
+          <kern-tooltip [text]="'device.floorHint' | t"><kern-icon class="info" name="info" tabindex="0" [label]="'device.floorHint' | t" /></kern-tooltip>
+        </h3>
         <app-editable-field [label]="'device.floor' | t" listId="floor-suggestions" [value]="d.floor" [saving]="saving()" (saved)="saveField('floor', $event)" />
       </div>
       <div class="doc-field">
@@ -116,7 +123,10 @@
         />
       </div>
       <div class="doc-field">
-        <h3 [title]="'device.kindHint' | t">{{ 'device.kind' | t }}</h3>
+        <h3>
+          {{ 'device.kind' | t }}
+          <kern-tooltip [text]="'device.kindHint' | t"><kern-icon class="info" name="info" tabindex="0" [label]="'device.kindHint' | t" /></kern-tooltip>
+        </h3>
         <app-editable-field [label]="'device.kind' | t" listId="kind-suggestions" [value]="d.kind" [saving]="saving()" (saved)="saveField('kind', $event)" />
       </div>
       <div class="doc-field">
@@ -159,12 +169,14 @@
       <div class="firmware">
         <h3>{{ 'columns.firmware' | t }}</h3>
         <p>
-          {{ 'device.firmware.installed' | t }} <span [title]="d.firmware ?? ''">{{ shortFirmware(d.firmware) }}</span>
+          {{ 'device.firmware.installed' | t }}
+          <kern-tooltip [text]="d.firmware ?? ''" [disabled]="!d.firmware"><span tabindex="0">{{ shortFirmware(d.firmware) }}</span></kern-tooltip>
           @if (d.updateStable) {
-            · <kern-badge tone="warn">{{ 'device.firmware.updateAvailable' | t }} <span [title]="d.updateStable">{{ shortFirmware(d.updateStable) }}</span></kern-badge>
+            · <kern-tooltip [text]="d.updateStable"><kern-badge tone="warn" tabindex="0">{{ 'device.firmware.updateAvailable' | t }} {{ shortFirmware(d.updateStable) }}</kern-badge></kern-tooltip>
           }
           @if (d.updateBeta) {
-            · {{ 'device.firmware.beta' | t }} <span [title]="d.updateBeta">{{ shortFirmware(d.updateBeta) }}</span>
+            · {{ 'device.firmware.beta' | t }}
+            <kern-tooltip [text]="d.updateBeta"><span tabindex="0">{{ shortFirmware(d.updateBeta) }}</span></kern-tooltip>
           }
           @if (d.updateCheckedAt) {
             @if (!d.updateStable && !d.updateBeta) {
@@ -214,17 +226,21 @@
             <tr>
               <td>{{ a.requestedAt | dateTime: 'seconds' }}</td>
               <td>{{ actionLabel(a) }}</td>
-              <td [title]="actionDetail(a) || (a.error ?? '')">
-                @if (a.result === 'ok') {
-                  <kern-status tone="ok">{{ 'common.ok' | t }}</kern-status>
-                  @if (actionSummary(a); as summary) {
-                    <span class="muted"> · {{ summary }}</span>
-                  }
-                } @else if (a.result === 'error') {
-                  <kern-status tone="danger">{{ actionSummary(a) }}</kern-status>
-                } @else {
-                  <kern-status tone="busy">{{ 'common.running' | t }}</kern-status>
-                }
+              <td>
+                <kern-tooltip [text]="actionDetail(a) || (a.error ?? '')" [disabled]="!(actionDetail(a) || a.error)">
+                  <span [attr.tabindex]="actionDetail(a) || a.error ? 0 : null">
+                    @if (a.result === 'ok') {
+                      <kern-status tone="ok">{{ 'common.ok' | t }}</kern-status>
+                      @if (actionSummary(a); as summary) {
+                        <span class="muted"> · {{ summary }}</span>
+                      }
+                    } @else if (a.result === 'error') {
+                      <kern-status tone="danger">{{ actionSummary(a) }}</kern-status>
+                    } @else {
+                      <kern-status tone="busy">{{ 'common.running' | t }}</kern-status>
+                    }
+                  </span>
+                </kern-tooltip>
               </td>
             </tr>
           }
@@ -269,21 +285,29 @@
 
 
     @if (snapshot(); as s) {
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'config'" (click)="tab.set('config')">{{ 'device.tab.config' | t }}</button>
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'status'" (click)="tab.set('status')">{{ 'device.tab.status' | t }}</button>
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'info'" (click)="tab.set('info')">{{ 'device.tab.info' | t }}</button>
+      <div class="view-actions">
+        @if (s.confirmedAt && compareId() === null) {
+          <span class="muted snapshot-confirmed">
+            {{ 'device.snapshotConfirmed' | t: { taken: (s.takenAt | dateTime), confirmed: (s.confirmedAt | dateTime) } }}
+          </span>
+        }
         <span class="spacer"></span>
         <kern-button size="sm" variant="ghost" (click)="openDepth.set(99)">{{ 'device.expandAll' | t }}</kern-button>
         <kern-button size="sm" variant="ghost" (click)="openDepth.set(1)">{{ 'device.collapse' | t }}</kern-button>
-        <kern-button size="sm" variant="ghost" (click)="copyShown()">{{ 'device.copyJson' | t }}</kern-button>
+        <kern-button size="sm" variant="ghost" (click)="copyShown()"><kern-icon name="copy" /> {{ 'device.copyJson' | t }}</kern-button>
       </div>
-      @if (s.confirmedAt && compareId() === null) {
-        <p class="muted snapshot-confirmed">
-          {{ 'device.snapshotConfirmed' | t: { taken: (s.takenAt | dateTime), confirmed: (s.confirmedAt | dateTime) } }}
-        </p>
-      }
-      <div class="json" role="tabpanel">
+      <kern-tabs [label]="'device.configuration' | t" [value]="tab()" (kernTabChange)="onTab($event)">
+        @for (v of views; track v.name) {
+          <!-- Attributes, not properties: kern-tabs reads them once when the panels are added. -->
+          <kern-tab-panel [attr.name]="v.name" [attr.label]="v.label | t">
+            @if (tab() === v.name) {
+              <ng-container [ngTemplateOutlet]="view" />
+            }
+          </kern-tab-panel>
+        }
+      </kern-tabs>
+      <ng-template #view>
+      <div class="json">
         @if (compareId() !== null) {
           @if (comparison(); as c) {
             <p class="diff-summary">
@@ -329,6 +353,7 @@
           <kern-json [data]="shown()" [openDepth]="openDepth()" />
         }
       </div>
+      </ng-template>
     } @else {
       <p class="muted">
         {{ 'device.noSnapshot' | t }}

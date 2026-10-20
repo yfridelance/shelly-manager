@@ -19,7 +19,9 @@ import { TranslatePipe } from '../core/i18n/pipes';
           <kern-button size="sm" variant="ghost" (click)="cancel()">{{ 'common.cancel' | t }}</kern-button>
           @if (suggestion(); as s) {
             @if (s !== draft()) {
-              <kern-button size="sm" variant="ghost" [title]="s" (click)="draft.set(s)">{{ 'common.insertSuggestion' | t }}</kern-button>
+              <kern-tooltip [text]="s">
+                <kern-button size="sm" variant="ghost" (click)="draft.set(s)">{{ 'common.insertSuggestion' | t }}</kern-button>
+              </kern-tooltip>
             }
           }
         </div>
@@ -30,7 +32,9 @@ import { TranslatePipe } from '../core/i18n/pipes';
         <kern-button size="sm" variant="ghost" class="edit-button" [attr.label]="'common.editLabel' | t: { label: label() }" (click)="start()">{{ 'common.edit' | t }}</kern-button>
         @if (suggestion(); as s) {
           @if (s !== value()) {
-            <kern-button size="sm" variant="ghost" class="suggestion" [title]="'common.suggestionHint' | t" (click)="edit(s)">{{ 'common.useSuggestion' | t: { value: s } }}</kern-button>
+            <kern-tooltip [text]="'common.suggestionHint' | t">
+              <kern-button size="sm" variant="ghost" class="suggestion" (click)="edit(s)">{{ 'common.useSuggestion' | t: { value: s } }}</kern-button>
+            </kern-tooltip>
           }
         }
       </div>
