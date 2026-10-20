@@ -37,6 +37,7 @@
     "deleteQuestion": "Löschen?",
     "deleteNamed": "«{{name}}» löschen?",
     "breadcrumb": "Pfad",
+    "notifications": "Benachrichtigungen",
     "opensInNewTab": "öffnet in neuem Tab",
     "yes": "Ja",
     "no": "Nein",

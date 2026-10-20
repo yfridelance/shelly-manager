@@ -136,8 +136,6 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
     `kern-breadcrumb` sind normale `<a routerLink>`-Kinder und routen ohne Reload.
   - Hinweise über `kern-tooltip` statt `title` (Auslöser ohne eigene Fokussierbarkeit mit `tabindex="0"`), Icons über
     `kern-icon` statt eigener SVGs oder Unicode-Zeichen.
-  - `kern-tab-panel` mit `[attr.name]`/`[attr.label]` binden, nicht als Property: kern-tabs liest die Attribute, wenn
-    die Panels eingefügt werden, und bemerkt spätere Änderungen an ihnen nicht (Kern 0.7.0).
   - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit
     übersetzten Labels aufruft; Fehler bleiben als `kern-alert` auf der Seite. Der Reset-Dialog bleibt eigen (MAC oder
     Gerätename, Override, AP-Hinweis). In Specs `provideFeedbackStub()` aus `src/testing/feedback.ts`: beantwortet

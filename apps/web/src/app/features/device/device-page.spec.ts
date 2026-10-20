@@ -396,7 +396,7 @@ describe('DevicePage', () => {
     const latest = { id: 2, takenAt: '2026-10-15T08:00:00.000Z', confirmedAt: null, info: { id: 'x' }, config: { ws: { enable: true } }, status: { uptime: 5 } };
     const { fixture, el } = await render({ ...DETAILS, latestSnapshot: latest, snapshots: [{ id: 2, takenAt: latest.takenAt, confirmedAt: null, hasConfig: true }] });
     const json = () => (el.querySelector('kern-json') as (Element & { data?: unknown }) | null)?.data;
-    expect([...el.querySelectorAll('kern-tab-panel')].map((p) => p.getAttribute('label'))).toEqual(['Config', 'Status', 'Geräteinfo']);
+    expect([...el.querySelectorAll('kern-tab-panel')].map((p) => (p as Element & { label?: string }).label)).toEqual(['Config', 'Status', 'Geräteinfo']);
     expect(json()).toEqual({ ws: { enable: true } });
     el.querySelector('kern-tabs')?.dispatchEvent(new CustomEvent('kernTabChange', { detail: { value: 'status' } }));
     await fixture.whenStable();

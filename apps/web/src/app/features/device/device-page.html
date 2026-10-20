@@ -298,8 +298,7 @@
       </div>
       <kern-tabs [label]="'device.configuration' | t" [value]="tab()" (kernTabChange)="onTab($event)">
         @for (v of views; track v.name) {
-          <!-- Attributes, not properties: kern-tabs reads them once when the panels are added. -->
-          <kern-tab-panel [attr.name]="v.name" [attr.label]="v.label | t">
+          <kern-tab-panel [name]="v.name" [label]="v.label | t">
             @if (tab() === v.name) {
               <ng-container [ngTemplateOutlet]="view" />
             }

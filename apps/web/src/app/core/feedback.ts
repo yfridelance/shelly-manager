@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { confirm, toast } from '@yfridelance/kern/components';
+import { confirm, setToastRegionLabel, toast } from '@yfridelance/kern/components';
 import { t } from './i18n/i18n';
 
 export interface ConfirmRequest {
@@ -25,6 +25,8 @@ export class Feedback {
 
   /** Short success message at the bottom right that closes itself. */
   success(message: string): void {
+    // Set on every toast, so a language switch reaches the shared live region too.
+    setToastRegionLabel(t('common.notifications'));
     void toast({ message, tone: 'ok', closeLabel: t('common.close') });
   }
 }
