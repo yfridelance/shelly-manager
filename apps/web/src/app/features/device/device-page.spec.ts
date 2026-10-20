@@ -19,6 +19,7 @@ const DETAILS: DeviceDetails = {
 import { setKernChecked, setKernValue } from '../../../testing/kern';
 import { FeedbackStub, provideFeedbackStub } from '../../../testing/feedback';
 import { Feedback } from '../../core/feedback';
+import { formatDate } from '../../core/i18n/i18n';
 
 /** Lets the confirmation promise resolve before the request is expected. */
 const tick = () => new Promise((r) => setTimeout(r));
@@ -80,9 +81,9 @@ describe('DevicePage', () => {
     const { fixture, el } = await render();
     el.querySelector<HTMLElement>('kern-button[label="Ort bearbeiten"]')?.click();
     await fixture.whenStable();
-    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
+    const input = el.querySelector<HTMLInputElement & { suggestions?: string[] }>('app-editable-field kern-input');
     type(input, 'Büro OG');
-    input?.form?.dispatchEvent(new Event('submit'));
+    input?.closest('form')?.dispatchEvent(new Event('submit'));
 
     const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
     expect(patch.request.body).toEqual({ location: 'Büro OG' });
@@ -109,7 +110,7 @@ describe('DevicePage', () => {
     const el = fixture.nativeElement as HTMLElement;
     button(el, 'Vorschlag: EG Büro Storen 2')?.click();
     await fixture.whenStable();
-    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
+    const input = el.querySelector<HTMLInputElement & { suggestions?: string[] }>('app-editable-field kern-input');
     expect(input?.value).toBe('EG Büro Storen 2');
     // In the editor the suggestion can be inserted again after typing.
     type(input, 'x');
@@ -118,7 +119,7 @@ describe('DevicePage', () => {
     await fixture.whenStable();
     expect(input?.value).toBe('EG Büro Storen 2');
     http.expectNone({ method: 'PATCH' });
-    input?.form?.dispatchEvent(new Event('submit'));
+    input?.closest('form')?.dispatchEvent(new Event('submit'));
     expect(http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' }).request.body).toEqual({ name: 'EG Büro Storen 2' });
   });
 
@@ -126,11 +127,10 @@ describe('DevicePage', () => {
     const { fixture, el } = await render();
     el.querySelector<HTMLElement>('kern-button[label="Stockwerk bearbeiten"]')?.click();
     await fixture.whenStable();
-    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
-    expect(input?.getAttribute('list')).toBe('floor-suggestions');
-    expect([...el.querySelectorAll('#floor-suggestions option')].map((o) => o.getAttribute('value'))).toEqual(['UG', 'EG', 'OG', 'DG']);
+    const input = el.querySelector<HTMLInputElement & { suggestions?: string[] }>('app-editable-field kern-input');
+    expect(input?.suggestions).toEqual(['UG', 'EG', 'OG', 'DG']);
     type(input, '1. OG');
-    input?.form?.dispatchEvent(new Event('submit'));
+    input?.closest('form')?.dispatchEvent(new Event('submit'));
     const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
     expect(patch.request.body).toEqual({ floor: '1. OG' });
     patch.flush({ ...DETAILS.device, floor: '1. OG' });
@@ -168,10 +168,10 @@ describe('DevicePage', () => {
     expect(el.textContent).toContain('Rollladen · Messung');
     el.querySelector<HTMLElement>('kern-button[label="Typ bearbeiten"]')?.click();
     await fixture.whenStable();
-    const input = el.querySelector<HTMLInputElement>('app-editable-field input');
-    expect(input?.getAttribute('list')).toBe('kind-suggestions');
+    const input = el.querySelector<HTMLInputElement & { suggestions?: string[] }>('app-editable-field kern-input');
+    expect(input?.suggestions).toContain('Storen');
     type(input, 'Storen');
-    input?.form?.dispatchEvent(new Event('submit'));
+    input?.closest('form')?.dispatchEvent(new Event('submit'));
     const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
     expect(patch.request.body).toEqual({ kind: 'Storen' });
     patch.flush({ ...DETAILS.device, functions, kind: 'Storen' });
@@ -380,16 +380,15 @@ describe('DevicePage', () => {
     http.expectOne('/api/devices/A8032AB67890/snapshots/1').flush(older);
     await fixture.whenStable();
 
-    expect(el.textContent).toContain('3 Unterschiede: 1 geändert, 1 neu, 1 entfernt');
-    const headers = [...el.querySelectorAll('table.diff thead th')].map((th) => th.textContent?.trim());
-    expect(headers[1]).not.toContain('bestätigt');
-    expect(headers[2]).toContain('bestätigt bis 16.10.2026');
-    const rows = [...el.querySelectorAll('table.diff tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent?.trim()));
-    expect(rows).toEqual([
-      ['mqtt', '{"enable":false}', '', 'entfernt'],
-      ['sys.device.name', '"Alt"', '"Neu"', 'geändert'],
-      ['ws', '', '{"enable":true}', 'neu'],
-    ]);
+    // kern-json-diff renders the rows; the app passes the older snapshot as «from» and the labels.
+    const diff = el.querySelector('kern-json-diff') as (Element & { from?: unknown; to?: unknown; labelBefore?: string; labelAfter?: string; labelSummary?: string }) | null;
+    expect(diff?.from).toEqual(older.config);
+    expect(diff?.to).toEqual(latest.config);
+    expect(diff?.labelSummary).toBe('3 Unterschiede: 1 geändert, 1 neu, 1 entfernt');
+    // Formatted in the browser's time zone (CI runs in UTC).
+    expect(diff?.labelBefore).toBe(`Vorher (${formatDate(older.takenAt)})`);
+    expect(diff?.labelAfter).toBe(`Nachher (${formatDate(latest.takenAt)})`);
+    expect(diff?.labelBefore).toMatch(/^Vorher \(14\.10\.2026 \d\d:\d\d\)$/);
   });
 
   it('switches between config, status and device info with kern-tabs', async () => {

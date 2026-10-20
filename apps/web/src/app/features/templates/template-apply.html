@@ -19,16 +19,22 @@
     <span slot="meta" class="muted">{{ 'templateApply.selected' | t: { count: selectedDevices().length } }}</span>
     <kern-toolbar>
       <kern-input type="search" size="sm" [ariaLabelText]="'templateApply.search' | t" [placeholder]="'templateApply.search' | t" [value]="search()" (kernInput)="search.set(value($event))" />
-      <kern-button size="sm" variant="ghost" (click)="selectAll(true)" [disabled]="running()">{{ 'templateApply.selectVisible' | t }}</kern-button>
       <kern-button size="sm" variant="ghost" (click)="selectChanging()" [disabled]="running()">{{ 'templateApply.selectChanging' | t }}</kern-button>
-      <kern-button size="sm" variant="ghost" (click)="selectAll(false)" [disabled]="running()">{{ 'templateApply.selectNone' | t }}</kern-button>
+      <kern-button size="sm" variant="ghost" (click)="selectNone()" [disabled]="running()">{{ 'templateApply.selectNone' | t }}</kern-button>
     </kern-toolbar>
     <p class="muted small">{{ 'templateApply.previewHint' | t }}</p>
-    <kern-table>
+    <kern-table
+      selectable
+      [selected]="selectedKeys()"
+      [expanded]="expandedKeys()"
+      [labelSelectAll]="'templateApply.selectVisible' | t"
+      [labelSelectRow]="'templateApply.selectRow' | t"
+      (kernSelectionChange)="onSelection($event)"
+      (kernRowToggle)="onRowToggle($event)"
+    >
     <table>
       <thead>
         <tr>
-          <th></th>
           <th>{{ 'columns.name' | t }}</th>
           <th>{{ 'columns.model' | t }}</th>
           <th>{{ 'columns.gen' | t }}</th>
@@ -42,15 +48,7 @@
       </thead>
       <tbody>
         @for (d of visible(); track d.mac) {
-          <tr>
-            <td>
-              <kern-checkbox
-                [label]="'templateApply.selectDevice' | t: { name: d.name ?? d.mac }"
-                [checked]="selected().has(d.mac)"
-                [disabled]="running()"
-                (kernChange)="toggle(d.mac, checked($event))"
-              />
-            </td>
+          <tr [attr.data-key]="d.mac">
             <td>
               <a [routerLink]="['/inventar', d.mac]">{{ d.name ?? formatMac(d.mac) }}</a>
               @if (d.authRequired) {
@@ -61,8 +59,8 @@
             <td>{{ d.gen }}</td>
             <td class="mono">{{ d.ip }}</td>
             <td>
-              <button type="button" [class]="'preview ' + summary(d.mac).kind" [attr.aria-expanded]="expanded() === d.mac" (click)="expanded.set(expanded() === d.mac ? null : d.mac)">
-                {{ summary(d.mac).text }}
+              <button type="button" kern-expand [class]="'preview ' + summary(d.mac).kind">
+                <kern-icon name="chevron-right" /> {{ summary(d.mac).text }}
               </button>
             </td>
             @for (iface of staticIfaces(); track iface) {
@@ -92,10 +90,9 @@
               }
             </td>
           </tr>
-          @if (expanded() === d.mac) {
-            <tr class="details">
-              <td></td>
-              <td [attr.colspan]="6 + staticIfaces().length">
+          <tr kern-details class="details">
+            <td>
+              @if (expandedKeys().includes(d.mac)) {
                 @if (results()[d.mac]?.result; as r) {
                   <strong>{{ 'templateApply.resultLabel' | t }}</strong>
                   <ul>
@@ -115,9 +112,9 @@
                     }
                   </ul>
                 }
-              </td>
-            </tr>
-          }
+              }
+            </td>
+          </tr>
         } @empty {
           <tr>
             <td [attr.colspan]="7 + staticIfaces().length" class="empty">{{ 'templateApply.noDevices' | t }}</td>

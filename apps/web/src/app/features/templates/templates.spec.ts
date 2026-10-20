@@ -161,7 +161,7 @@ describe('TemplateApply', () => {
 
   it('previews per device and applies to the chosen ones after one confirmation', async () => {
     const { fixture, el, button } = await render();
-    const rows = () => [...el.querySelectorAll('tbody tr')].map((r) => r.textContent?.replace(/\s+/g, ' ') ?? '');
+    const rows = () => [...el.querySelectorAll('tbody tr:not([kern-details])')].map((r) => r.textContent?.replace(/\s+/g, ' ') ?? '');
     expect(rows()).toHaveLength(4); // the reset device is not offered
     expect(rows()[0]).toContain('1 Änderung');
     expect(rows()[1]).toContain('kein Snapshot');
@@ -171,6 +171,17 @@ describe('TemplateApply', () => {
     button('nur mit Änderungen')?.click();
     await fixture.whenStable();
     expect(el.textContent).toContain('2 ausgewählt');
+    const table = el.querySelector('kern-table') as (Element & { selected?: string[]; expanded?: string[] }) | null;
+    expect(table?.selected).toEqual(['A8032AB12345', '7C2C67B2B2B2']);
+    expect([...el.querySelectorAll('tbody tr[data-key]')].map((r) => r.getAttribute('data-key'))).toHaveLength(4);
+
+    // Details per device: kern-table reports the toggle, the app renders the preview into the detail row.
+    const details = (mac: string) => el.querySelector(`tr[data-key="${mac}"] + tr[kern-details]`)?.textContent?.replace(/\s+/g, ' ') ?? '';
+    expect(details('A8032AB12345').trim()).toBe('');
+    table?.dispatchEvent(new CustomEvent('kernRowToggle', { detail: { key: 'A8032AB12345', open: true } }));
+    await fixture.whenStable();
+    expect(table?.expanded).toEqual(['A8032AB12345']);
+    expect(details('A8032AB12345')).toContain('MQTT aktiv');
 
     fill(el, 'password', 'gen4-secret');
     fill(el, 'mqttPassword', 'mqtt-geheim');
@@ -270,7 +281,8 @@ describe('network templates in the UI', () => {
     expect([...el.querySelectorAll('thead th')].map((t) => t.textContent?.trim())).toContain('Neue IP');
     expect(el.textContent).toContain('Dieses Template ändert Netzwerkeinstellungen');
 
-    [...el.querySelectorAll<HTMLElement & { disabled?: boolean }>('kern-button, button')].find((b) => b.textContent?.includes('alle sichtbaren'))?.click();
+    // Header checkbox of kern-table: all visible rows.
+    el.querySelector('kern-table')?.dispatchEvent(new CustomEvent('kernSelectionChange', { detail: { selected: ['A8032AB12345', 'E868E7A1B2C3'] }, cancelable: true }));
     await tick();
     TestBed.tick();
     // Selection changed: the IPs are planned again for exactly these devices.
@@ -301,7 +313,7 @@ describe('network templates in the UI', () => {
     for (const req of http.match(() => true)) req.flush([]);
     await tick();
     await fixture.whenStable();
-    const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent?.replace(/\s+/g, ' ') ?? '');
+    const rows = [...el.querySelectorAll('tbody tr:not([kern-details])')].map((r) => r.textContent?.replace(/\s+/g, ' ') ?? '');
     expect(rows[0]).toContain('5 Einstellungen geändert, jetzt unter 192.168.10.50');
     expect(rows[1]).toContain('4 Einstellungen geändert, unter 192.168.10.80 nicht erreichbar – bitte neu scannen');
   });

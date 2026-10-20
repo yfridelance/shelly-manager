@@ -113,7 +113,10 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   gepinnt (keine Install-Scripts nötig). Neue Version: Release in Kern erstellen (publiziert auf npm), dann
   `npm install -w apps/web @yfridelance/kern@X.Y.Z --save-exact`. Dokumentation: https://yfridelance.github.io/kern/.
   - `kern.css` (Tokens, Theme, Grundstile) steht in `angular.json` → `styles`; `core/kern.ts` (`defineKern()` in
-    `main.ts`) registriert die benutzten `kern-*`-Elemente und setzt das gespeicherte Theme. Dark ist Standard;
+    `main.ts`) registriert die Elemente der Kopfzeile und der meisten Seiten und setzt das gespeicherte Theme.
+    Elemente, die nur einzelne Seiten brauchen (Tabs, JSON, Diff, IP-/Zahlenfelder, Pagination, Listen, Breadcrumb),
+    lädt die Route zusammen mit der Seite (`core/kern-lazy.ts`, `page()` in `app.routes.ts`); so bleibt das
+    Initial-Bundle klein. Wer ein solches Element auf einer weiteren Seite nutzt, ergänzt es dort in der Route. Dark ist Standard;
     `index.html` setzt `data-theme` schon vor dem ersten Rendern aus `localStorage['kern-theme']`,
     `<kern-theme-toggle>` in der Kopfzeile schaltet um.
   - Importe nur aus `@yfridelance/kern/components` bzw. `@yfridelance/kern/components/kern-*.js` (Custom-Elements-Build),
@@ -123,17 +126,24 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
     `(kernChange)` bei `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`, `kern-step-input`; auslesen mit
     `kernValue($event)` / `kernChecked($event)` / `kernNumber($event)` aus `core/kern.ts`. Optionen von `kern-select`
     als Kind-`<option>` (`@for` funktioniert).
-  - IP-Felder sind `kern-ip-input` (Scan: `single range cidr`, Templates: `single`); vor dem Senden `normalizeIp()`,
-    damit Kurzformen wie `10.0.0.1-50` beim Server in voller Form ankommen. Kern-Texte (`label…`-Props) kommen aus
+  - IP-Felder sind `kern-ip-input` (Scan: `single range cidr`, Templates: `single`, Netzmasken: `mask`); vor dem
+    Senden `normalizeIp()` bzw. `normalizeMask()`, damit Kurzformen wie `10.0.0.1-50` oder `/24` beim Server in voller
+    Form ankommen. Kern-Texte (`label…`-Props) kommen aus
     `ipInput.*` bzw. `stepInput.*` in den Locale-Dateien.
   - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`). Sortierbare
     Spalten mit `<th sortable data-key [attr.sorted]>` und `controlled="external"`: kern-table meldet `kernSort`, die
     App sortiert selbst (Gebäude-Reihenfolge der Stockwerke) und setzt `sorted`; nie `internal`, sonst ordnet Kern die
     von Angular gerenderten Zeilen um. Lange Listen (Protokoll) blättern mit einer eigenen `kern-pagination` und
-    `slice()` in der Komponente.
-  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`) und Router-Links mit
-    Button-Optik (`a.button` in `styles.scss`, weil `kern-button href` die Seite neu laden würde). Router-Links in
-    `kern-breadcrumb` sind normale `<a routerLink>`-Kinder und routen ohne Reload.
+    `slice()` in der Komponente. Auswahl (`selectable`, `[selected]`, `kernSelectionChange`) und Detail-Zeilen
+    (`<tr kern-details>` nach der Zeile, `<button kern-expand>`, `[expanded]`, `kernRowToggle`) über kern-table; Zeilen
+    tragen `[attr.data-key]`, die App hält Auswahl und offene Zeilen als Signals.
+  - Router-Links mit Button-Optik: `kern-button href="/…"` plus die Directive `KernRouterLink`
+    (`core/kern-router-link.ts`, im `imports` der Komponente). Sie fängt Kerns `kernNavigate` ab und routet über den
+    Angular-Router; Ctrl-Klick, `download` und `/api/…`-Links bleiben normale Links. In `kern-breadcrumb` genügen
+    normale `<a routerLink>`-Kinder.
+  - Inline-Bearbeitung (`app-editable-field`) mit `kern-input [suggestions]` bzw. `kern-textarea`; Enter speichert,
+    Escape bricht ab, ausser kern-input hat die Taste schon für die Vorschlagsliste verwendet (`defaultPrevented`).
+  - Snapshot-Vergleich mit `kern-json-diff`; die Zusammenfassung mit Plural formatiert die App (Kerns `diffJson()`).
   - Hinweise über `kern-tooltip` statt `title` (Auslöser ohne eigene Fokussierbarkeit mit `tabindex="0"`), Icons über
     `kern-icon` statt eigener SVGs oder Unicode-Zeichen.
   - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit

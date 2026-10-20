@@ -1,10 +1,11 @@
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, input, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { NgTemplateOutlet } from '@angular/common';
+import { diffJson } from '@yfridelance/kern/components';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, DeviceState, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
 import { actionDetail, actionLabel, actionSummary, unconfirmedResetText } from '../../core/action-text';
-import { compareText, t, type TranslationKey } from '../../core/i18n/i18n';
+import { compareText, formatDate, t, type TranslationKey } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
@@ -15,7 +16,6 @@ import { kernValue } from '../../core/kern';
 import { Feedback } from '../../core/feedback';
 import { COMMON_FLOORS, compareFloor } from '../../core/floor';
 import { suggestDeviceName } from '../../core/device-name';
-import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
 import { ResetDialog } from './reset-dialog';
 
 type SnapshotTab = 'config' | 'status' | 'info';
@@ -101,16 +101,28 @@ export class DevicePage {
     if (id === latest?.id) return latest;
     return this.compared.hasValue() ? this.compared.value() : null;
   });
-  /** Older snapshot as "before", newer as "after", regardless of which one was picked first. */
-  protected readonly comparison = computed<{ before: Snapshot; after: Snapshot; entries: DiffEntry[] } | null>(() => {
+  /**
+   * Older snapshot as "before", newer as "after", regardless of which one was picked first. kern-json-diff shows the
+   * rows; the summary is formatted here because it needs plural forms.
+   */
+  protected readonly comparison = computed<{ before: Snapshot; after: Snapshot; count: number; summary: string } | null>(() => {
     const a = this.snapshot();
     const b = this.compareSnapshot();
     if (!a || !b) return null;
     const [before, after] = a.takenAt <= b.takenAt ? [a, b] : [b, a];
-    return { before, after, entries: diffJson(before[this.tab()], after[this.tab()]) };
+    const entries = diffJson(before[this.tab()], after[this.tab()]);
+    const count = (kind: string) => entries.filter((e) => e.kind === kind).length;
+    const summary = t('device.diff.summary', { count: entries.length, changed: count('changed'), added: count('added'), removed: count('removed') });
+    return { before, after, count: entries.length, summary };
   });
-  protected readonly formatDiffValue = formatDiffValue;
-  protected readonly diffKindText = (kind: DiffEntry['kind']): string => t(`device.diff.${kind}`);
+
+  /**
+   * Column title of a snapshot in the comparison: «Vorher (14.10.2026 08:00)». Short on purpose (the columns don't
+   * wrap); how long a snapshot was confirmed is in the snapshot selects above.
+   */
+  protected diffHeading(key: 'device.diff.before' | 'device.diff.after', s: Snapshot): string {
+    return `${t(key)} (${formatDate(s.takenAt)})`;
+  }
 
   protected readonly views = [
     { name: 'config', label: 'device.tab.config' },
@@ -341,10 +353,6 @@ export class DevicePage {
   /** Id of the snapshot currently shown (the latest when none is selected). */
   protected shownId(): number | null {
     return this.selectedId() ?? (this.details.hasValue() ? (this.details.value().latestSnapshot?.id ?? null) : null);
-  }
-
-  protected countKind(entries: DiffEntry[], kind: DiffEntry['kind']): number {
-    return entries.filter((e) => e.kind === kind).length;
   }
 
   protected readonly value = kernValue;

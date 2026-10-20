@@ -9,14 +9,15 @@ import { groupTitles } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
 import { Feedback } from '../../core/feedback';
+import { KernRouterLink } from '../../core/kern-router-link';
 
 @Component({
   selector: 'app-templates-page',
-  imports: [DateTimePipe, TranslatePipe, RouterLink],
+  imports: [DateTimePipe, TranslatePipe, RouterLink, KernRouterLink],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <kern-page-header [heading]="'nav.templates' | t" [description]="'templates.intro' | t">
-      <a slot="actions" class="button" routerLink="/templates/neu">{{ 'titles.newTemplate' | t }}</a>
+      <kern-button slot="actions" variant="primary" href="/templates/neu"><kern-icon slot="start" name="plus" />{{ 'titles.newTemplate' | t }}</kern-button>
     </kern-page-header>
 
     @if (message(); as m) {
@@ -48,7 +49,7 @@ import { Feedback } from '../../core/feedback';
               <td class="wrap">{{ groupTitles(t.settings).join(', ') }}</td>
               <td>{{ t.updatedAt | dateTime }}</td>
               <td class="actions">
-                <a class="button secondary sm" [routerLink]="['/templates', t.id, 'anwenden']">{{ 'templates.apply' | t }}</a>
+                <kern-button size="sm" [href]="'/templates/' + t.id + '/anwenden'">{{ 'templates.apply' | t }}</kern-button>
                 <kern-button size="sm" variant="ghost" (click)="remove(t)">{{ 'common.delete' | t }}</kern-button>
               </td>
             </tr>

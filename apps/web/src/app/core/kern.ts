@@ -1,34 +1,21 @@
-import { initTheme, parseIpv4 } from '@yfridelance/kern/components';
+import { initTheme, parseIpv4, parseMask } from '@yfridelance/kern/components';
 import { defineCustomElement as alert } from '@yfridelance/kern/components/kern-alert.js';
 import { defineCustomElement as badge } from '@yfridelance/kern/components/kern-badge.js';
-import { defineCustomElement as breadcrumb } from '@yfridelance/kern/components/kern-breadcrumb.js';
 import { defineCustomElement as button } from '@yfridelance/kern/components/kern-button.js';
 import { defineCustomElement as card } from '@yfridelance/kern/components/kern-card.js';
 import { defineCustomElement as checkbox } from '@yfridelance/kern/components/kern-checkbox.js';
-import { defineCustomElement as copy } from '@yfridelance/kern/components/kern-copy.js';
 import { defineCustomElement as dialog } from '@yfridelance/kern/components/kern-dialog.js';
 import { defineCustomElement as icon } from '@yfridelance/kern/components/kern-icon.js';
 import { defineCustomElement as input } from '@yfridelance/kern/components/kern-input.js';
-import { defineCustomElement as ipInput } from '@yfridelance/kern/components/kern-ip-input.js';
-import { defineCustomElement as json } from '@yfridelance/kern/components/kern-json.js';
-import { defineCustomElement as kvItem } from '@yfridelance/kern/components/kern-kv-item.js';
-import { defineCustomElement as kv } from '@yfridelance/kern/components/kern-kv.js';
 import { defineCustomElement as link } from '@yfridelance/kern/components/kern-link.js';
-import { defineCustomElement as listItem } from '@yfridelance/kern/components/kern-list-item.js';
-import { defineCustomElement as list } from '@yfridelance/kern/components/kern-list.js';
 import { defineCustomElement as pageHeader } from '@yfridelance/kern/components/kern-page-header.js';
-import { defineCustomElement as pagination } from '@yfridelance/kern/components/kern-pagination.js';
 import { defineCustomElement as progress } from '@yfridelance/kern/components/kern-progress.js';
-import { defineCustomElement as segmented } from '@yfridelance/kern/components/kern-segmented.js';
 import { defineCustomElement as select } from '@yfridelance/kern/components/kern-select.js';
 import { defineCustomElement as signal } from '@yfridelance/kern/components/kern-signal.js';
 import { defineCustomElement as spinner } from '@yfridelance/kern/components/kern-spinner.js';
 import { defineCustomElement as status } from '@yfridelance/kern/components/kern-status.js';
-import { defineCustomElement as stepInput } from '@yfridelance/kern/components/kern-step-input.js';
 import { defineCustomElement as switchEl } from '@yfridelance/kern/components/kern-switch.js';
-import { defineCustomElement as tabPanel } from '@yfridelance/kern/components/kern-tab-panel.js';
 import { defineCustomElement as table } from '@yfridelance/kern/components/kern-table.js';
-import { defineCustomElement as tabs } from '@yfridelance/kern/components/kern-tabs.js';
 import { defineCustomElement as textarea } from '@yfridelance/kern/components/kern-textarea.js';
 import { defineCustomElement as themeToggle } from '@yfridelance/kern/components/kern-theme-toggle.js';
 import { defineCustomElement as toast } from '@yfridelance/kern/components/kern-toast.js';
@@ -36,13 +23,15 @@ import { defineCustomElement as toolbar } from '@yfridelance/kern/components/ker
 import { defineCustomElement as tooltip } from '@yfridelance/kern/components/kern-tooltip.js';
 import { defineCustomElement as topbar } from '@yfridelance/kern/components/kern-topbar.js';
 
-/** Registers the Kern elements the app uses and applies the remembered theme (dark by default). */
+/**
+ * Registers the Kern elements the shell and most pages use and applies the remembered theme (dark by default).
+ * Elements of single pages load with their route (core/kern-lazy.ts).
+ */
 export function defineKern(): void {
   initTheme();
   for (const define of [
-    alert, badge, breadcrumb, button, card, checkbox, copy, dialog, icon, input, ipInput, json, kv, kvItem, link,
-    list, listItem, pageHeader, pagination, progress, segmented, select, signal, spinner, status, stepInput,
-    switchEl, table, tabPanel, tabs, textarea, themeToggle, toast, toolbar, tooltip, topbar,
+    alert, badge, button, card, checkbox, dialog, icon, input, link, pageHeader, progress, select, signal, spinner,
+    status, switchEl, table, textarea, themeToggle, toast, toolbar, tooltip, topbar,
   ]) {
     define();
   }
@@ -73,4 +62,9 @@ export function kernNumber(event: Event): number | null {
  */
 export function normalizeIp(text: string): string {
   return parseIpv4(text)?.value ?? text.trim();
+}
+
+/** Dotted subnet mask also for a prefix typed into kern-ip-input `allow="mask"` (`/24` → `255.255.255.0`). */
+export function normalizeMask(text: string | undefined): string | undefined {
+  return text === undefined ? undefined : (parseMask(text)?.mask ?? text);
 }

@@ -18,7 +18,8 @@ import {
 } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
-import { kernChecked, kernNumber, kernValue } from '../../core/kern';
+import { kernChecked, kernNumber, kernValue, normalizeMask } from '../../core/kern';
+import { KernRouterLink } from '../../core/kern-router-link';
 
 /** Per field: included in the template, and its raw input value ('true'/'false' for booleans). */
 type FieldState = Record<string, { on: boolean; value: string }>;
@@ -43,7 +44,7 @@ function stateFromSettings(settings: TemplateSettings): FieldState {
 
 @Component({
   selector: 'app-template-editor',
-  imports: [RouterLink, TranslatePipe],
+  imports: [RouterLink, TranslatePipe, KernRouterLink],
   templateUrl: './template-editor.html',
   styleUrl: './template-editor.scss',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -113,7 +114,7 @@ export class TemplateEditor {
         n.mode === 'dhcp'
           ? { mode: 'dhcp' }
           : Object.fromEntries(
-              Object.entries({ mode: 'static', ipFrom: v(n.ipFrom), netmask: v(n.netmask), gateway: v(n.gateway), dns: v(n.dns) }).filter(
+              Object.entries({ mode: 'static', ipFrom: v(n.ipFrom), netmask: normalizeMask(v(n.netmask)), gateway: v(n.gateway), dns: v(n.dns) }).filter(
                 ([, value]) => value !== undefined,
               ),
             ) as unknown as NetworkSettings;

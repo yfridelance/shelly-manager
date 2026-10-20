@@ -158,7 +158,8 @@ kannst du zusätzlich aufs Gerät schreiben, siehe unten). Klick auf «Bearbeite
 Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Stockwerk schlägt die App UG, EG, OG, DG und die
 im Standort bereits verwendeten Stockwerke vor. Beim Ort (Raum, z.B.
 «Keller») schlägt die App bereits verwendete Orte des Standorts vor, beim Typ (was angeschlossen ist, z.B.
-«Storen» oder «Boiler») die bereits verwendeten Typen plus Licht, Storen und Steckdose.
+«Storen» oder «Boiler») die bereits verwendeten Typen plus Licht, Storen und Steckdose. Die Vorschläge erscheinen beim Tippen
+unter dem Feld (Pfeiltasten und Enter wählen einer aus); andere Werte sind weiterhin erlaubt.
 
 Unter **Gerät → Standort** lässt sich das Gerät nach einer Rückfrage in einen anderen [Standort](#13-standorte)
 verschieben.
@@ -299,10 +300,11 @@ zum Template**; alles andere bleibt auf den Geräten unverändert.
 
 ### Template anwenden
 
-1. **Geräte wählen:** einzeln, «alle sichtbaren», «nur mit Änderungen» oder «keine». Die Suche schränkt die Liste ein.
+1. **Geräte wählen:** mit den Häkchen einzeln, mit dem Häkchen im Tabellenkopf alle sichtbaren, oder über «nur mit
+   Änderungen» bzw. «keine». Die Suche schränkt die Liste ein.
    Angeboten werden nur aktive Geräte mit IP.
 2. **Vorschau prüfen:** Pro Gerät steht, was sich ändern würde, z.B. «2 Änderungen, 1 nicht unterstützt». Ein Klick
-   öffnet die Liste: «MQTT: Server: 192.168.33.3:1883 → mqtt.home:1883», «bereits …» für Werte, die schon stimmen,
+   darauf klappt darunter die Liste auf (mehrere Geräte gleichzeitig möglich): «MQTT: Server: 192.168.33.3:1883 → mqtt.home:1883», «bereits …» für Werte, die schon stimmen,
    und «nicht verfügbar» oder «nicht unterstützt», wenn Generation, Modell oder Firmware die Einstellung nicht kennen.
    Die Vorschau beruht auf dem neusten Snapshot; ohne Snapshot steht «kein Snapshot, wird beim Anwenden ermittelt».
    Für die Vorschau wird kein Gerät kontaktiert.
@@ -333,7 +335,8 @@ gestartet», «✓ keine Änderung nötig» oder «✗» mit Grund. Ein Fehler b
 
 In der Gruppe **Netzwerk (WLAN)** lässt sich für das Haupt-WLAN und das zweite WLAN (falls auf dem Gerät eingerichtet)
 festlegen, ob das Gerät seine Adresse per **DHCP** bekommt oder eine **statische IP**. Für statisch gibst du «IP ab»,
-Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer unverändert.
+Netzmaske und optional Gateway und DNS an. Die Netzmaske geht auch als Präfix (`/24` wird zu `255.255.255.0`); das
+Feld lehnt Werte ab, die keine Netzmaske sind. SSID und WLAN-Passwort bleiben immer unverändert.
 
 - **Fortlaufende Vergabe:** Beim Anwenden verteilt die App die Adressen ab «IP ab» aufsteigend auf die ausgewählten
   Geräte, sortiert nach Stockwerk (Gebäude-Reihenfolge), Ort und Name; so bekommt jedes Stockwerk einen

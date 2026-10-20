@@ -1,10 +1,16 @@
 import { Routes } from '@angular/router';
+import * as kern from './core/kern-lazy';
 
 // Titles are translation keys (core/i18n/title-strategy.ts).
 
+/** Loads a page together with the Kern elements only it needs (core/kern-lazy.ts). */
+function page<T>(load: () => Promise<T>, elements: () => Promise<unknown>): () => Promise<T> {
+  return () => Promise.all([load(), elements()]).then(([component]) => component);
+}
+
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'inventar' },
-  { path: 'scan', title: 'nav.scan', loadComponent: () => import('./features/scan/scan-page').then((m) => m.ScanPage) },
+  { path: 'scan', title: 'nav.scan', loadComponent: page(() => import('./features/scan/scan-page').then((m) => m.ScanPage), kern.ipInput) },
   {
     path: 'inventar',
     title: 'nav.inventory',
@@ -13,7 +19,7 @@ export const routes: Routes = [
   {
     path: 'inventar/:mac',
     title: 'titles.device',
-    loadComponent: () => import('./features/device/device-page').then((m) => m.DevicePage),
+    loadComponent: page(() => import('./features/device/device-page').then((m) => m.DevicePage), kern.deviceElements),
   },
   {
     path: 'templates',
@@ -23,17 +29,17 @@ export const routes: Routes = [
   {
     path: 'templates/neu',
     title: 'titles.newTemplate',
-    loadComponent: () => import('./features/templates/template-editor').then((m) => m.TemplateEditor),
+    loadComponent: page(() => import('./features/templates/template-editor').then((m) => m.TemplateEditor), kern.templateEditorElements),
   },
   {
     path: 'templates/:id',
     title: 'titles.template',
-    loadComponent: () => import('./features/templates/template-editor').then((m) => m.TemplateEditor),
+    loadComponent: page(() => import('./features/templates/template-editor').then((m) => m.TemplateEditor), kern.templateEditorElements),
   },
   {
     path: 'templates/:id/anwenden',
     title: 'titles.applyTemplate',
-    loadComponent: () => import('./features/templates/template-apply').then((m) => m.TemplateApply),
+    loadComponent: page(() => import('./features/templates/template-apply').then((m) => m.TemplateApply), kern.templateApplyElements),
   },
   {
     path: 'standorte',
@@ -43,7 +49,7 @@ export const routes: Routes = [
   {
     path: 'protokoll',
     title: 'nav.log',
-    loadComponent: () => import('./features/log/log-page').then((m) => m.LogPage),
+    loadComponent: page(() => import('./features/log/log-page').then((m) => m.LogPage), kern.pagination),
   },
   { path: '**', redirectTo: 'inventar' },
 ];

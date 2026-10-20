@@ -195,7 +195,9 @@
     "invalid": "Keine gültige IPv4-Adresse",
     "notAllowed": "Diese Form ist hier nicht erlaubt",
     "tooMany": "Höchstens {n} Adressen",
-    "count": "{n} Adressen"
+    "count": "{n} Adressen",
+    "invalidMask": "Keine gültige Subnetzmaske",
+    "maskCount": "/{prefix} · {n} Hosts"
   },
   "scan": {
     "title": "Netzwerk-Scan",
@@ -337,7 +339,7 @@
       "path": "Pfad",
       "before": "Vorher",
       "after": "Nachher",
-      "whole": "(gesamt)",
+      "kind": "Art",
       "loading": "Lädt Vergleich …"
     },
     "saveFailed": "Speichern fehlgeschlagen: {{error}}",
@@ -445,14 +447,14 @@
   "templateApply": {
     "title": "Template anwenden: {{name}}",
     "search": "Suchen …",
-    "selectVisible": "alle sichtbaren",
+    "selectVisible": "Alle sichtbaren auswählen",
     "selectChanging": "nur mit Änderungen",
     "selectNone": "keine",
     "selected": "{{count}} ausgewählt",
     "previewHint": "Vorschau auf Basis des neusten Snapshots je Gerät; beim Anwenden wird jedes Gerät frisch gelesen.",
     "preview": "Vorschau",
     "newIp": "Neue IP",
-    "selectDevice": "{{name}} auswählen",
+    "selectRow": "Gerät auswählen",
     "newIpFor": "Neue IP für {{name}}",
     "noneFree": "keine frei",
     "waiting": "wartet …",
