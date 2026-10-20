@@ -14,7 +14,7 @@ import { deviceStateText, formatMac, functionsText, shortFirmware } from '../../
 import { EditableField } from '../../shared/editable-field';
 import { kernValue } from '../../core/kern';
 import { Feedback } from '../../core/feedback';
-import { COMMON_FLOORS, compareFloor } from '../../core/floor';
+import { compareFloor } from '../../core/floor';
 import { suggestDeviceName } from '../../core/device-name';
 import { ResetDialog } from './reset-dialog';
 
@@ -55,9 +55,12 @@ export class DevicePage {
     [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(compareText),
   );
   protected readonly floorSuggestions = computed(() =>
-    [...new Set([...COMMON_FLOORS, ...this.locations.value().flatMap((d) => (d.floor ? [d.floor] : []))])].sort((a, b) =>
-      compareFloor(a, b, compareText),
-    ),
+    [
+      ...new Set([
+        ...t('device.floorSuggestions').split(',').map((f) => f.trim()).filter(Boolean),
+        ...this.locations.value().flatMap((d) => (d.floor ? [d.floor] : [])),
+      ]),
+    ].sort((a, b) => compareFloor(a, b, compareText)),
   );
   /** «EG Küche Licht» from floor, location and kind; numbered if the site already has it. */
   protected readonly nameSuggestion = computed(() => {

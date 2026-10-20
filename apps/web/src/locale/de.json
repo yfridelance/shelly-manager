@@ -285,6 +285,7 @@
     "kind": "Typ",
     "kindHint": "Was angeschlossen ist, z.B. Licht, Storen, Boiler, Steckdose",
     "kindSuggestions": "Licht, Storen, Steckdose",
+    "floorSuggestions": "UG, EG, OG, DG",
     "floor": "Stockwerk",
     "floorHint": "z.B. UG, EG, 1. OG, DG; sortiert wird nach Gebäude-Reihenfolge. Zusammen mit Ort und Typ ergibt es den Namensvorschlag.",
     "notes": "Notizen",

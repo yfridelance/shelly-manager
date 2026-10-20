@@ -124,7 +124,9 @@ Namen bedeutet: passwortgeschützt.
   geschützten Geräten nur mit Passwort, siehe [Scan](#2-netzwerk-scannen)).
 - **Sortieren:** Klick auf eine Spaltenüberschrift, nochmals klicken kehrt die Reihenfolge um. Die Spalte Ort
   sortiert nach **Gebäude-Reihenfolge** des Stockwerks (UG/KG, EG, 1. OG, 2. OG …, DG; andere Bezeichnungen
-  alphabetisch danach), dann nach Ort.
+  alphabetisch danach), dann nach Ort. Englische Bezeichnungen kennt die App auch: Basement/Cellar/B1,
+  Ground floor/GF, 1st floor/First floor/Floor 1/1F/L1 …, Attic/Loft. Englische Etagen-Nummern bleiben unter
+  sich in der richtigen Reihenfolge, britische («Ground floor», «1st floor») wie amerikanische Zählweise.
   Filter und Sortierung bleiben erhalten, wenn du ins Detail und zurück wechselst.
 - **Geräte-ID:** Gen2+ zum Beispiel `shellyplus1pm-a8032ab12345`, Gen1 der Hostname wie `shelly1-A1B2C3`.
   Unter dieser ID erscheint das Gerät in der Shelly-App, in MQTT-Topics und im Netzwerk.
@@ -154,8 +156,8 @@ Gerät sowie «erstmals» und «zuletzt gesehen».
 
 **Name, Stockwerk, Ort, Typ und Notizen** werden nur in der App gespeichert, **nicht auf dem Gerät** (den Namen
 kannst du zusätzlich aufs Gerät schreiben, siehe unten). Klick auf «Bearbeiten», ändern, mit Enter (bei Notizen
-Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Stockwerk schlägt die App UG, EG, OG, DG und die
-im Standort bereits verwendeten Stockwerke vor. Beim Ort (Raum, z.B.
+Ctrl/⌘+Enter) oder «Speichern» übernehmen; Escape bricht ab. Beim Stockwerk schlägt die App UG, EG, OG, DG (auf Englisch Basement, Ground floor,
+1st floor, Attic) und die im Standort bereits verwendeten Stockwerke vor. Beim Ort (Raum, z.B.
 «Keller») schlägt die App bereits verwendete Orte des Standorts vor, beim Typ (was angeschlossen ist, z.B.
 «Storen» oder «Boiler») die bereits verwendeten Typen plus Licht, Storen und Steckdose. Die Vorschläge erscheinen beim Tippen
 unter dem Feld (Pfeiltasten und Enter wählen einer aus); andere Werte sind weiterhin erlaubt.
