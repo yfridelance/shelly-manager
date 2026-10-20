@@ -126,8 +126,12 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   - IP-Felder sind `kern-ip-input` (Scan: `single range cidr`, Templates: `single`); vor dem Senden `normalizeIp()`,
     damit Kurzformen wie `10.0.0.1-50` beim Server in voller Form ankommen. Kern-Texte (`label…`-Props) kommen aus
     `ipInput.*` bzw. `stepInput.*` in den Locale-Dateien.
-  - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`).
-  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`), Sortierköpfe in Tabellen,
+  - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`). Sortierbare
+    Spalten mit `<th sortable data-key [attr.sorted]>` und `controlled="external"`: kern-table meldet `kernSort`, die
+    App sortiert selbst (Gebäude-Reihenfolge der Stockwerke) und setzt `sorted`; nie `internal`, sonst ordnet Kern die
+    von Angular gerenderten Zeilen um. Lange Listen (Protokoll) blättern mit einer eigenen `kern-pagination` und
+    `slice()` in der Komponente.
+  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`),
     die Tabs im Gerätedetail (eine gemeinsame JSON-Ansicht) und Router-Links mit Button-Optik (`a.button` in
     `styles.scss`, weil `kern-button href` die Seite neu laden würde).
   - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit

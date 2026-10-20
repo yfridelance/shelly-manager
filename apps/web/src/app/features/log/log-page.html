@@ -23,7 +23,7 @@
 } @else if (!entries.isLoading() && entries.value().length === 0) {
   <p class="muted">{{ 'log.empty' | t }}</p>
 } @else {
-  <kern-table>
+  <kern-table [loading]="entries.isLoading()">
     <table>
       <thead>
         <tr>
@@ -37,7 +37,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (e of filtered(); track e.id) {
+        @for (e of pageEntries(); track e.id) {
           <tr>
             <td>{{ e.requestedAt | dateTime: 'seconds' }}</td>
             <td>
@@ -78,4 +78,22 @@
       </tbody>
     </table>
   </kern-table>
+  @if (filtered().length > pageSizes[0]) {
+    <kern-pagination
+      [total]="filtered().length"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      [pageSizes]="pageSizes"
+      [locale]="locale()"
+      [label]="'pagination.label' | t"
+      [labelRange]="'pagination.range' | t"
+      [labelPageSize]="'pagination.pageSize' | t"
+      [labelPage]="'pagination.page' | t"
+      [labelFirst]="'pagination.first' | t"
+      [labelPrevious]="'pagination.previous' | t"
+      [labelNext]="'pagination.next' | t"
+      [labelLast]="'pagination.last' | t"
+      (kernPageChange)="onPage($event)"
+    />
+  }
 }

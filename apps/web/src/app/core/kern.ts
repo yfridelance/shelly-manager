@@ -12,6 +12,7 @@ import { defineCustomElement as json } from '@yfridelance/kern/components/kern-j
 import { defineCustomElement as kv } from '@yfridelance/kern/components/kern-kv.js';
 import { defineCustomElement as kvItem } from '@yfridelance/kern/components/kern-kv-item.js';
 import { defineCustomElement as pageHeader } from '@yfridelance/kern/components/kern-page-header.js';
+import { defineCustomElement as pagination } from '@yfridelance/kern/components/kern-pagination.js';
 import { defineCustomElement as progress } from '@yfridelance/kern/components/kern-progress.js';
 import { defineCustomElement as segmented } from '@yfridelance/kern/components/kern-segmented.js';
 import { defineCustomElement as select } from '@yfridelance/kern/components/kern-select.js';
@@ -33,7 +34,7 @@ import { defineCustomElement as topbar } from '@yfridelance/kern/components/kern
 export function defineKern(): void {
   initTheme();
   for (const define of [
-    alert, badge, button, card, checkbox, copy, dialog, input, ipInput, json, kv, kvItem, pageHeader, progress, segmented,
+    alert, badge, button, card, checkbox, copy, dialog, input, ipInput, json, kv, kvItem, pageHeader, pagination, progress, segmented,
     select, signal, spinner, status, stepInput, switchEl, tabPanel, table, tabs, textarea, themeToggle, toast, toolbar, topbar,
   ]) {
     define();

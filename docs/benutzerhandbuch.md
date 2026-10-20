@@ -372,7 +372,8 @@ Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer 
 Das Protokoll listet alle Aktionen: Snapshot, Neustart, Werksreset, Firmware-Update, Template und «Name auf Gerät
 geschrieben» (mit altem und neuem Namen). Zu jedem Eintrag
 gehören Zeitpunkt, Gerät, Ergebnis, Details, Dauer und **Von** (die Adresse des Rechners, von dem die Aktion kam; es
-gibt keine Benutzerkonten). Filter nach Gerät, Aktion und Ergebnis; «Aktualisieren» lädt neu.
+gibt keine Benutzerkonten). Filter nach Gerät, Aktion und Ergebnis; «Aktualisieren» lädt neu. Lange Listen sind
+in Seiten aufgeteilt (50, 100 oder 250 Einträge pro Seite; die Wahl merkt sich der Browser).
 
 Die Details nennen zum Beispiel den gesicherten Snapshot vor einem Reset, ein bewusst übersprungenes Snapshot,
 die Firmware-Versionen («1.4.4 → 1.5.0 (Stabil)») oder bei Templates jede geänderte Einstellung mit vorher und

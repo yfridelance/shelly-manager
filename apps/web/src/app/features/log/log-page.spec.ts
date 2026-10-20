@@ -68,3 +68,32 @@ describe('LogPage', () => {
     expect(rows[1]).toContain('Kanal Beta');
   });
 });
+
+describe('LogPage paging', () => {
+  it('shows 50 entries per page, pages with kern-pagination and starts again at page 1 when filtering', async () => {
+    await TestBed.configureTestingModule({
+      imports: [LogPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(LogPage);
+    fixture.detectChanges();
+    const many = Array.from({ length: 120 }, (_, i) => ({ ...ENTRIES[3]!, id: 200 - i, result: i % 2 ? 'ok' : 'error' }) as ActionEntry);
+    TestBed.inject(HttpTestingController).expectOne('/api/actions?limit=2000&site=1').flush(many);
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const pager = () => el.querySelector<HTMLElement & { total: number; page: number }>('kern-pagination');
+    expect(el.querySelectorAll('tbody tr')).toHaveLength(50);
+    expect(pager()?.total).toBe(120);
+
+    pager()?.dispatchEvent(new CustomEvent('kernPageChange', { detail: { page: 3, pageSize: 50 } }));
+    await fixture.whenStable();
+    expect(el.querySelectorAll('tbody tr')).toHaveLength(20);
+    expect(pager()?.page).toBe(3);
+
+    setKernValue(el, 'kern-select[name="result"]', 'error');
+    await fixture.whenStable();
+    expect(el.querySelectorAll('tbody tr')).toHaveLength(50);
+    expect(pager()?.page).toBe(1);
+    expect(pager()?.total).toBe(60);
+  });
+});

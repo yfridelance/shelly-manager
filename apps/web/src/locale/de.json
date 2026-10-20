@@ -178,6 +178,16 @@
     "increase": "Erhöhen",
     "invalid": "Keine gültige Zahl"
   },
+  "pagination": {
+    "label": "Seiten",
+    "range": "{from}–{to} von {total}",
+    "pageSize": "Pro Seite",
+    "page": "Seite {n}",
+    "first": "Erste Seite",
+    "previous": "Vorherige Seite",
+    "next": "Nächste Seite",
+    "last": "Letzte Seite"
+  },
   "ipInput": {
     "invalid": "Keine gültige IPv4-Adresse",
     "notAllowed": "Diese Form ist hier nicht erlaubt",

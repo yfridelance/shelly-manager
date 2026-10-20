@@ -75,14 +75,12 @@
 } @else if (!devices.isLoading() && devices.value().length === 0) {
   <p class="muted">{{ 'inventory.empty' | t }} <a routerLink="/scan">{{ 'inventory.scanNetwork' | t }}</a></p>
 } @else {
-  <kern-table>
+  <kern-table controlled="external" [loading]="devices.isLoading()" (kernSort)="onSort($event)">
     <table>
       <thead>
         <tr>
           @for (col of columns; track col.key) {
-            <th [attr.aria-sort]="ariaSort(col.key)">
-              <button type="button" (click)="f.sortBy(col.key)">{{ col.label | t }}</button>
-            </th>
+            <th sortable [attr.data-key]="col.key" [attr.sorted]="sorted(col.key)">{{ col.label | t }}</th>
           }
         </tr>
       </thead>
@@ -122,7 +120,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="11" class="empty">{{ 'inventory.noMatch' | t }}</td>
+            <td colspan="11" class="empty">{{ (devices.isLoading() ? 'common.loading' : 'inventory.noMatch') | t }}</td>
           </tr>
         }
       </tbody>
