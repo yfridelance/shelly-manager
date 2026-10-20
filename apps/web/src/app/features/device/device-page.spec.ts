@@ -19,6 +19,7 @@ const DETAILS: DeviceDetails = {
 import { setKernChecked, setKernValue } from '../../../testing/kern';
 import { FeedbackStub, provideFeedbackStub } from '../../../testing/feedback';
 import { Feedback } from '../../core/feedback';
+import { formatDate } from '../../core/i18n/i18n';
 
 /** Lets the confirmation promise resolve before the request is expected. */
 const tick = () => new Promise((r) => setTimeout(r));
@@ -384,8 +385,10 @@ describe('DevicePage', () => {
     expect(diff?.from).toEqual(older.config);
     expect(diff?.to).toEqual(latest.config);
     expect(diff?.labelSummary).toBe('3 Unterschiede: 1 geändert, 1 neu, 1 entfernt');
-    expect(diff?.labelBefore).toBe('Vorher (14.10.2026 10:00)');
-    expect(diff?.labelAfter).toBe('Nachher (15.10.2026 10:00)');
+    // Formatted in the browser's time zone (CI runs in UTC).
+    expect(diff?.labelBefore).toBe(`Vorher (${formatDate(older.takenAt)})`);
+    expect(diff?.labelAfter).toBe(`Nachher (${formatDate(latest.takenAt)})`);
+    expect(diff?.labelBefore).toMatch(/^Vorher \(14\.10\.2026 \d\d:\d\d\)$/);
   });
 
   it('switches between config, status and device info with kern-tabs', async () => {
