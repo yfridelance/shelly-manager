@@ -44,8 +44,8 @@ Or use the prebuilt image (amd64 and arm64) without cloning, see [Operations](do
 
 Open **http://localhost:8080**, go to «Scan» and enter your network range, e.g. `192.168.1.0/24`.
 
-> The user interface and the detailed documentation are currently in **German**. The UI is ready for translation
-> (one JSON file per language, switchable at runtime); translations are very welcome, see
+> The user interface is available in **German** and **English** (switch in the header, defaults to the browser
+> language). The detailed documentation is currently in German. More translations are very welcome, see
 > [How to translate](CONTRIBUTING.md#how-to-translate).
 
 ## Documentation

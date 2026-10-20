@@ -13,8 +13,8 @@ bugs and device reports in [Issues](https://github.com/yfridelance/shelly-manage
   valuable contribution right now, especially for models, firmware versions and template settings (static IP,
   Wi-Fi AP, scripts) that have not been tried yet. Use the «Device report» issue template.
 - **Report bugs** with the bug report template.
-- **Translate.** The UI is in German; translations are plain JSON files (see [How to translate](#how-to-translate)).
-  The documentation is in German too.
+- **Translate.** The UI is in German and English; more languages are plain JSON files (see
+  [How to translate](#how-to-translate)). The documentation is still in German.
 - **Code**: see the open issues. Issues labelled `good first issue` are a good start.
 
 ## Development setup
@@ -36,7 +36,7 @@ the data model, the REST API and the Shelly API notes.
 All UI texts live in one JSON file per language in [`apps/web/src/locale/`](apps/web/src/locale/). No code needs
 to be touched except one line to register a new language.
 
-1. Copy `de.json` (the source language, Swiss German spelling) to `<code>.json`, e.g. `en.json`, and translate the
+1. Copy `de.json` (the source language, Swiss German spelling) to `<code>.json`, e.g. `fr.json`, and translate the
    values. Keep the keys. Keys you leave out show the German text.
 2. Keep placeholders such as `{{count}}` or `{{name}}` unchanged; you may reorder them. Words in `**…**` are shown
    in bold.
