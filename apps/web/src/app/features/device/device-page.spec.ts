@@ -17,15 +17,23 @@ const DETAILS: DeviceDetails = {
 };
 
 import { setKernChecked, setKernValue } from '../../../testing/kern';
+import { FeedbackStub, provideFeedbackStub } from '../../../testing/feedback';
+import { Feedback } from '../../core/feedback';
+
+/** Lets the confirmation promise resolve before the request is expected. */
+const tick = () => new Promise((r) => setTimeout(r));
+
 describe('DevicePage', () => {
   let http: HttpTestingController;
+  let feedback: FeedbackStub;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DevicePage],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideFeedbackStub()],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
+    feedback = TestBed.inject(Feedback) as FeedbackStub;
   });
 
   /** Answers background loads (device list for suggestions, action history, details reload). */
@@ -129,24 +137,27 @@ describe('DevicePage', () => {
     await settle(fixture);
   });
 
-  it('writes a differing local name to the device only after confirmation, with the password inline', async () => {
+  it('writes a differing local name to the device only after confirmation, with the action password', async () => {
     const renamed = { ...DETAILS, device: { ...DETAILS.device, name: 'EG Büro Storen' } };
     const { fixture, el } = await render(renamed);
     expect(el.textContent).toContain('Auf dem Gerät: «Rollladen Büro»');
+    expect(button(el, 'Name auf Gerät schreiben')?.disabled).toBe(true);
+    type(el.querySelector('kern-input[name="password"]'), 'gen2-secret');
+    await fixture.whenStable();
+    feedback.answer = false;
     button(el, 'Name auf Gerät schreiben')?.click();
-    await fixture.whenStable();
+    await tick();
     http.expectNone({ method: 'POST' });
-    expect(el.textContent).toContain('«EG Büro Storen» auf das Gerät schreiben?');
-    expect(button(el, 'Ja, schreiben')?.disabled).toBe(true);
-    type(el.querySelector('kern-input[name="name-password"]'), 'gen2-secret');
-    await fixture.whenStable();
-    el.querySelector('.device-name form')?.dispatchEvent(new Event('submit'));
+    expect(feedback.questions.at(-1)?.heading).toBe('«EG Büro Storen» auf das Gerät schreiben?');
+    feedback.answer = true;
+    button(el, 'Name auf Gerät schreiben')?.click();
+    await tick();
     const post = http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/name' });
     expect(post.request.body).toEqual({ name: 'EG Büro Storen', credentials: { password: 'gen2-secret' } });
     post.flush({ name: 'EG Büro Storen', snapshotId: 3 });
     const synced = { ...renamed, device: { ...renamed.device, deviceName: 'EG Büro Storen' } };
     await settle(fixture, synced);
-    expect(el.textContent).toContain('Name «EG Büro Storen» auf das Gerät geschrieben.');
+    expect(feedback.toasts).toContain('Name «EG Büro Storen» auf das Gerät geschrieben.');
     expect(button(el, 'Name auf Gerät schreiben')).toBeUndefined();
     expect(el.textContent).toContain('Gleich wie auf dem Gerät');
   });
@@ -185,13 +196,17 @@ describe('DevicePage', () => {
   it('asks before rebooting', async () => {
     const open = { ...DETAILS, device: { ...DETAILS.device, authRequired: false } };
     const { fixture, el } = await render(open);
+    feedback.answer = false;
     button(el, 'Neu starten')?.click();
-    await fixture.whenStable();
+    await tick();
     http.expectNone({ method: 'POST' });
-    button(el, 'Ja, neu starten')?.click();
+    expect(feedback.questions.at(-1)).toMatchObject({ heading: 'Wirklich neu starten?', confirmLabel: 'Ja, neu starten', danger: true });
+    feedback.answer = true;
+    button(el, 'Neu starten')?.click();
+    await tick();
     http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/reboot' }).flush({ ok: true });
     await settle(fixture, open);
-    expect(el.textContent).toContain('Neustart ausgelöst');
+    expect(feedback.toasts.join()).toContain('Neustart ausgelöst');
   });
 
   describe('factory reset dialog', () => {
@@ -238,8 +253,8 @@ describe('DevicePage', () => {
       req.flush({ snapshotId: 42, confirmed: true });
       await settle(fixture, OPEN);
       expect(el.querySelector('kern-dialog')).toBeNull();
-      expect(el.textContent).toContain('startet jetzt im AP-Modus');
-      expect(el.textContent).not.toContain('vermutlich');
+      expect(feedback.toasts.join()).toContain('startet jetzt im AP-Modus');
+      expect(feedback.toasts.join()).not.toContain('vermutlich');
     });
 
     it('reports an unconfirmed reset when the device dropped the connection', async () => {
@@ -311,17 +326,20 @@ describe('DevicePage', () => {
       expect(el.textContent).toContain('Update verfügbar: 1.5.0');
       expect(button(el, 'Beta installieren')).toBeUndefined();
 
+      feedback.answer = false;
       button(el, 'Update installieren')?.click();
-      await fixture.whenStable();
+      await tick();
       http.expectNone({ method: 'POST' });
-      expect(el.textContent).toContain('Das Gerät startet danach neu');
+      expect(feedback.questions.at(-1)?.heading).toContain('Das Gerät startet danach neu');
 
-      button(el, 'Ja, installieren')?.click();
+      feedback.answer = true;
+      button(el, 'Update installieren')?.click();
+      await tick();
       const req = http.expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/firmware/update' });
       expect(req.request.body).toEqual({ channel: 'stable' });
       req.flush({ version: '1.5.0' });
       await settle(fixture, WITH_UPDATE);
-      expect(el.textContent).toContain('Update auf 1.5.0 gestartet');
+      expect(feedback.toasts.join()).toContain('Update auf 1.5.0 gestartet');
     });
 
     it('checks for updates and shows the result', async () => {
@@ -333,7 +351,7 @@ describe('DevicePage', () => {
         .expectOne({ method: 'POST', url: '/api/devices/A8032AB67890/firmware/check' })
         .flush({ stable: null, beta: '1.6.0-beta1', checkedAt: '2026-10-15T08:00:00.000Z' });
       await settle(fixture, current);
-      expect(el.textContent).toContain('Firmware ist aktuell; Beta 1.6.0-beta1 verfügbar.');
+      expect(feedback.toasts).toContain('Firmware ist aktuell; Beta 1.6.0-beta1 verfügbar.');
       expect(button(el, 'Beta installieren')).toBeDefined();
     });
   });
@@ -374,6 +392,18 @@ describe('DevicePage', () => {
     ]);
   });
 
+  it('switches between config, status and device info with kern-tabs', async () => {
+    const latest = { id: 2, takenAt: '2026-10-15T08:00:00.000Z', confirmedAt: null, info: { id: 'x' }, config: { ws: { enable: true } }, status: { uptime: 5 } };
+    const { fixture, el } = await render({ ...DETAILS, latestSnapshot: latest, snapshots: [{ id: 2, takenAt: latest.takenAt, confirmedAt: null, hasConfig: true }] });
+    const json = () => (el.querySelector('kern-json') as (Element & { data?: unknown }) | null)?.data;
+    expect([...el.querySelectorAll('kern-tab-panel')].map((p) => (p as Element & { label?: string }).label)).toEqual(['Config', 'Status', 'Geräteinfo']);
+    expect(json()).toEqual({ ws: { enable: true } });
+    el.querySelector('kern-tabs')?.dispatchEvent(new CustomEvent('kernTabChange', { detail: { value: 'status' } }));
+    await fixture.whenStable();
+    expect(json()).toEqual({ uptime: 5 });
+    expect(el.querySelectorAll('kern-json')).toHaveLength(1);
+  });
+
   it('names the template and summarizes the outcome in the recent actions', async () => {
     const fixture = TestBed.createComponent(DevicePage);
     fixture.componentRef.setInput('mac', DETAILS.device.mac);
@@ -403,7 +433,7 @@ describe('DevicePage', () => {
     const text = rows.map((r) => r.textContent?.replace(/\s+/g, ' ').trim());
     expect(text[0]).toContain('Template «test»');
     expect(text[0]).toContain('OK · 2 geändert, neu gestartet');
-    expect(rows[0]?.querySelector('td:last-child')?.getAttribute('title')).toContain('Access-Point an: Aus → Ein');
+    expect((rows[0]?.querySelector('td:last-child kern-tooltip') as (Element & { text?: string }) | null)?.text).toContain('Access-Point an: Aus → Ein');
     expect(text[1]).toContain('Template «test»');
     expect(text[1]).toContain('Template konnte nicht vollständig angewendet werden');
   });
@@ -427,17 +457,23 @@ describe('DevicePage', () => {
     }
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
+    feedback.answer = false;
     setKernValue(el, 'kern-select[name="site"]', '2');
-    await fixture.whenStable();
-    expect(el.textContent).toContain('Nach «Ferienhaus» verschieben?');
+    await tick();
+    expect(feedback.questions.at(-1)?.heading).toBe('Nach «Ferienhaus» verschieben?');
     http.expectNone({ method: 'PATCH' });
-    button(el, 'Ja, verschieben')?.click();
+    expect(el.querySelector<HTMLInputElement>('kern-select[name="site"]')?.value).toBe('1');
+    feedback.answer = true;
+    setKernValue(el, 'kern-select[name="site"]', '2');
+    await tick();
     const patch = http.expectOne({ method: 'PATCH', url: '/api/devices/A8032AB67890' });
     expect(patch.request.body).toEqual({ siteId: 2 });
     patch.flush({ ...DETAILS.device, siteId: 2 });
-    await new Promise((r) => setTimeout(r));
-    for (const req of http.match((r) => r.method === 'GET')) req.flush(req.request.url === '/api/sites' ? sites : req.request.url.startsWith('/api/devices/') ? DETAILS : []);
+    for (let i = 0; i < 2; i++) {
+      await tick();
+      for (const req of http.match((r) => r.method === 'GET')) req.flush(req.request.url === '/api/sites' ? sites : req.request.url.startsWith('/api/devices/') ? DETAILS : []);
+    }
     await fixture.whenStable();
-    expect(el.textContent).toContain('Gerät nach «Ferienhaus» verschoben.');
+    expect(feedback.toasts).toContain('Gerät nach «Ferienhaus» verschoben.');
   });
 });

@@ -1,16 +1,19 @@
-<p class="back"><a routerLink="/templates">← {{ 'nav.templates' | t }}</a></p>
-
 @if (template.error()) {
   <kern-alert tone="danger" role="alert">{{ 'errors.template_not_found' | t }}</kern-alert>
 } @else if (template.value(); as t) {
+  <kern-breadcrumb class="back" [label]="'common.breadcrumb' | t">
+    <a routerLink="/templates">{{ 'nav.templates' | t }}</a>
+    <a [routerLink]="['/templates', t.id]">{{ t.name }}</a>
+    <span>{{ 'templates.apply' | t }}</span>
+  </kern-breadcrumb>
   <kern-page-header [heading]="'templateApply.title' | t: { name: t.name }" [description]="t.description ?? ''">
     <a [routerLink]="['/templates', t.id]">{{ 'common.edit' | t }}</a>
   </kern-page-header>
-  <ul class="settings">
+  <kern-list class="settings" size="sm" [label]="'templates.settings' | t">
     @for (l of lines(); track l) {
-      <li>{{ l }}</li>
+      <kern-list-item [heading]="l" />
     }
-  </ul>
+  </kern-list>
 
   <kern-card class="block" [heading]="'sites.devices' | t">
     <span slot="meta" class="muted">{{ 'templateApply.selected' | t: { count: selectedDevices().length } }}</span>
@@ -51,7 +54,7 @@
             <td>
               <a [routerLink]="['/inventar', d.mac]">{{ d.name ?? formatMac(d.mac) }}</a>
               @if (d.authRequired) {
-                <svg class="lock" viewBox="0 0 16 16" role="img" [attr.aria-label]="'common.passwordProtected' | t"><title>{{ 'common.passwordProtected' | t }}</title><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>
+                <kern-tooltip [text]="'common.passwordProtected' | t"><kern-icon class="lock" name="lock" tabindex="0" [label]="'common.passwordProtected' | t" /></kern-tooltip>
               }
             </td>
             <td>{{ d.model ?? '–' }}</td>
@@ -65,10 +68,12 @@
             @for (iface of staticIfaces(); track iface) {
               <td>
                 @if (selected().has(d.mac)) {
-                  <kern-input
+                  <kern-ip-input
                     class="ip"
                     size="sm"
-                    mono
+                    allow="single"
+                    [labelInvalid]="'ipInput.invalid' | t"
+                    [labelNotAllowed]="'ipInput.notAllowed' | t"
                     [attr.name]="'ip:' + d.mac + ':' + iface"
                     [ariaLabelText]="'templateApply.newIpFor' | t: { name: d.name ?? d.mac }"
                     [value]="plannedIp(d.mac, iface)"
@@ -81,7 +86,7 @@
             }
             <td>
               @if (results()[d.mac]; as r) {
-                <kern-status [tone]="r.ok ? 'ok' : 'danger'"><span aria-hidden="true">{{ r.ok ? '✓' : '✗' }}</span> {{ r.text }}</kern-status>
+                <kern-status [tone]="r.ok ? 'ok' : 'danger'"><kern-icon [name]="r.ok ? 'check' : 'close'" /> {{ r.text }}</kern-status>
               } @else if (running() && selected().has(d.mac)) {
                 <kern-status tone="busy">{{ 'templateApply.waiting' | t }}</kern-status>
               }
@@ -152,17 +157,13 @@
         <kern-progress [max]="total()" [value]="doneCount()" />
         <span>{{ 'common.progress' | t: { done: doneCount(), total: total() } }}</span>
         <kern-button (click)="cancel()">{{ 'common.cancel' | t }}</kern-button>
-      } @else if (confirming()) {
-        <span>{{ 'templateApply.confirm' | t: { name: t.name, count: selectedDevices().length } }}</span>
-        <kern-button variant="primary" (click)="run()">{{ 'templateApply.confirmYes' | t }}</kern-button>
-        <kern-button variant="ghost" (click)="confirming.set(false)">{{ 'common.cancel' | t }}</kern-button>
       } @else {
         @if (staticIfaces().length > 0) {
           <kern-button [disabled]="selectedDevices().length === 0" (click)="exportReservations()">
             {{ 'templateApply.exportReservations' | t }}
           </kern-button>
         }
-        <kern-button variant="primary" [disabled]="selectedDevices().length === 0" (click)="confirming.set(true)">
+        <kern-button variant="primary" [disabled]="selectedDevices().length === 0" (click)="confirmAndRun()">
           {{ 'templateApply.applyTo' | t: { count: selectedDevices().length } }}
         </kern-button>
       }

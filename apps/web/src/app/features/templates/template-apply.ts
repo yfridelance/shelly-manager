@@ -9,6 +9,7 @@ import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { describeSettings, itemText, wifiLabel } from '../../core/template-fields';
 import { errorText, formatMac } from '../../core/texts';
 import { TemplatesApi, type ApplyRequest } from '../../core/templates-api';
+import { Feedback } from '../../core/feedback';
 
 const CONCURRENCY = 4;
 
@@ -33,6 +34,7 @@ import { kernChecked, kernValue } from '../../core/kern';
 })
 export class TemplateApply {
   private readonly api = inject(TemplatesApi);
+  private readonly feedback = inject(Feedback);
   readonly id = input.required<string>();
 
   protected readonly formatMac = formatMac;
@@ -78,7 +80,6 @@ export class TemplateApply {
   protected readonly apPassword = signal('');
   protected readonly reboot = signal(true);
 
-  protected readonly confirming = signal(false);
   protected readonly running = signal(false);
   protected readonly results = signal<Record<string, RowResult>>({});
   protected readonly doneCount = computed(() => Object.keys(this.results()).length);
@@ -166,9 +167,19 @@ export class TemplateApply {
     );
   }
 
-  protected async run(): Promise<void> {
+  /** One confirmation for the whole selection, with the network warning repeated, then apply. */
+  protected async confirmAndRun(): Promise<void> {
     if (!this.template.hasValue()) return;
-    this.confirming.set(false);
+    const ok = await this.feedback.confirm({
+      heading: t('templateApply.confirm', { name: this.template.value().name, count: this.selectedDevices().length }),
+      ...(this.hasNetwork() ? { message: t('templateApply.networkWarning') } : {}),
+      confirmLabel: t('templateApply.confirmYes'),
+    });
+    if (ok) await this.run();
+  }
+
+  private async run(): Promise<void> {
+    if (!this.template.hasValue()) return;
     const templateId = this.template.value().id;
     const devices = this.selectedDevices();
     const password = this.password();

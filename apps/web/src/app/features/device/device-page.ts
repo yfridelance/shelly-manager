@@ -1,9 +1,10 @@
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, input, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import type { ActionEntry, Device, DeviceDetails, DeviceState, FirmwareChannel, LocalDeviceFields, Snapshot } from '../../core/api.types';
 import { actionDetail, actionLabel, actionSummary, unconfirmedResetText } from '../../core/action-text';
-import { compareText, t } from '../../core/i18n/i18n';
+import { compareText, t, type TranslationKey } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
@@ -11,6 +12,7 @@ import { DeviceApiError, DevicesApi, type Credentials, type FactoryResetResult }
 import { deviceStateText, formatMac, functionsText, shortFirmware } from '../../core/texts';
 import { EditableField } from '../../shared/editable-field';
 import { kernValue } from '../../core/kern';
+import { Feedback } from '../../core/feedback';
 import { COMMON_FLOORS, compareFloor } from '../../core/floor';
 import { suggestDeviceName } from '../../core/device-name';
 import { diffJson, formatDiffValue, type DiffEntry } from '../../shared/json-diff';
@@ -20,13 +22,14 @@ type SnapshotTab = 'config' | 'status' | 'info';
 
 @Component({
   selector: 'app-device-page',
-  imports: [DateTimePipe, TranslatePipe, RouterLink, EditableField, ResetDialog],
+  imports: [DateTimePipe, TranslatePipe, RouterLink, NgTemplateOutlet, EditableField, ResetDialog],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './device-page.html',
   styleUrl: './device-page.scss',
 })
 export class DevicePage {
   private readonly api = inject(DevicesApi);
+  private readonly feedback = inject(Feedback);
 
   /** Route parameter (component input binding). */
   readonly mac = input.required<string>();
@@ -48,7 +51,6 @@ export class DevicePage {
   );
   protected readonly sites = inject(SitesStore);
   private readonly sitesApi = inject(SitesApi);
-  protected readonly moveTo = signal<number | null>(null);
   protected readonly locationSuggestions = computed(() =>
     [...new Set(this.locations.value().flatMap((d) => (d.location ? [d.location] : [])))].sort(compareText),
   );
@@ -110,6 +112,11 @@ export class DevicePage {
   protected readonly formatDiffValue = formatDiffValue;
   protected readonly diffKindText = (kind: DiffEntry['kind']): string => t(`device.diff.${kind}`);
 
+  protected readonly views = [
+    { name: 'config', label: 'device.tab.config' },
+    { name: 'status', label: 'device.tab.status' },
+    { name: 'info', label: 'device.tab.info' },
+  ] as const satisfies readonly { name: SnapshotTab; label: TranslationKey }[];
   protected readonly tab = signal<SnapshotTab>('config');
   protected readonly openDepth = signal(1);
   protected readonly shown = computed(() => {
@@ -118,16 +125,13 @@ export class DevicePage {
   });
 
   protected readonly saving = signal(false);
-  protected readonly message = signal<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  /** Errors and warnings stay on the page; successes are toasts. */
+  protected readonly message = signal<{ kind: 'warn' | 'error'; text: string } | null>(null);
 
   // Device actions. The password lives only until the next request is sent.
   protected readonly running = signal<'snapshot' | 'reboot' | 'firmware' | 'name' | null>(null);
-  protected readonly confirmWriteName = signal(false);
-  /** Channel waiting for the user's confirmation before the update starts. */
-  protected readonly confirmUpdate = signal<FirmwareChannel | null>(null);
   protected readonly username = signal('admin');
   protected readonly password = signal('');
-  protected readonly confirmReboot = signal(false);
   protected readonly resetOpen = signal(false);
   protected readonly recentActions = httpResource<ActionEntry[]>(
     () => `/api/actions?mac=${encodeURIComponent(this.mac())}&limit=10`,
@@ -150,18 +154,22 @@ export class DevicePage {
     }
   }
 
-  /** Writes the local name to the device (after a confirmation in the UI). */
+  /** Writes the local name to the device after a confirmation. */
   protected async writeName(): Promise<void> {
     const device = this.device();
     if (!device?.name) return;
-    this.confirmWriteName.set(false);
+    const ok = await this.feedback.confirm({
+      heading: t('device.writeNameQuestion', { name: device.name }),
+      confirmLabel: t('device.writeNameConfirm'),
+    });
+    if (!ok) return;
     const credentials = this.takeCredentials(device);
     this.running.set('name');
     this.message.set(null);
     try {
       const { name } = await this.api.writeName(device.mac, device.name, credentials);
       this.details.reload();
-      this.message.set({ kind: 'ok', text: t('device.writeNameDone', { name }) });
+      this.feedback.success(t('device.writeNameDone', { name }));
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.writeNameFailed', { error: (err as DeviceApiError).message }) });
     } finally {
@@ -179,17 +187,25 @@ export class DevicePage {
     return { password, ...(device.gen === 1 && username ? { username } : {}) };
   }
 
-  /** Moves the device to another site (after a confirmation in the UI). */
-  protected async moveDevice(): Promise<void> {
+  /** Moves the device to another site after a confirmation; on cancel the select shows the current site again. */
+  protected async onSiteChange(event: Event, current: number): Promise<void> {
     const device = this.device();
-    const target = this.moveTo();
-    if (!device || target === null) return;
-    this.moveTo.set(null);
+    const target = Number(kernValue(event));
+    if (!device || !target || target === current) return;
+    const ok = await this.feedback.confirm({
+      heading: t('device.moveQuestion', { site: this.sites.name(target) }),
+      confirmLabel: t('device.moveConfirm'),
+    });
+    if (!ok) {
+      const select = event.target as { value?: string } | null;
+      if (select) select.value = String(current);
+      return;
+    }
     try {
       await this.sitesApi.moveDevice(device.mac, target);
       this.details.reload();
       this.sites.list.reload();
-      this.message.set({ kind: 'ok', text: t('device.moved', { site: this.sites.name(target) }) });
+      this.feedback.success(t('device.moved', { site: this.sites.name(target) }));
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.moveFailed', { error: (err as DeviceApiError).message }) });
     }
@@ -206,7 +222,7 @@ export class DevicePage {
       this.selectedId.set(null);
       this.compareId.set(null);
       this.details.reload();
-      this.message.set({ kind: 'ok', text: t('device.snapshotDone') });
+      this.feedback.success(t('device.snapshotDone'));
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.snapshotFailed', { error: (err as DeviceApiError).message }) });
     } finally {
@@ -218,13 +234,14 @@ export class DevicePage {
   protected async reboot(): Promise<void> {
     const device = this.device();
     if (!device) return;
-    this.confirmReboot.set(false);
+    const ok = await this.feedback.confirm({ heading: t('device.rebootQuestion'), confirmLabel: t('device.rebootConfirm'), danger: true });
+    if (!ok) return;
     const credentials = this.takeCredentials(device);
     this.running.set('reboot');
     this.message.set(null);
     try {
       await this.api.reboot(device.mac, credentials);
-      this.message.set({ kind: 'ok', text: t('device.rebootDone') });
+      this.feedback.success(t('device.rebootDone'));
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.rebootFailed', { error: (err as DeviceApiError).message }) });
     } finally {
@@ -244,14 +261,13 @@ export class DevicePage {
       this.details.update((d) =>
         d ? { ...d, device: { ...d.device, updateStable: result.stable, updateBeta: result.beta, updateCheckedAt: result.checkedAt } } : d,
       );
-      this.message.set({
-        kind: 'ok',
-        text: result.stable
+      this.feedback.success(
+        result.stable
           ? t('device.firmware.available', { version: shortFirmware(result.stable) })
           : result.beta
             ? t('device.firmware.currentWithBeta', { version: shortFirmware(result.beta) })
             : t('device.firmware.isCurrent'),
-      });
+      );
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.firmware.checkFailed', { error: (err as DeviceApiError).message }) });
     } finally {
@@ -262,16 +278,19 @@ export class DevicePage {
   protected async installUpdate(channel: FirmwareChannel): Promise<void> {
     const device = this.device();
     if (!device) return;
-    this.confirmUpdate.set(null);
+    const offered = shortFirmware(channel === 'beta' ? device.updateBeta : device.updateStable);
+    const ok = await this.feedback.confirm({
+      heading: t(channel === 'beta' ? 'device.firmware.installBetaQuestion' : 'device.firmware.installQuestion', { version: offered }),
+      confirmLabel: t('device.firmware.installConfirm'),
+      danger: true,
+    });
+    if (!ok) return;
     const credentials = this.takeCredentials(device);
     this.running.set('firmware');
     this.message.set(null);
     try {
       const { version } = await this.api.updateFirmware(device.mac, channel, credentials);
-      this.message.set({
-        kind: 'ok',
-        text: t('device.firmware.started', { version: shortFirmware(version) }),
-      });
+      this.feedback.success(t('device.firmware.started', { version: shortFirmware(version) }));
     } catch (err) {
       this.message.set({ kind: 'error', text: t('device.firmware.updateFailed', { error: (err as DeviceApiError).message }) });
     } finally {
@@ -285,13 +304,13 @@ export class DevicePage {
     this.selectedId.set(null);
     this.details.reload();
     this.recentActions.reload();
-    this.message.set({
-      kind: 'ok',
-      text: [
-        result.confirmed === false ? t('device.reset.unconfirmed', { text: unconfirmedResetText() }) : t('device.reset.done'),
-        result.snapshotId !== null ? t('device.reset.snapshotSaved') : t('device.reset.noSnapshot'),
-      ].join(' '),
-    });
+    const text = [
+      result.confirmed === false ? t('device.reset.unconfirmed', { text: unconfirmedResetText() }) : t('device.reset.done'),
+      result.snapshotId !== null ? t('device.reset.snapshotSaved') : t('device.reset.noSnapshot'),
+    ].join(' ');
+    // An unconfirmed reset stays on the page: the user has to check the device.
+    if (result.confirmed === false) this.message.set({ kind: 'warn', text });
+    else this.feedback.success(text);
   }
 
   protected onResetClosed(): void {
@@ -301,7 +320,12 @@ export class DevicePage {
 
   protected async copyShown(): Promise<void> {
     await navigator.clipboard.writeText(JSON.stringify(this.shown(), null, 2));
-    this.message.set({ kind: 'ok', text: t('device.copied') });
+    this.feedback.success(t('device.copied'));
+  }
+
+  protected onTab(event: Event): void {
+    const name = kernValue(event) as SnapshotTab;
+    if (this.views.some((v) => v.name === name)) this.tab.set(name);
   }
 
   protected selectSnapshot(value: string): void {
@@ -324,11 +348,6 @@ export class DevicePage {
   }
 
   protected readonly value = kernValue;
-
-  protected onSiteChange(value: string, current: number): void {
-    const id = Number(value);
-    if (id && id !== current) this.moveTo.set(id);
-  }
 
   protected stateTone(state: DeviceState): 'ok' | 'warn' | 'neutral' {
     return state === 'active' ? 'ok' : state === 'missing' ? 'warn' : 'neutral';

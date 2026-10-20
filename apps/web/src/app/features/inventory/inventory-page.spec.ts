@@ -23,6 +23,11 @@ const DEVICES: Device[] = [
   device({ mac: '7C2C67B2B2B2', name: null, gen: 4, ip: '10.0.0.100', state: 'reset' }),
 ];
 
+/** What kern-table reports when a sortable header is clicked (jsdom does not upgrade it). */
+function sortBy(el: HTMLElement, key: string, direction: 'asc' | 'desc' = 'asc'): void {
+  el.querySelector('kern-table')?.dispatchEvent(new CustomEvent('kernSort', { detail: { key, column: 0, direction } }));
+}
+
 describe('InventoryPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -64,13 +69,16 @@ describe('InventoryPage', () => {
     expect(names()).toEqual(['Licht Garten']);
 
     filters.reset();
-    filters.sortBy('ip');
+    sortBy(el, 'ip');
     await fixture.whenStable();
     expect(names()).toEqual(['Licht Garten', 'Boiler', '(ohne Namen)']);
-    filters.sortBy('ip');
+    expect(el.querySelector('th[data-key="ip"]')?.getAttribute('sorted')).toBe('asc');
+    sortBy(el, 'ip', 'desc');
     await fixture.whenStable();
     expect(names()).toEqual(['(ohne Namen)', 'Boiler', 'Licht Garten']);
-    filters.sortBy('name');
+    expect(el.querySelector('th[data-key="ip"]')?.getAttribute('sorted')).toBe('desc');
+    expect(el.querySelector('th[data-key="name"]')?.hasAttribute('sorted')).toBe(false);
+    sortBy(el, 'name');
   });
 
   it('shows type and function and filters by function', async () => {
@@ -93,7 +101,7 @@ describe('InventoryPage', () => {
 
   it('shows the device id and finds devices by it', async () => {
     const { fixture, el, names } = await render();
-    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent?.trim().replace(/[▲▼]/g, '').trim()).slice(0, 2)).toEqual(['Name', 'Geräte-ID']);
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent?.trim()).slice(0, 2)).toEqual(['Name', 'Geräte-ID']);
     expect(el.querySelector('tbody tr td:nth-child(2)')?.textContent?.trim()).toBe('shellyplus1pm-a8032ab12345');
     const filters = TestBed.inject(InventoryFilters);
     filters.search.set('plus1pm');
@@ -116,14 +124,14 @@ describe('InventoryPage', () => {
     const names = () => [...el.querySelectorAll('tbody tr td:first-child')].map((td) => td.textContent?.trim());
     expect(el.textContent).toContain('EG · Küche');
     const filters = TestBed.inject(InventoryFilters);
-    filters.sortBy('location');
+    sortBy(el, 'location');
     await fixture.whenStable();
     expect(names()).toEqual(['Waschen', 'Küche', 'Bad', 'Dach']);
     filters.floor.set('1. OG');
     await fixture.whenStable();
     expect(names()).toEqual(['Bad']);
     filters.reset();
-    filters.sortBy('name');
+    sortBy(el, 'name');
     filters.search.set('dg');
     await fixture.whenStable();
     expect(names()).toEqual(['Dach']);
@@ -141,7 +149,7 @@ describe('InventoryPage', () => {
 
   it('marks and filters devices with a firmware update', async () => {
     const { fixture, el, names } = await render();
-    expect(el.querySelector('tbody tr:nth-child(2) kern-badge')?.getAttribute('title')).toBe('Update auf v1.14.1 verfügbar');
+    expect((el.querySelector('tbody tr:nth-child(2) kern-badge')?.closest('kern-tooltip') as (Element & { text?: string }) | null)?.text).toBe('Update auf v1.14.1 verfügbar');
     expect(el.textContent).toContain('nur mit Firmware-Update (1)');
     TestBed.inject(InventoryFilters).onlyUpdates.set(true);
     await fixture.whenStable();

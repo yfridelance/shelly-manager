@@ -7,6 +7,7 @@ import { SiteService, SitesStore } from '../../core/site.service';
 import { SitesApi } from '../../core/sites-api';
 import { EditableField } from '../../shared/editable-field';
 import { kernValue } from '../../core/kern';
+import { Feedback } from '../../core/feedback';
 
 /** Sites (houses, customers): each has its own inventory, templates and log. */
 @Component({
@@ -16,8 +17,8 @@ import { kernValue } from '../../core/kern';
   template: `
     <kern-page-header [heading]="'nav.sites' | t" [description]="'sites.intro' | t" />
 
-    @if (message(); as m) {
-      <kern-alert [tone]="m.kind === 'ok' ? 'ok' : 'danger'" [attr.role]="m.kind === 'ok' ? 'status' : 'alert'">{{ m.text }}</kern-alert>
+    @if (error(); as e) {
+      <kern-alert tone="danger" role="alert">{{ e }}</kern-alert>
     }
 
     <kern-table>
@@ -49,13 +50,7 @@ import { kernValue } from '../../core/kern';
                 <kern-button size="sm" variant="ghost" (click)="site.select(s.id)">{{ 'sites.switch' | t }}</kern-button>
               }
               @if (s.deviceCount === 0 && s.templateCount === 0 && sites.list.value().length > 1) {
-                @if (confirmDelete() === s.id) {
-                  <span>{{ 'common.deleteQuestion' | t }}</span>
-                  <kern-button size="sm" variant="danger" (click)="remove(s)">{{ 'common.yes' | t }}</kern-button>
-                  <kern-button size="sm" (click)="confirmDelete.set(null)">{{ 'common.no' | t }}</kern-button>
-                } @else {
-                  <kern-button size="sm" variant="ghost" (click)="confirmDelete.set(s.id)">{{ 'common.delete' | t }}</kern-button>
-                }
+                <kern-button size="sm" variant="ghost" (click)="remove(s)">{{ 'common.delete' | t }}</kern-button>
               }
             </td>
           </tr>
@@ -87,8 +82,8 @@ export class SitesPage {
   protected readonly site = inject(SiteService);
   protected readonly newName = signal('');
   protected readonly newDescription = signal('');
-  protected readonly confirmDelete = signal<number | null>(null);
-  protected readonly message = signal<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  private readonly feedback = inject(Feedback);
+  protected readonly error = signal<string | null>(null);
 
   protected async create(event: Event): Promise<void> {
     event.preventDefault();
@@ -97,9 +92,10 @@ export class SitesPage {
       this.newName.set('');
       this.newDescription.set('');
       this.sites.list.reload();
-      this.message.set({ kind: 'ok', text: t('sites.createdMessage', { name: created.name }) });
+      this.error.set(null);
+      this.feedback.success(t('sites.createdMessage', { name: created.name }));
     } catch (err) {
-      this.message.set({ kind: 'error', text: (err as DeviceApiError).message });
+      this.error.set((err as DeviceApiError).message);
     }
   }
 
@@ -109,18 +105,20 @@ export class SitesPage {
       await this.api.update(s.id, { name: name.trim(), description: description?.trim() || null });
       this.sites.list.reload();
     } catch (err) {
-      this.message.set({ kind: 'error', text: (err as DeviceApiError).message });
+      this.error.set((err as DeviceApiError).message);
     }
   }
 
   protected async remove(s: Site): Promise<void> {
-    this.confirmDelete.set(null);
+    const ok = await this.feedback.confirm({ heading: t('common.deleteNamed', { name: s.name }), confirmLabel: t('common.delete'), danger: true });
+    if (!ok) return;
     try {
       await this.api.delete(s.id);
       this.sites.list.reload();
-      this.message.set({ kind: 'ok', text: t('sites.deleted', { name: s.name }) });
+      this.error.set(null);
+      this.feedback.success(t('sites.deleted', { name: s.name }));
     } catch (err) {
-      this.message.set({ kind: 'error', text: (err as DeviceApiError).message });
+      this.error.set((err as DeviceApiError).message);
     }
   }
 

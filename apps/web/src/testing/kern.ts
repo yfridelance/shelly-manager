@@ -6,12 +6,22 @@ function find(root: ParentNode, selector: string): HTMLElement {
   return el;
 }
 
-/** Types into a kern-input / kern-textarea (`kernInput`) or picks in a kern-select / kern-segmented (`kernChange`). */
+const TYPED = new Set(['kern-input', 'kern-textarea', 'kern-ip-input']);
+
+/**
+ * Types into a kern-input / kern-textarea / kern-ip-input (`kernInput`), picks in a kern-select / kern-segmented
+ * (`kernChange`) or commits a number in a kern-step-input (`kernChange` with a number, '' = empty).
+ */
 export function setKernValue(root: ParentNode, selector: string, value: string): void {
-  const el = find(root, selector) as HTMLElement & { value: string };
+  const el = find(root, selector) as HTMLElement & { value: string | number };
+  if (el.localName === 'kern-step-input') {
+    const n = value.trim() === '' ? null : Number(value);
+    el.value = n ?? '';
+    el.dispatchEvent(new CustomEvent('kernChange', { detail: { value: n } }));
+    return;
+  }
   el.value = value;
-  const event = el.localName === 'kern-input' || el.localName === 'kern-textarea' ? 'kernInput' : 'kernChange';
-  el.dispatchEvent(new CustomEvent(event, { detail: { value } }));
+  el.dispatchEvent(new CustomEvent(TYPED.has(el.localName) ? 'kernInput' : 'kernChange', { detail: { value } }));
 }
 
 /** Toggles a kern-switch / kern-checkbox. */

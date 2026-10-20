@@ -60,8 +60,10 @@ Unter **Scan** gibst du einen IP-Bereich ein:
 | Eingabe | Bedeutung |
 |---|---|
 | `192.168.1.0/24` | ganzes Netz (ohne Netz- und Broadcast-Adresse) |
-| `192.168.1.10-192.168.1.80` | Bereich von–bis |
+| `192.168.1.10-192.168.1.80` | Bereich von–bis (Kurzform `192.168.1.10-80` geht auch) |
 | `192.168.1.33` | eine einzelne Adresse |
+
+Das Feld prüft die Eingabe schon beim Tippen und zeigt die Anzahl Adressen an.
 
 Höchstens **1024 Adressen** pro Scan. Die App fragt 32 Adressen gleichzeitig an und wartet pro Adresse höchstens
 1,5 Sekunden. Ein `/24`-Netz dauert so meist nur wenige Sekunden. Es läuft immer nur ein Scan; mit **Abbrechen**
@@ -169,7 +171,7 @@ setzt «Vorschlag einsetzen» ihn wieder ein.
 **Name auf Gerät schreiben:** Unter dem Namen steht, ob er mit dem Namen auf dem Gerät übereinstimmt («Gleich wie
 auf dem Gerät») oder was dort steht («Auf dem Gerät: «Boiler»»). Weicht er ab, schreibt «Name auf Gerät schreiben»
 ihn nach einer Rückfrage aufs Gerät (unter diesem Namen erscheint es z.B. in der Shelly-App); bei geschützten Geräten
-steht das Passwortfeld direkt in der Rückfrage. Die App prüft vorher wie bei jeder Aktion die MAC und speichert danach
+zuerst das Passwort unter **Aktionen** eingeben. Die App prüft vorher wie bei jeder Aktion die MAC und speichert danach
 einen Snapshot. Danach sind beide Namen gleich, die App übernimmt also spätere Umbenennungen auf dem Gerät. Gen1
 erlaubt höchstens 30 Zeichen, Gen2+ (in der App) 64.
 
@@ -370,7 +372,8 @@ Netzmaske und optional Gateway und DNS an. SSID und WLAN-Passwort bleiben immer 
 Das Protokoll listet alle Aktionen: Snapshot, Neustart, Werksreset, Firmware-Update, Template und «Name auf Gerät
 geschrieben» (mit altem und neuem Namen). Zu jedem Eintrag
 gehören Zeitpunkt, Gerät, Ergebnis, Details, Dauer und **Von** (die Adresse des Rechners, von dem die Aktion kam; es
-gibt keine Benutzerkonten). Filter nach Gerät, Aktion und Ergebnis; «Aktualisieren» lädt neu.
+gibt keine Benutzerkonten). Filter nach Gerät, Aktion und Ergebnis; «Aktualisieren» lädt neu. Lange Listen sind
+in Seiten aufgeteilt (50, 100 oder 250 Einträge pro Seite; die Wahl merkt sich der Browser).
 
 Die Details nennen zum Beispiel den gesicherten Snapshot vor einem Reset, ein bewusst übersprungenes Snapshot,
 die Firmware-Versionen («1.4.4 → 1.5.0 (Stabil)») oder bei Templates jede geänderte Einstellung mit vorher und
@@ -412,6 +415,9 @@ Gerätepasswörter sind nie im Export, weil die App sie nicht speichert.
 5. **Abschluss-Export:** nochmals CSV und JSON exportieren; sie enthalten nun den Zeitpunkt jedes Werksresets.
 
 ## 12. Meldungen und Fehlerbehebung
+
+Rückfragen erscheinen als Dialog. Erfolgsmeldungen erscheinen kurz unten rechts und verschwinden von selbst; Fehler
+bleiben als Hinweis auf der Seite stehen, bis die nächste Aktion startet.
 
 | Meldung | Bedeutung / Abhilfe |
 |---|---|

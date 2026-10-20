@@ -35,6 +35,10 @@
     "edit": "Bearbeiten",
     "delete": "Löschen",
     "deleteQuestion": "Löschen?",
+    "deleteNamed": "«{{name}}» löschen?",
+    "breadcrumb": "Pfad",
+    "notifications": "Benachrichtigungen",
+    "opensInNewTab": "öffnet in neuem Tab",
     "yes": "Ja",
     "no": "Nein",
     "all": "Alle",
@@ -172,6 +176,27 @@
     "ipUnreachable": "{{text}} (dort nicht erreichbar – bitte neu scannen)",
     "renamed": "«{{from}}» → «{{to}}»"
   },
+  "stepInput": {
+    "decrease": "Verringern",
+    "increase": "Erhöhen",
+    "invalid": "Keine gültige Zahl"
+  },
+  "pagination": {
+    "label": "Seiten",
+    "range": "{from}–{to} von {total}",
+    "pageSize": "Pro Seite",
+    "page": "Seite {n}",
+    "first": "Erste Seite",
+    "previous": "Vorherige Seite",
+    "next": "Nächste Seite",
+    "last": "Letzte Seite"
+  },
+  "ipInput": {
+    "invalid": "Keine gültige IPv4-Adresse",
+    "notAllowed": "Diese Form ist hier nicht erlaubt",
+    "tooMany": "Höchstens {n} Adressen",
+    "count": "{n} Adressen"
+  },
   "scan": {
     "title": "Netzwerk-Scan",
     "range": "IP-Bereich",
@@ -273,6 +298,7 @@
     "writeName": "Name auf Gerät schreiben",
     "writeNameQuestion": "«{{name}}» auf das Gerät schreiben?",
     "writeNameConfirm": "Ja, schreiben",
+    "writeNamePasswordHint": "Passwort unten bei den Aktionen eingeben.",
     "writingName": "Schreibt …",
     "passwordHint": "Passwortgeschützt: Das Passwort wird nur für die nächste Aktion verwendet und nicht gespeichert.",
     "recentActions": "Letzte Aktionen",
@@ -398,7 +424,8 @@
     "settings": "Einstellungen",
     "changed": "Geändert",
     "apply": "Anwenden",
-    "deleteFailed": "Löschen fehlgeschlagen: {{error}}"
+    "deleteFailed": "Löschen fehlgeschlagen: {{error}}",
+    "deleted": "Template «{{name}}» gelöscht."
   },
   "templateEditor": {
     "editTitle": "Template bearbeiten",

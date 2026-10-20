@@ -21,14 +21,9 @@
 }
 
 .lock {
-  width: 13px;
-  height: 13px;
   margin-left: var(--space-1);
-  vertical-align: -1px;
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 1.5;
-  stroke-linecap: round;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 // Eleven columns: slightly tighter cells so the table fits a 1280 px laptop screen.

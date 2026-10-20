@@ -3,7 +3,7 @@
 </kern-button>
 
 @if (open()) {
-  <section class="panel" [attr.aria-label]="'firmwareCheck.label' | t">
+  <kern-card class="panel" [heading]="'firmwareCheck.label' | t" [headingLevel]="3">
     @if (!running() && !finished()) {
       <form (submit)="start($event)">
         <p>{{ 'firmwareCheck.intro' | t: { count: candidates().length } }}</p>
@@ -61,5 +61,5 @@
         </div>
       }
     }
-  </section>
+  </kern-card>
 }

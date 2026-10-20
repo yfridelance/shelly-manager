@@ -8,9 +8,11 @@
   </span>
   @if (devices.value().length > 0) {
     <nav slot="actions" class="export" [attr.aria-label]="'inventory.export' | t">
-      <a [href]="'/api/export.json?snapshots=all&site=' + site.siteId()" download>{{ 'inventory.exportAllSnapshots' | t }}</a>
-      <kern-button [href]="'/api/export.csv?site=' + site.siteId() + '&lang=' + language()" download>{{ 'inventory.exportCsv' | t }}</kern-button>
-      <kern-button [href]="'/api/export.json?site=' + site.siteId()" download [title]="'inventory.exportJsonHint' | t">{{ 'inventory.exportJson' | t }}</kern-button>
+      <kern-link tone="muted" [href]="'/api/export.json?snapshots=all&site=' + site.siteId()" download>{{ 'inventory.exportAllSnapshots' | t }}</kern-link>
+      <kern-button [href]="'/api/export.csv?site=' + site.siteId() + '&lang=' + language()" download><kern-icon name="download" /> {{ 'inventory.exportCsv' | t }}</kern-button>
+      <kern-tooltip [text]="'inventory.exportJsonHint' | t">
+        <kern-button [href]="'/api/export.json?site=' + site.siteId()" download><kern-icon name="download" /> {{ 'inventory.exportJson' | t }}</kern-button>
+      </kern-tooltip>
     </nav>
     <app-firmware-check-panel slot="actions" [devices]="devices.value()" (checked)="applyCheck($event)" (showUpdates)="showOnlyUpdates()" />
   }
@@ -75,14 +77,12 @@
 } @else if (!devices.isLoading() && devices.value().length === 0) {
   <p class="muted">{{ 'inventory.empty' | t }} <a routerLink="/scan">{{ 'inventory.scanNetwork' | t }}</a></p>
 } @else {
-  <kern-table>
+  <kern-table controlled="external" [loading]="devices.isLoading()" (kernSort)="onSort($event)">
     <table>
       <thead>
         <tr>
           @for (col of columns; track col.key) {
-            <th [attr.aria-sort]="ariaSort(col.key)">
-              <button type="button" (click)="f.sortBy(col.key)">{{ col.label | t }}</button>
-            </th>
+            <th sortable [attr.data-key]="col.key" [attr.sorted]="sorted(col.key)">{{ col.label | t }}</th>
           }
         </tr>
       </thead>
@@ -92,7 +92,7 @@
             <td>
               <a [routerLink]="['/inventar', d.mac]" (click)="$event.stopPropagation()">{{ d.name ?? ('common.unnamed' | t) }}</a>
               @if (d.authRequired) {
-                <svg class="lock" viewBox="0 0 16 16" role="img" [attr.aria-label]="'common.passwordProtected' | t"><title>{{ 'common.passwordProtected' | t }}</title><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>
+                <kern-tooltip [text]="'common.passwordProtected' | t"><kern-icon class="lock" name="lock" tabindex="0" [label]="'common.passwordProtected' | t" /></kern-tooltip>
               }
             </td>
             <td class="mono">{{ d.deviceId ?? '–' }}</td>
@@ -100,10 +100,12 @@
             <td>{{ d.gen }}</td>
             <td class="mono">{{ d.ip ?? '–' }}</td>
             <td class="mono">{{ formatMac(d.mac) }}</td>
-            <td [title]="d.firmware ?? ''">
-              {{ shortFirmware(d.firmware) }}
+            <td>
+              <kern-tooltip [text]="d.firmware ?? ''" [disabled]="!d.firmware"><span tabindex="0">{{ shortFirmware(d.firmware) }}</span></kern-tooltip>
               @if (d.updateStable) {
-                <kern-badge tone="warn" [title]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">{{ 'inventory.update' | t }}</kern-badge>
+                <kern-tooltip [text]="'inventory.updateTo' | t: { version: shortFirmware(d.updateStable) }">
+                  <kern-badge tone="warn" tabindex="0">{{ 'inventory.update' | t }}</kern-badge>
+                </kern-tooltip>
               }
             </td>
             <td class="kind">
@@ -113,16 +115,18 @@
               @if (d.functions) {
                 <span class="muted fn">{{ functionsText(d.functions) }}</span>
               } @else if (!d.kind) {
-                <span class="muted" [title]="'inventory.functionUnknown' | t">–</span>
+                <kern-tooltip [text]="'inventory.functionUnknown' | t"><span class="muted" tabindex="0">–</span></kern-tooltip>
               }
             </td>
             <td>{{ placeText(d) }}</td>
             <td><kern-status [tone]="stateTone(d.state)">{{ stateText(d.state) }}</kern-status></td>
-            <td [title]="d.lastSeen | dateTime: 'seconds'">{{ d.lastSeen | dateTime: 'compact' }}</td>
+            <td>
+              <kern-tooltip [text]="d.lastSeen | dateTime: 'seconds'"><span tabindex="0">{{ d.lastSeen | dateTime: 'compact' }}</span></kern-tooltip>
+            </td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="11" class="empty">{{ 'inventory.noMatch' | t }}</td>
+            <td colspan="11" class="empty">{{ (devices.isLoading() ? 'common.loading' : 'inventory.noMatch') | t }}</td>
           </tr>
         }
       </tbody>

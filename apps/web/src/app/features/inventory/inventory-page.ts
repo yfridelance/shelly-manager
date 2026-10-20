@@ -122,8 +122,17 @@ export class InventoryPage {
     void this.router.navigate(['/inventar', device.mac]);
   }
 
-  protected ariaSort(key: SortKey): 'ascending' | 'descending' | null {
-    return this.f.sortKey() === key ? (this.f.sortAsc() ? 'ascending' : 'descending') : null;
+  /** `sorted` attribute of a header; kern-table derives aria-sort and the sort button from it. */
+  protected sorted(key: SortKey): 'asc' | 'desc' | null {
+    return this.f.sortKey() === key ? (this.f.sortAsc() ? 'asc' : 'desc') : null;
+  }
+
+  /** kern-table only reports the click (`controlled="external"`): the building order of floors needs our comparator. */
+  protected onSort(event: Event): void {
+    const { key, direction } = (event as CustomEvent<{ key: string; direction: 'asc' | 'desc' }>).detail;
+    if (!this.columns.some((c) => c.key === key)) return;
+    this.f.sortKey.set(key as SortKey);
+    this.f.sortAsc.set(direction === 'asc');
   }
 
   protected readonly value = kernValue;

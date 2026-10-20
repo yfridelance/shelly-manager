@@ -3,7 +3,7 @@ import { httpResource } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import type { NetworkSettings, Template, TemplateSettings, WifiInterface } from '../../core/api.types';
 import type { DeviceApiError } from '../../core/devices-api';
-import { t } from '../../core/i18n/i18n';
+import { currentLocale, t } from '../../core/i18n/i18n';
 import { TranslatePipe } from '../../core/i18n/pipes';
 import {
   SCRIPT_FIELDS,
@@ -18,7 +18,7 @@ import {
 } from '../../core/template-fields';
 import { TemplatesApi } from '../../core/templates-api';
 import { SiteService } from '../../core/site.service';
-import { kernChecked, kernValue } from '../../core/kern';
+import { kernChecked, kernNumber, kernValue } from '../../core/kern';
 
 /** Per field: included in the template, and its raw input value ('true'/'false' for booleans). */
 type FieldState = Record<string, { on: boolean; value: string }>;
@@ -171,4 +171,15 @@ export class TemplateEditor {
 
   protected readonly value = kernValue;
   protected readonly checked = kernChecked;
+  protected readonly locale = currentLocale;
+
+  /** Field values are kept as text; kern-step-input works with numbers ('' = empty). */
+  protected numberValue(text: string | undefined): number | '' {
+    return text === undefined || text.trim() === '' || !Number.isFinite(Number(text)) ? '' : Number(text);
+  }
+
+  protected numberText(event: Event): string {
+    const n = kernNumber(event);
+    return n === null ? '' : String(n);
+  }
 }

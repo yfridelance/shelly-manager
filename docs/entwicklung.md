@@ -109,21 +109,37 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   Einzel-Endpunkte; so gibt es Fortschritt pro Gerät ohne Job-Verwaltung im Server.
 - Passwörter liegen nur in Formular-Signals und werden beim Absenden geleert.
 - **Design-System Kern** ([yfridelance/kern](https://github.com/yfridelance/kern)): Web Components (Stencil,
-  Shadow DOM) als Abhängigkeit `@yfridelance/kern`, bezogen als gebautes Paket aus dem GitHub-Release (URL in
-  `apps/web/package.json`, kein git und keine Install-Scripts nötig). Neue Version: Release in Kern erstellen, dann
-  `npm install -w apps/web https://github.com/yfridelance/kern/releases/download/vX.Y.Z/yfridelance-kern-X.Y.Z.tgz`.
+  Shadow DOM) als Abhängigkeit `@yfridelance/kern` aus der npm-Registry, Version in `apps/web/package.json` fest
+  gepinnt (keine Install-Scripts nötig). Neue Version: Release in Kern erstellen (publiziert auf npm), dann
+  `npm install -w apps/web @yfridelance/kern@X.Y.Z --save-exact`. Dokumentation: https://yfridelance.github.io/kern/.
   - `kern.css` (Tokens, Theme, Grundstile) steht in `angular.json` → `styles`; `core/kern.ts` (`defineKern()` in
     `main.ts`) registriert die benutzten `kern-*`-Elemente und setzt das gespeicherte Theme. Dark ist Standard;
     `index.html` setzt `data-theme` schon vor dem ersten Rendern aus `localStorage['kern-theme']`,
     `<kern-theme-toggle>` in der Kopfzeile schaltet um.
+  - Importe nur aus `@yfridelance/kern/components` bzw. `@yfridelance/kern/components/kern-*.js` (Custom-Elements-Build),
+    nie aus dem Paket-Root: der zieht den Lazy-Loader mit allen Komponenten ins Bundle.
   - Komponenten mit `kern-*` brauchen `CUSTOM_ELEMENTS_SCHEMA`. Werte per Property-Binding (`[value]`, `[checked]`,
-    `[data]`), Eingaben über die Kern-Events: `(kernInput)` bei `kern-input`/`kern-textarea`, `(kernChange)` bei
-    `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`; auslesen mit `kernValue($event)` /
-    `kernChecked($event)` aus `core/kern.ts`. Optionen von `kern-select` als Kind-`<option>` (`@for` funktioniert).
-  - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`).
-  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`), Sortierköpfe in Tabellen,
-    die Tabs im Gerätedetail (eine gemeinsame JSON-Ansicht) und Router-Links mit Button-Optik (`a.button` in
-    `styles.scss`, weil `kern-button href` die Seite neu laden würde).
+    `[data]`), Eingaben über die Kern-Events: `(kernInput)` bei `kern-input`/`kern-textarea`/`kern-ip-input`,
+    `(kernChange)` bei `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`, `kern-step-input`; auslesen mit
+    `kernValue($event)` / `kernChecked($event)` / `kernNumber($event)` aus `core/kern.ts`. Optionen von `kern-select`
+    als Kind-`<option>` (`@for` funktioniert).
+  - IP-Felder sind `kern-ip-input` (Scan: `single range cidr`, Templates: `single`); vor dem Senden `normalizeIp()`,
+    damit Kurzformen wie `10.0.0.1-50` beim Server in voller Form ankommen. Kern-Texte (`label…`-Props) kommen aus
+    `ipInput.*` bzw. `stepInput.*` in den Locale-Dateien.
+  - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`). Sortierbare
+    Spalten mit `<th sortable data-key [attr.sorted]>` und `controlled="external"`: kern-table meldet `kernSort`, die
+    App sortiert selbst (Gebäude-Reihenfolge der Stockwerke) und setzt `sorted`; nie `internal`, sonst ordnet Kern die
+    von Angular gerenderten Zeilen um. Lange Listen (Protokoll) blättern mit einer eigenen `kern-pagination` und
+    `slice()` in der Komponente.
+  - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`) und Router-Links mit
+    Button-Optik (`a.button` in `styles.scss`, weil `kern-button href` die Seite neu laden würde). Router-Links in
+    `kern-breadcrumb` sind normale `<a routerLink>`-Kinder und routen ohne Reload.
+  - Hinweise über `kern-tooltip` statt `title` (Auslöser ohne eigene Fokussierbarkeit mit `tabindex="0"`), Icons über
+    `kern-icon` statt eigener SVGs oder Unicode-Zeichen.
+  - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit
+    übersetzten Labels aufruft; Fehler bleiben als `kern-alert` auf der Seite. Der Reset-Dialog bleibt eigen (MAC oder
+    Gerätename, Override, AP-Hinweis). In Specs `provideFeedbackStub()` aus `src/testing/feedback.ts`: beantwortet
+    Rückfragen mit `answer` und merkt sich Fragen und Toasts (in jsdom würde `confirm()` nie fertig).
   - Farben, Abstände und Radien in eigenen Styles nur über Kern-Tokens (`var(--surface)`, `var(--space-4)` …).
   - Tests (jsdom) kennen die Kern-Elemente nicht: `src/testing/kern.ts` setzt Werte und feuert die Kern-Events
     (`setKernValue`, `setKernChecked`, `fill`, `toggleNamed`); `src/testing/setup.ts` lässt Klicks auf

@@ -1,8 +1,8 @@
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, effect, inject, signal } from '@angular/core';
 import { SiteService } from '../../core/site.service';
 import type { ScanDeviceResult, ScanSummary } from '../../core/api.types';
-import { kernValue } from '../../core/kern';
-import { t } from '../../core/i18n/i18n';
+import { kernValue, normalizeIp } from '../../core/kern';
+import { currentLocale, t } from '../../core/i18n/i18n';
 import { DateTimePipe, TranslatePipe } from '../../core/i18n/pipes';
 import { errorText, formatMac, ipSortKey, scanStatusText } from '../../core/texts';
 import { ScanService } from './scan.service';
@@ -21,6 +21,9 @@ export class ScanPage {
   protected readonly formatMac = formatMac;
 
   protected readonly range = signal('');
+  /** Same limit as the server (MAX_SCAN_ADDRESSES); the server checks again. */
+  protected readonly maxAddresses = 1024;
+  protected readonly locale = currentLocale;
   protected readonly username = signal('admin');
   // Cleared right after the scan has been started: no longer in memory than needed.
   protected readonly password = signal('');
@@ -44,7 +47,7 @@ export class ScanPage {
     this.password.set('');
     const username = this.username().trim();
     await this.scans.start(
-      this.range().trim(),
+      normalizeIp(this.range()),
       this.site.siteId(),
       password ? { password, ...(username && username !== 'admin' ? { username } : {}) } : undefined,
     );

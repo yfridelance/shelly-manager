@@ -19,14 +19,6 @@ export class InventoryFilters {
   readonly sortKey = signal<SortKey>('name');
   readonly sortAsc = signal(true);
 
-  sortBy(key: SortKey): void {
-    if (this.sortKey() === key) this.sortAsc.update((a) => !a);
-    else {
-      this.sortKey.set(key);
-      this.sortAsc.set(true);
-    }
-  }
-
   reset(): void {
     this.search.set('');
     this.gen.set(null);
