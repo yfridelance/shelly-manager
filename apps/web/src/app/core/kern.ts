@@ -1,4 +1,4 @@
-import { initTheme } from '@yfridelance/kern';
+import { initTheme } from '@yfridelance/kern/components';
 import { defineCustomElement as alert } from '@yfridelance/kern/components/kern-alert.js';
 import { defineCustomElement as badge } from '@yfridelance/kern/components/kern-badge.js';
 import { defineCustomElement as button } from '@yfridelance/kern/components/kern-button.js';

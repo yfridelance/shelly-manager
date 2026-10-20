@@ -18,7 +18,7 @@
     "@angular/forms": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
-    "@yfridelance/kern": "https://github.com/yfridelance/kern/releases/download/v0.2.0/yfridelance-kern-0.2.0.tgz",
+    "@yfridelance/kern": "0.7.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -109,13 +109,15 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   Einzel-Endpunkte; so gibt es Fortschritt pro Gerät ohne Job-Verwaltung im Server.
 - Passwörter liegen nur in Formular-Signals und werden beim Absenden geleert.
 - **Design-System Kern** ([yfridelance/kern](https://github.com/yfridelance/kern)): Web Components (Stencil,
-  Shadow DOM) als Abhängigkeit `@yfridelance/kern`, bezogen als gebautes Paket aus dem GitHub-Release (URL in
-  `apps/web/package.json`, kein git und keine Install-Scripts nötig). Neue Version: Release in Kern erstellen, dann
-  `npm install -w apps/web https://github.com/yfridelance/kern/releases/download/vX.Y.Z/yfridelance-kern-X.Y.Z.tgz`.
+  Shadow DOM) als Abhängigkeit `@yfridelance/kern` aus der npm-Registry, Version in `apps/web/package.json` fest
+  gepinnt (keine Install-Scripts nötig). Neue Version: Release in Kern erstellen (publiziert auf npm), dann
+  `npm install -w apps/web @yfridelance/kern@X.Y.Z --save-exact`. Dokumentation: https://yfridelance.github.io/kern/.
   - `kern.css` (Tokens, Theme, Grundstile) steht in `angular.json` → `styles`; `core/kern.ts` (`defineKern()` in
     `main.ts`) registriert die benutzten `kern-*`-Elemente und setzt das gespeicherte Theme. Dark ist Standard;
     `index.html` setzt `data-theme` schon vor dem ersten Rendern aus `localStorage['kern-theme']`,
     `<kern-theme-toggle>` in der Kopfzeile schaltet um.
+  - Importe nur aus `@yfridelance/kern/components` bzw. `@yfridelance/kern/components/kern-*.js` (Custom-Elements-Build),
+    nie aus dem Paket-Root: der zieht den Lazy-Loader mit allen Komponenten ins Bundle.
   - Komponenten mit `kern-*` brauchen `CUSTOM_ELEMENTS_SCHEMA`. Werte per Property-Binding (`[value]`, `[checked]`,
     `[data]`), Eingaben über die Kern-Events: `(kernInput)` bei `kern-input`/`kern-textarea`, `(kernChange)` bei
     `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`; auslesen mit `kernValue($event)` /
