@@ -56,7 +56,7 @@ apps/
     test/                     Vitest; mock-shelly/ ist die Mock-Fleet
   web/                        Angular 22, Standalone Components, Signals, SCSS
     src/testing/              Test-Helfer für Kern-Elemente (kern.ts) und Vitest-Setup (setup.ts)
-    src/locale/               Übersetzungen: de.json (Quelle), weitere Sprachen
+    src/locale/               Übersetzungen: de.json (Quelle), en.json
     src/app/
       core/                   API-Typen, API-Clients, Texte, Template-Feldliste
       core/i18n/              Übersetzung: t(), Pipes, Sprachliste, Umschalter-Service

@@ -37,9 +37,8 @@ Die Navigation oben hat vier Bereiche:
 | **Protokoll** | Alle ausgeführten Aktionen mit Ergebnis |
 | **Standort** (oben rechts) | Auswahl des Standorts, in dem du arbeitest; «Standorte bearbeiten» unten in der Liste verwaltet sie |
 
-Oben rechts zeigt «Server verbunden», dass die App ihren Server erreicht. Sobald die App in mehr als einer Sprache
-vorliegt, steht daneben die Sprachauswahl; ohne Auswahl gilt die Sprache des Browsers (sonst Deutsch), und der
-Browser merkt sich die Wahl. Ganz rechts wechselt der Mond- bzw. Sonnen-Knopf zwischen dunklem (Standard) und hellem
+Oben rechts zeigt «Server verbunden», dass die App ihren Server erreicht. Daneben steht die Sprachauswahl (Deutsch,
+English); ohne Auswahl gilt die Sprache des Browsers (sonst Deutsch), und der Browser merkt sich die Wahl. Ganz rechts wechselt der Mond- bzw. Sonnen-Knopf zwischen dunklem (Standard) und hellem
 Design; auch diese Wahl merkt sich der Browser.
 
 Ein paar Grundsätze, die überall gelten:

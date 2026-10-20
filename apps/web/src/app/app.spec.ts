@@ -69,6 +69,11 @@ describe('App', () => {
   });
 
   it('shows the language switcher only with more than one language and switches without reload', async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: I18N_LANGUAGES, useValue: [LANGUAGES[0]] }],
+    }).compileComponents();
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);

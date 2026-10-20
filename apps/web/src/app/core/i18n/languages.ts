@@ -19,4 +19,5 @@ export const DEFAULT_LANGUAGE = 'de';
  */
 export const LANGUAGES: readonly Language[] = [
   { code: 'de', locale: 'de-CH', name: 'Deutsch', load: () => import('../../../locale/de.json').then((m) => m.default) },
+  { code: 'en', locale: 'en-GB', name: 'English', load: () => import('../../../locale/en.json').then((m) => m.default) },
 ];
