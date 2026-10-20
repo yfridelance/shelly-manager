@@ -64,7 +64,9 @@ export class TemplateApply {
   /** Only active devices with an IP can be configured. */
   protected readonly candidates = computed(() => this.devices.value().filter((d) => d.state === 'active' && d.ip !== null));
   protected readonly selected = signal<Set<string>>(new Set());
-  protected readonly expanded = signal<string | null>(null);
+  /** Keys of selected and expanded rows for kern-table (`data-key` = MAC). */
+  protected readonly selectedKeys = computed(() => [...this.selected()]);
+  protected readonly expandedKeys = signal<string[]>([]);
   protected readonly search = signal('');
   protected readonly visible = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -144,17 +146,22 @@ export class TemplateApply {
     return { text: parts.join(', '), kind: changes > 0 ? 'change' : 'unsupported' };
   }
 
-  protected toggle(mac: string, on: boolean): void {
-    this.selected.update((s) => {
-      const next = new Set(s);
-      if (on) next.add(mac);
-      else next.delete(mac);
-      return next;
-    });
+  /** Row or header checkbox in kern-table; while applying, the selection stays as it is. */
+  protected onSelection(event: Event): void {
+    if (this.running()) {
+      event.preventDefault();
+      return;
+    }
+    this.selected.set(new Set((event as CustomEvent<{ selected: string[] }>).detail.selected));
   }
 
-  protected selectAll(on: boolean): void {
-    this.selected.set(on ? new Set(this.visible().map((d) => d.mac)) : new Set());
+  protected selectNone(): void {
+    this.selected.set(new Set());
+  }
+
+  protected onRowToggle(event: Event): void {
+    const { key, open } = (event as CustomEvent<{ key: string; open: boolean }>).detail;
+    this.expandedKeys.update((keys) => (open ? [...keys.filter((k) => k !== key), key] : keys.filter((k) => k !== key)));
   }
 
   /**

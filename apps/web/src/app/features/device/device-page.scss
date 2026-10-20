@@ -94,29 +94,9 @@ h3 {
   font-size: 13px;
 }
 
-.diff-summary {
-  margin: 0 0 var(--space-3);
-}
-
-.diff {
-  td {
-    white-space: normal;
-    word-break: break-all;
-    vertical-align: top;
-    padding-block: var(--space-2);
-  }
-
-  tr.added td:last-child {
-    color: var(--ok);
-  }
-
-  tr.removed td:last-child {
-    color: var(--danger);
-  }
-
-  tr.changed td:last-child {
-    color: var(--warn);
-  }
+.diff-hint {
+  margin: var(--space-2) 0 0;
+  font-size: 13px;
 }
 
 .device-name {

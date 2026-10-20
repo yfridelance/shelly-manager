@@ -1,5 +1,6 @@
 import { CUSTOM_ELEMENTS_SCHEMA, Component, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { TranslatePipe } from '../core/i18n/pipes';
+import { kernValue } from '../core/kern';
 
 /** Shows a value; click «Bearbeiten» to edit inline. Enter (Ctrl+Enter for multiline) saves, Escape cancels. */
 @Component({
@@ -10,9 +11,18 @@ import { TranslatePipe } from '../core/i18n/pipes';
     @if (editing()) {
       <form class="edit" (submit)="save($event)">
         @if (multiline()) {
-          <textarea #box rows="4" [value]="draft()" (input)="draft.set(text($event))" (keydown)="onKey($event)"></textarea>
+          <kern-textarea #box [rows]="4" [ariaLabelText]="label()" [value]="draft()" (kernInput)="draft.set(fieldValue($event))" (keydown)="onKey($event)" />
         } @else {
-          <input #box [value]="draft()" [attr.list]="listId()" (input)="draft.set(text($event))" (keydown)="onKey($event)" />
+          <kern-input
+            #box
+            size="sm"
+            autocomplete="off"
+            [ariaLabelText]="label()"
+            [suggestions]="suggestions()"
+            [value]="draft()"
+            (kernInput)="draft.set(fieldValue($event))"
+            (keydown)="onKey($event)"
+          />
         }
         <div class="actions">
           <kern-button type="submit" size="sm" variant="primary" [disabled]="saving()">{{ 'common.save' | t }}</kern-button>
@@ -41,7 +51,6 @@ import { TranslatePipe } from '../core/i18n/pipes';
     }
   `,
   styles: `
-    /* The input stays native: kern-input cannot reach a <datalist> outside its shadow root. */
     .view { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; min-height: var(--control-sm); }
     .value { white-space: pre-wrap; }
     .value.empty { color: var(--text-muted); font-style: italic; }
@@ -55,8 +64,8 @@ export class EditableField {
   /** Default: «nicht erfasst» in the current language. */
   readonly placeholder = input<string | null>(null);
   readonly multiline = input(false);
-  /** id of a <datalist> with suggestions. */
-  readonly listId = input<string | null>(null);
+  /** Offered while typing (kern-input combobox); free text stays allowed. */
+  readonly suggestions = input<string[]>([]);
   readonly saving = input(false);
   /** Offered next to «Bearbeiten» and in the editor; taking it only fills the editor, saving stays a separate step. */
   readonly suggestion = input<string | null>(null);
@@ -64,7 +73,7 @@ export class EditableField {
 
   protected readonly editing = signal(false);
   protected readonly draft = signal('');
-  private readonly box = viewChild<ElementRef<HTMLInputElement | HTMLTextAreaElement>>('box');
+  private readonly box = viewChild<ElementRef<HTMLElement & { setFocus?: () => Promise<void> }>>('box');
 
   protected start(): void {
     this.edit();
@@ -74,7 +83,7 @@ export class EditableField {
   edit(initial?: string): void {
     this.draft.set(initial ?? this.value() ?? '');
     this.editing.set(true);
-    setTimeout(() => this.box()?.nativeElement.focus());
+    setTimeout(() => void this.box()?.nativeElement.setFocus?.());
   }
 
   protected cancel(): void {
@@ -87,12 +96,15 @@ export class EditableField {
     this.editing.set(false);
   }
 
+  /**
+   * Enter saves (Ctrl+Enter when multiline), Escape cancels. kern-input handles both first while its suggestion
+   * list is open (taking a suggestion, closing the list) and then marks the event as handled.
+   */
   protected onKey(event: KeyboardEvent): void {
+    if (event.defaultPrevented) return;
     if (event.key === 'Escape') this.cancel();
-    if (this.multiline() && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) this.save(event);
+    if (event.key === 'Enter' && (!this.multiline() || event.ctrlKey || event.metaKey)) this.save(event);
   }
 
-  protected text(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
+  protected readonly fieldValue = kernValue;
 }

@@ -39,18 +39,8 @@ kern-alert {
   color: var(--text-muted);
 }
 
-// Toggle for the per-device details: reads as a link, coloured by what would change.
+// Toggle for the per-device details (kern-table styles it as a link): coloured by what would change.
 .preview {
-  all: unset;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-
-  &:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
-  }
-
   &.change {
     color: var(--accent-text);
   }
@@ -62,10 +52,6 @@ kern-alert {
 }
 
 tr.details td {
-  white-space: normal;
-  background: var(--surface-sunken);
-  padding-block: var(--space-2);
-
   ul {
     margin: var(--space-1) 0;
     padding-left: 1.2rem;

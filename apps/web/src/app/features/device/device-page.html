@@ -60,21 +60,6 @@
 
     <kern-card [heading]="'device.documentation' | t">
       <p class="hint">{{ 'device.documentationHint' | t }}</p>
-      <datalist id="floor-suggestions">
-        @for (f of floorSuggestions(); track f) {
-          <option [value]="f"></option>
-        }
-      </datalist>
-      <datalist id="location-suggestions">
-        @for (l of locationSuggestions(); track l) {
-          <option [value]="l"></option>
-        }
-      </datalist>
-      <datalist id="kind-suggestions">
-        @for (k of kindSuggestions(); track k) {
-          <option [value]="k"></option>
-        }
-      </datalist>
       <div class="doc-field">
         <h3>{{ 'columns.name' | t }}</h3>
         <app-editable-field
@@ -110,13 +95,13 @@
           {{ 'device.floor' | t }}
           <kern-tooltip [text]="'device.floorHint' | t"><kern-icon class="info" name="info" tabindex="0" [label]="'device.floorHint' | t" /></kern-tooltip>
         </h3>
-        <app-editable-field [label]="'device.floor' | t" listId="floor-suggestions" [value]="d.floor" [saving]="saving()" (saved)="saveField('floor', $event)" />
+        <app-editable-field [label]="'device.floor' | t" [suggestions]="floorSuggestions()" [value]="d.floor" [saving]="saving()" (saved)="saveField('floor', $event)" />
       </div>
       <div class="doc-field">
         <h3>{{ 'columns.location' | t }}</h3>
         <app-editable-field
           [label]="'columns.location' | t"
-          listId="location-suggestions"
+          [suggestions]="locationSuggestions()"
           [value]="d.location"
           [saving]="saving()"
           (saved)="saveField('location', $event)"
@@ -127,7 +112,7 @@
           {{ 'device.kind' | t }}
           <kern-tooltip [text]="'device.kindHint' | t"><kern-icon class="info" name="info" tabindex="0" [label]="'device.kindHint' | t" /></kern-tooltip>
         </h3>
-        <app-editable-field [label]="'device.kind' | t" listId="kind-suggestions" [value]="d.kind" [saving]="saving()" (saved)="saveField('kind', $event)" />
+        <app-editable-field [label]="'device.kind' | t" [suggestions]="kindSuggestions()" [value]="d.kind" [saving]="saving()" (saved)="saveField('kind', $event)" />
       </div>
       <div class="doc-field">
         <h3>{{ 'device.notes' | t }}</h3>
@@ -309,39 +294,21 @@
       <div class="json">
         @if (compareId() !== null) {
           @if (comparison(); as c) {
-            <p class="diff-summary">
-              @if (c.entries.length === 0) {
-                {{ 'device.diff.none' | t: { before: (c.before.takenAt | dateTime), after: (c.after.takenAt | dateTime) } }}
-              } @else {
-                {{ 'device.diff.summary' | t: { count: c.entries.length, changed: countKind(c.entries, 'changed'), added: countKind(c.entries, 'added'), removed: countKind(c.entries, 'removed') } }}
-                @if (tab() === 'status') {
-                  <span class="muted">{{ 'device.diff.statusHint' | t }}</span>
-                }
-              }
-            </p>
-            @if (c.entries.length > 0) {
-              <kern-table>
-              <table class="diff">
-                <thead>
-                  <tr>
-                    <th>{{ 'device.diff.path' | t }}</th>
-                    <th>{{ 'device.diff.before' | t }} ({{ c.before.takenAt | dateTime }}{{ c.before.confirmedAt ? ', ' + ('device.confirmedUntil' | t: { time: (c.before.confirmedAt | dateTime) }) : '' }})</th>
-                    <th>{{ 'device.diff.after' | t }} ({{ c.after.takenAt | dateTime }}{{ c.after.confirmedAt ? ', ' + ('device.confirmedUntil' | t: { time: (c.after.confirmedAt | dateTime) }) : '' }})</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (e of c.entries; track e.path) {
-                    <tr [class]="e.kind">
-                      <td class="mono">{{ e.path || ('device.diff.whole' | t) }}</td>
-                      <td class="mono">{{ formatDiffValue(e.before) }}</td>
-                      <td class="mono">{{ formatDiffValue(e.after) }}</td>
-                      <td>{{ diffKindText(e.kind) }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-              </kern-table>
+            <kern-json-diff
+              [from]="c.before[tab()]"
+              [to]="c.after[tab()]"
+              [labelBefore]="diffHeading('device.diff.before', c.before)"
+              [labelAfter]="diffHeading('device.diff.after', c.after)"
+              [labelPath]="'device.diff.path' | t"
+              [labelKind]="'device.diff.kind' | t"
+              [labelAdded]="'device.diff.added' | t"
+              [labelRemoved]="'device.diff.removed' | t"
+              [labelChanged]="'device.diff.changed' | t"
+              [labelNone]="'device.diff.none' | t: { before: (c.before.takenAt | dateTime), after: (c.after.takenAt | dateTime) }"
+              [labelSummary]="c.summary"
+            />
+            @if (tab() === 'status' && c.count > 0) {
+              <p class="muted diff-hint">{{ 'device.diff.statusHint' | t }}</p>
             }
           } @else {
             <p class="muted">{{ 'device.diff.loading' | t }}</p>

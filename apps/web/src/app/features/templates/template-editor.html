@@ -86,7 +86,7 @@
       @if (net()[iface].mode === 'static') {
         <div class="netgrid" [class.off]="!netOn()[iface]">
           <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.ipFrom'" [label]="'templateEditor.ipFrom' | t" placeholder="192.168.10.50" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].ipFrom ?? ''" (kernInput)="setNet(iface, 'ipFrom', value($event))" />
-          <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.netmask'" [label]="'network.field.netmask' | t" placeholder="255.255.255.0" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].netmask ?? ''" (kernInput)="setNet(iface, 'netmask', value($event))" />
+          <kern-ip-input size="sm" allow="mask" [attr.name]="'network.' + iface + '.netmask'" [label]="'network.field.netmask' | t" placeholder="255.255.255.0" [labelInvalidMask]="'ipInput.invalidMask' | t" [labelMaskCount]="'ipInput.maskCount' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].netmask ?? ''" (kernInput)="setNet(iface, 'netmask', value($event))" (kernChange)="setNet(iface, 'netmask', value($event))" />
           <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.gateway'" [label]="'templateEditor.gatewayOptional' | t" placeholder="192.168.10.1" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].gateway ?? ''" (kernInput)="setNet(iface, 'gateway', value($event))" />
           <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.dns'" [label]="'templateEditor.dnsOptional' | t" placeholder="192.168.10.1" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].dns ?? ''" (kernInput)="setNet(iface, 'dns', value($event))" />
         </div>
@@ -127,6 +127,6 @@
   }
   <div class="buttons">
     <kern-button type="submit" variant="primary" [busy]="saving()" [disabled]="!canSave() || saving()">{{ 'templateEditor.saveAndPreview' | t }}</kern-button>
-    <a class="button secondary" routerLink="/templates">{{ 'common.cancel' | t }}</a>
+    <kern-button href="/templates">{{ 'common.cancel' | t }}</kern-button>
   </div>
 </form>
