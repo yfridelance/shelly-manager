@@ -119,9 +119,13 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   - Importe nur aus `@yfridelance/kern/components` bzw. `@yfridelance/kern/components/kern-*.js` (Custom-Elements-Build),
     nie aus dem Paket-Root: der zieht den Lazy-Loader mit allen Komponenten ins Bundle.
   - Komponenten mit `kern-*` brauchen `CUSTOM_ELEMENTS_SCHEMA`. Werte per Property-Binding (`[value]`, `[checked]`,
-    `[data]`), Eingaben über die Kern-Events: `(kernInput)` bei `kern-input`/`kern-textarea`, `(kernChange)` bei
-    `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`; auslesen mit `kernValue($event)` /
-    `kernChecked($event)` aus `core/kern.ts`. Optionen von `kern-select` als Kind-`<option>` (`@for` funktioniert).
+    `[data]`), Eingaben über die Kern-Events: `(kernInput)` bei `kern-input`/`kern-textarea`/`kern-ip-input`,
+    `(kernChange)` bei `kern-select`, `kern-segmented`, `kern-switch`, `kern-checkbox`, `kern-step-input`; auslesen mit
+    `kernValue($event)` / `kernChecked($event)` / `kernNumber($event)` aus `core/kern.ts`. Optionen von `kern-select`
+    als Kind-`<option>` (`@for` funktioniert).
+  - IP-Felder sind `kern-ip-input` (Scan: `single range cidr`, Templates: `single`); vor dem Senden `normalizeIp()`,
+    damit Kurzformen wie `10.0.0.1-50` beim Server in voller Form ankommen. Kern-Texte (`label…`-Props) kommen aus
+    `ipInput.*` bzw. `stepInput.*` in den Locale-Dateien.
   - Tabellen: native `<table>` in `<kern-table>` (Zellklassen `mono`, `num`, `empty`; Zeilen `clickable`, `dim`).
   - Bewusst nativ geblieben: Inline-Bearbeitung (`app-editable-field`, wegen `<datalist>`), Sortierköpfe in Tabellen,
     die Tabs im Gerätedetail (eine gemeinsame JSON-Ansicht) und Router-Links mit Button-Optik (`a.button` in

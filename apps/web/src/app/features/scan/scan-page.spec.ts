@@ -23,7 +23,7 @@ describe('ScanPage', () => {
   });
 
   function setInput(el: HTMLElement, name: string, value: string): void {
-    setKernValue(el, `kern-input[name="${name}"]`, value);
+    setKernValue(el, `[name="${name}"]`, value);
   }
 
   it('starts a scan with credentials, clears the password and shows the results', async () => {
@@ -65,6 +65,17 @@ describe('ScanPage', () => {
     expect(rows[1]).toContain('neu');
     expect(el.textContent).toContain('6 von 6 Adressen geprüft');
     expect(el.textContent).toContain('Abgeschlossen');
+  });
+
+  it('sends a short range in the full form the server expects', async () => {
+    const fixture = TestBed.createComponent(ScanPage);
+    const el = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    http.expectOne('/api/scans?site=1').flush([]);
+    setInput(el, 'range', '10.0.0.1 – 6');
+    await fixture.whenStable();
+    el.querySelector('form')?.dispatchEvent(new Event('submit'));
+    expect(http.expectOne({ method: 'POST', url: '/api/scans' }).request.body).toEqual({ range: '10.0.0.1-10.0.0.6', siteId: 1 });
   });
 
   it('shows the server message for an invalid range', async () => {

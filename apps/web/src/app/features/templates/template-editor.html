@@ -23,15 +23,27 @@
               <option value="true">{{ 'common.on' | t }}</option>
               <option value="false">{{ 'common.off' | t }}</option>
             </kern-segmented>
+          } @else if (f.type === 'number') {
+            <kern-step-input
+              size="sm"
+              [attr.name]="f.key"
+              [min]="f.min"
+              [max]="f.max"
+              [step]="f.step ?? 1"
+              [locale]="locale()"
+              [placeholder]="f.placeholder ?? ''"
+              [ariaLabelText]="fieldText(f.key)"
+              [labelDecrease]="'stepInput.decrease' | t"
+              [labelIncrease]="'stepInput.increase' | t"
+              [labelInvalid]="'stepInput.invalid' | t"
+              [value]="numberValue(fields()[f.key]?.value)"
+              (kernChange)="setValue(f.key, numberText($event))"
+            />
           } @else {
             <kern-input
               size="sm"
-              [mono]="f.type !== 'number'"
+              mono
               [attr.name]="f.key"
-              [type]="f.type === 'number' ? 'number' : 'text'"
-              [attr.min]="f.min ?? null"
-              [attr.max]="f.max ?? null"
-              [attr.step]="f.step ?? null"
               [placeholder]="f.placeholder ?? ''"
               [ariaLabelText]="fieldText(f.key)"
               [value]="fields()[f.key]?.value ?? ''"
@@ -70,10 +82,10 @@
       </div>
       @if (net()[iface].mode === 'static') {
         <div class="netgrid" [class.off]="!netOn()[iface]">
-          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.ipFrom'" [label]="'templateEditor.ipFrom' | t" placeholder="192.168.10.50" [value]="net()[iface].ipFrom ?? ''" (kernInput)="setNet(iface, 'ipFrom', value($event))" />
-          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.netmask'" [label]="'network.field.netmask' | t" placeholder="255.255.255.0" [value]="net()[iface].netmask ?? ''" (kernInput)="setNet(iface, 'netmask', value($event))" />
-          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.gateway'" [label]="'templateEditor.gatewayOptional' | t" placeholder="192.168.10.1" [value]="net()[iface].gateway ?? ''" (kernInput)="setNet(iface, 'gateway', value($event))" />
-          <kern-input size="sm" mono [attr.name]="'network.' + iface + '.dns'" [label]="'templateEditor.dnsOptional' | t" placeholder="192.168.10.1" [value]="net()[iface].dns ?? ''" (kernInput)="setNet(iface, 'dns', value($event))" />
+          <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.ipFrom'" [label]="'templateEditor.ipFrom' | t" placeholder="192.168.10.50" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].ipFrom ?? ''" (kernInput)="setNet(iface, 'ipFrom', value($event))" />
+          <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.netmask'" [label]="'network.field.netmask' | t" placeholder="255.255.255.0" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].netmask ?? ''" (kernInput)="setNet(iface, 'netmask', value($event))" />
+          <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.gateway'" [label]="'templateEditor.gatewayOptional' | t" placeholder="192.168.10.1" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].gateway ?? ''" (kernInput)="setNet(iface, 'gateway', value($event))" />
+          <kern-ip-input size="sm" allow="single" [attr.name]="'network.' + iface + '.dns'" [label]="'templateEditor.dnsOptional' | t" placeholder="192.168.10.1" [labelInvalid]="'ipInput.invalid' | t" [labelNotAllowed]="'ipInput.notAllowed' | t" [value]="net()[iface].dns ?? ''" (kernInput)="setNet(iface, 'dns', value($event))" />
         </div>
       }
     }

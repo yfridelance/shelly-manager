@@ -173,6 +173,17 @@
     "ipUnreachable": "{{text}} (dort nicht erreichbar – bitte neu scannen)",
     "renamed": "«{{from}}» → «{{to}}»"
   },
+  "stepInput": {
+    "decrease": "Verringern",
+    "increase": "Erhöhen",
+    "invalid": "Keine gültige Zahl"
+  },
+  "ipInput": {
+    "invalid": "Keine gültige IPv4-Adresse",
+    "notAllowed": "Diese Form ist hier nicht erlaubt",
+    "tooMany": "Höchstens {n} Adressen",
+    "count": "{n} Adressen"
+  },
   "scan": {
     "title": "Netzwerk-Scan",
     "range": "IP-Bereich",

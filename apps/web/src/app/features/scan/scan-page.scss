@@ -4,21 +4,10 @@
   max-width: 44rem;
 }
 
-.credentials {
+.credentials .fields {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  margin: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4) var(--space-4);
-
-  legend {
-    padding: 0 var(--space-1);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
 
   kern-input {
     flex: 1 1 12rem;
@@ -26,8 +15,7 @@
 }
 
 .hint {
-  flex-basis: 100%;
-  margin: 0;
+  margin: var(--space-3) 0 0;
   font-size: 12px;
   color: var(--text-muted);
 }

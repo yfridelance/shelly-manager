@@ -1,23 +1,30 @@
 <kern-page-header [heading]="'scan.title' | t" />
 
 <form class="scan-form" (submit)="start($event)">
-  <kern-input
+  <kern-ip-input
     name="range"
-    mono
     required
-    autocomplete="off"
+    allow="single range cidr"
+    [maxAddresses]="maxAddresses"
+    [locale]="locale()"
     [label]="'scan.range' | t"
     [placeholder]="'scan.rangePlaceholder' | t"
+    [labelInvalid]="'ipInput.invalid' | t"
+    [labelNotAllowed]="'ipInput.notAllowed' | t"
+    [labelTooMany]="'ipInput.tooMany' | t"
+    [labelCount]="'ipInput.count' | t"
     [value]="range()"
     (kernInput)="range.set(value($event))"
+    (kernChange)="range.set(value($event))"
     [disabled]="running()"
   />
-  <fieldset class="credentials" [disabled]="running()">
-    <legend>{{ 'scan.credentials' | t }}</legend>
-    <kern-input name="username" autocomplete="off" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
-    <kern-input name="password" type="password" autocomplete="off" [label]="'common.password' | t" [value]="password()" (kernInput)="password.set(value($event))" />
+  <kern-card class="credentials" [heading]="'scan.credentials' | t">
+    <div class="fields">
+      <kern-input name="username" autocomplete="off" [disabled]="running()" [label]="'common.user' | t" [value]="username()" (kernInput)="username.set(value($event))" />
+      <kern-input name="password" type="password" autocomplete="off" [disabled]="running()" [label]="'common.password' | t" [value]="password()" (kernInput)="password.set(value($event))" />
+    </div>
     <p class="hint">{{ 'scan.credentialsHint' | t }}</p>
-  </fieldset>
+  </kern-card>
   <div class="buttons">
     @if (running()) {
       <kern-button (click)="scans.cancel()">{{ 'common.cancel' | t }}</kern-button>

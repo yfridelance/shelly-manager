@@ -60,8 +60,10 @@ Unter **Scan** gibst du einen IP-Bereich ein:
 | Eingabe | Bedeutung |
 |---|---|
 | `192.168.1.0/24` | ganzes Netz (ohne Netz- und Broadcast-Adresse) |
-| `192.168.1.10-192.168.1.80` | Bereich von–bis |
+| `192.168.1.10-192.168.1.80` | Bereich von–bis (Kurzform `192.168.1.10-80` geht auch) |
 | `192.168.1.33` | eine einzelne Adresse |
+
+Das Feld prüft die Eingabe schon beim Tippen und zeigt die Anzahl Adressen an.
 
 Höchstens **1024 Adressen** pro Scan. Die App fragt 32 Adressen gleichzeitig an und wartet pro Adresse höchstens
 1,5 Sekunden. Ein `/24`-Netz dauert so meist nur wenige Sekunden. Es läuft immer nur ein Scan; mit **Abbrechen**

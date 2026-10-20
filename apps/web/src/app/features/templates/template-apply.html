@@ -65,10 +65,12 @@
             @for (iface of staticIfaces(); track iface) {
               <td>
                 @if (selected().has(d.mac)) {
-                  <kern-input
+                  <kern-ip-input
                     class="ip"
                     size="sm"
-                    mono
+                    allow="single"
+                    [labelInvalid]="'ipInput.invalid' | t"
+                    [labelNotAllowed]="'ipInput.notAllowed' | t"
                     [attr.name]="'ip:' + d.mac + ':' + iface"
                     [ariaLabelText]="'templateApply.newIpFor' | t: { name: d.name ?? d.mac }"
                     [value]="plannedIp(d.mac, iface)"
