@@ -19,18 +19,17 @@
     <kern-button slot="footer" size="sm" variant="ghost" (click)="manageSites()">{{ 'header.manageSites' | t }}</kern-button>
   </kern-select>
   @if (i18n.languages.length > 1) {
-    <kern-select
+    <kern-language-select
       slot="end"
-      name="language"
       size="sm"
-      [attr.aria-label-text]="'header.language' | t"
+      [label]="'header.language' | t"
       [value]="i18n.language()"
       (kernChange)="selectLanguage($event)"
     >
       @for (l of i18n.languages; track l.code) {
         <option [value]="l.code" [attr.lang]="l.locale">{{ l.name }}</option>
       }
-    </kern-select>
+    </kern-language-select>
   }
   <kern-status slot="end" [tone]="healthTone()" data-testid="health">
     @switch (health.state()) {

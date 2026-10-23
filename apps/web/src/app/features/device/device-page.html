@@ -204,34 +204,30 @@
 
     @if (recentActions.value().length > 0) {
       <h3>{{ 'device.recentActions' | t }}</h3>
-      <kern-table compact class="recent">
-      <table class="compact">
-        <tbody>
-          @for (a of recentActions.value(); track a.id) {
-            <tr>
-              <td>{{ a.requestedAt | dateTime: 'seconds' }}</td>
-              <td>{{ actionLabel(a) }}</td>
-              <td>
-                <kern-tooltip [text]="actionDetail(a) || (a.error ?? '')" [disabled]="!(actionDetail(a) || a.error)">
-                  <span [attr.tabindex]="actionDetail(a) || a.error ? 0 : null">
-                    @if (a.result === 'ok') {
-                      <kern-status tone="ok">{{ 'common.ok' | t }}</kern-status>
-                      @if (actionSummary(a); as summary) {
-                        <span class="muted"> · {{ summary }}</span>
-                      }
-                    } @else if (a.result === 'error') {
-                      <kern-status tone="danger">{{ actionSummary(a) }}</kern-status>
-                    } @else {
-                      <kern-status tone="busy">{{ 'common.running' | t }}</kern-status>
-                    }
-                  </span>
-                </kern-tooltip>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-      </kern-table>
+      <kern-timeline class="recent" group-by="day" [label]="'device.recentActions' | t">
+        @for (a of recentActions.value(); track a.id) {
+          @let state = actionState(a);
+          <kern-timeline-item
+            [heading]="actionLabel(a)"
+            [datetime]="a.requestedAt"
+            [tone]="state.tone"
+            [status]="state.text"
+            [collapsible]="!!(actionDetail(a) || a.error)"
+          >
+            {{ actionSummary(a) }}
+            @if (actionDetail(a) || a.error) {
+              <div slot="details" class="muted">
+                @if (actionDetail(a); as detail) {
+                  <div>{{ detail }}</div>
+                }
+                @if (a.error) {
+                  <div class="mono">{{ a.error }}</div>
+                }
+              </div>
+            }
+          </kern-timeline-item>
+        }
+      </kern-timeline>
       <p><a routerLink="/protokoll">{{ 'device.fullLog' | t }}</a></p>
     }
   </kern-card>
@@ -277,8 +273,8 @@
           </span>
         }
         <span class="spacer"></span>
-        <kern-button size="sm" variant="ghost" (click)="openDepth.set(99)">{{ 'device.expandAll' | t }}</kern-button>
-        <kern-button size="sm" variant="ghost" (click)="openDepth.set(1)">{{ 'device.collapse' | t }}</kern-button>
+        <kern-button size="sm" variant="ghost" (click)="setOpenDepth(99)">{{ 'device.expandAll' | t }}</kern-button>
+        <kern-button size="sm" variant="ghost" (click)="setOpenDepth(1)">{{ 'device.collapse' | t }}</kern-button>
         <kern-button size="sm" variant="ghost" (click)="copyShown()"><kern-icon name="copy" /> {{ 'device.copyJson' | t }}</kern-button>
       </div>
       <kern-tabs [label]="'device.configuration' | t" [value]="tab()" (kernTabChange)="onTab($event)">
@@ -316,7 +312,7 @@
         } @else if (shown() === null) {
           <p class="muted">{{ (tab() === 'config' ? 'device.noConfigRead' : 'device.noStatusRead') | t }}</p>
         } @else {
-          <kern-json [data]="shown()" [openDepth]="openDepth()" />
+          <kern-json #json [data]="shown()" [openDepth]="openDepth()" />
         }
       </div>
       </ng-template>

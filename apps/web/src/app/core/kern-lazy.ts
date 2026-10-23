@@ -21,6 +21,8 @@ export const deviceElements = () =>
       import('@yfridelance/kern/components/kern-kv-item.js'),
       import('@yfridelance/kern/components/kern-tab-panel.js'),
       import('@yfridelance/kern/components/kern-tabs.js'),
+      import('@yfridelance/kern/components/kern-timeline.js'),
+      import('@yfridelance/kern/components/kern-timeline-item.js'),
     ),
   ]);
 

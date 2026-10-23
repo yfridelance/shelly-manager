@@ -428,13 +428,16 @@ describe('DevicePage', () => {
     TestBed.tick();
     for (const req of http.match((r) => r.method === 'GET')) req.flush([]);
     await fixture.whenStable();
-    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('table.compact tr')];
-    const text = rows.map((r) => r.textContent?.replace(/\s+/g, ' ').trim());
-    expect(text[0]).toContain('Template «test»');
-    expect(text[0]).toContain('OK · 2 geändert, neu gestartet');
-    expect((rows[0]?.querySelector('td:last-child kern-tooltip') as (Element & { text?: string }) | null)?.text).toContain('Access-Point an: Aus → Ein');
-    expect(text[1]).toContain('Template «test»');
-    expect(text[1]).toContain('Template konnte nicht vollständig angewendet werden');
+    type Item = Element & { heading?: string; status?: string; tone?: string; collapsible?: boolean };
+    const items = [...(fixture.nativeElement as HTMLElement).querySelectorAll<Item>('kern-timeline kern-timeline-item')];
+    expect(items.map((i) => i.heading)).toEqual(['Template «test»', 'Template «test»']);
+    expect(items[0]?.status).toBe('OK');
+    expect(items[0]?.tone).toBe('ok');
+    expect(items[0]?.textContent).toContain('2 geändert, neu gestartet');
+    expect(items[0]?.querySelector('[slot="details"]')?.textContent).toContain('Access-Point an: Aus → Ein');
+    expect(items[1]?.tone).toBe('danger');
+    expect(items[1]?.textContent).toContain('Template konnte nicht vollständig angewendet werden');
+    expect(items[1]?.querySelector('[slot="details"]')?.textContent).toContain('Applying failed after 0 of 1 calls');
   });
 
   it('moves the device to another site after confirmation', async () => {

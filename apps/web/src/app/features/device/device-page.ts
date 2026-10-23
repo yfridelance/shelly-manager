@@ -1,4 +1,4 @@
-import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, input, signal } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { NgTemplateOutlet } from '@angular/common';
 import { diffJson } from '@yfridelance/kern/components';
@@ -134,10 +134,24 @@ export class DevicePage {
   ] as const satisfies readonly { name: SnapshotTab; label: TranslationKey }[];
   protected readonly tab = signal<SnapshotTab>('config');
   protected readonly openDepth = signal(1);
+  private readonly json = viewChild<ElementRef<HTMLElement & { setOpenDepth?: (depth: number) => Promise<void> }>>('json');
+  /** Marker and status word of an action in the timeline. */
+  protected actionState(a: ActionEntry): { tone: 'ok' | 'danger' | 'busy'; text: string } {
+    if (a.result === 'ok') return { tone: 'ok', text: t('common.ok') };
+    if (a.result === 'error') return { tone: 'danger', text: t('common.error') };
+    return { tone: 'busy', text: t('common.running') };
+  }
+
   protected readonly shown = computed(() => {
     const s = this.snapshot();
     return s ? s[this.tab()] : null;
   });
+
+  /** Also resets nodes toggled by hand when the depth stays the same (a second click on «expand all»). */
+  protected setOpenDepth(depth: number): void {
+    this.openDepth.set(depth);
+    void this.json()?.nativeElement.setOpenDepth?.(depth);
+  }
 
   protected readonly saving = signal(false);
   /** Errors and warnings stay on the page; successes are toasts. */

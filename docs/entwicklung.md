@@ -144,6 +144,12 @@ scripts/docs-screenshots/     Screenshots der Doku neu erzeugen
   - Inline-Bearbeitung (`app-editable-field`) mit `kern-input [suggestions]` bzw. `kern-textarea`; Enter speichert,
     Escape bricht ab, ausser kern-input hat die Taste schon für die Vorschlagsliste verwendet (`defaultPrevented`).
   - Snapshot-Vergleich mit `kern-json-diff`; die Zusammenfassung mit Plural formatiert die App (Kerns `diffJson()`).
+  - JSON-Baum mit `kern-json [openDepth]`; «Alle aufklappen»/«Zuklappen» rufen zusätzlich `setOpenDepth()` auf, damit
+    auch von Hand umgeschaltete Knoten zurückgesetzt werden, wenn die Tiefe gleich bleibt.
+  - «Letzte Aktionen» im Gerätedetail als `kern-timeline group-by="day"` mit `kern-timeline-item` (Ton und Status aus
+    dem Ergebnis, Details aufklappbar); das Protokoll bleibt eine filterbare Tabelle.
+  - Sprachumschalter in der Kopfzeile ist `kern-language-select` mit Kind-`<option>` pro Sprache. Kerns eigene Texte
+    (Aria-Labels, «Details anzeigen», Tagesüberschriften) folgen `<html lang>`, das `I18nService` setzt.
   - Hinweise über `kern-tooltip` statt `title` (Auslöser ohne eigene Fokussierbarkeit mit `tabindex="0"`), Icons über
     `kern-icon` statt eigener SVGs oder Unicode-Zeichen.
   - Rückfragen und Erfolgsmeldungen über `Feedback` (`core/feedback.ts`), das Kerns `confirm()`/`toast()` mit
