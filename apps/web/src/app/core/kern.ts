@@ -7,6 +7,7 @@ import { defineCustomElement as checkbox } from '@yfridelance/kern/components/ke
 import { defineCustomElement as dialog } from '@yfridelance/kern/components/kern-dialog.js';
 import { defineCustomElement as icon } from '@yfridelance/kern/components/kern-icon.js';
 import { defineCustomElement as input } from '@yfridelance/kern/components/kern-input.js';
+import { defineCustomElement as languageSelect } from '@yfridelance/kern/components/kern-language-select.js';
 import { defineCustomElement as link } from '@yfridelance/kern/components/kern-link.js';
 import { defineCustomElement as pageHeader } from '@yfridelance/kern/components/kern-page-header.js';
 import { defineCustomElement as progress } from '@yfridelance/kern/components/kern-progress.js';
@@ -30,7 +31,7 @@ import { defineCustomElement as topbar } from '@yfridelance/kern/components/kern
 export function defineKern(): void {
   initTheme();
   for (const define of [
-    alert, badge, button, card, checkbox, dialog, icon, input, link, pageHeader, progress, select, signal, spinner,
+    alert, badge, button, card, checkbox, dialog, icon, input, languageSelect, link, pageHeader, progress, select, signal, spinner,
     status, switchEl, table, textarea, themeToggle, toast, toolbar, tooltip, topbar,
   ]) {
     define();

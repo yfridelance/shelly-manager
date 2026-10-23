@@ -80,7 +80,7 @@ describe('App', () => {
     http.expectOne('/api/health').flush({ status: 'ok' });
     http.expectOne('/api/sites').flush([]);
     await fixture.whenStable();
-    expect((fixture.nativeElement as HTMLElement).querySelector('kern-select[name="language"]')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('kern-language-select')).toBeNull();
 
     TestBed.resetTestingModule();
     const en: Language = { code: 'en', locale: 'en-GB', name: 'English', load: async () => ({ nav: { inventory: 'Inventory' } }) };
@@ -94,8 +94,8 @@ describe('App', () => {
     TestBed.inject(HttpTestingController).expectOne('/api/sites').flush([]);
     await second.whenStable();
     const el = second.nativeElement as HTMLElement;
-    expect([...el.querySelectorAll('kern-select[name="language"] option')].map((o) => o.textContent?.trim())).toEqual(['Deutsch', 'English']);
-    setKernValue(el, 'kern-select[name="language"]', 'en');
+    expect([...el.querySelectorAll('kern-language-select option')].map((o) => o.textContent?.trim())).toEqual(['Deutsch', 'English']);
+    setKernValue(el, 'kern-language-select', 'en');
     await new Promise((r) => setTimeout(r));
     await second.whenStable();
     const nav = [...el.querySelectorAll('a[slot="nav"]')].map((a) => a.textContent).join(' ');
